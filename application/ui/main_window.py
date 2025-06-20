@@ -52,8 +52,9 @@ class MainWindow(QMainWindow):
 
         # 창 설정
         self.setWindowTitle("💬 DS Pilot")
-        self.setMinimumSize(1400, 800)
-        self.resize(1400, 800)
+        # 최소 크기만 설정하고 크기 조절 가능하게 함
+        self.setMinimumSize(800, 600)
+        self.resize(1400, 800)  # 초기 크기
 
         # 윈도우 아이콘 설정
         self.set_window_icon()

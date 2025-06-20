@@ -1,13 +1,22 @@
 """설정창 메인 모듈"""
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QMainWindow
+from typing import Optional
 
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import QMainWindow, QWidget
+
+from application.config.config_manager import ConfigManager
 from application.llm.mcp.mcp_manager import MCPManager
-from application.ui.managers import (GitHubTabManager, LLMTabManager,
-                                     MCPTabManager, SettingsManager,
-                                     TaskTabManager, UISetupManager,
-                                     UITabManager)
+from application.llm.mcp.mcp_tool_manager import MCPToolManager
+from application.ui.managers import (
+    GitHubTabManager,
+    LLMTabManager,
+    MCPTabManager,
+    SettingsManager,
+    TaskTabManager,
+    UISetupManager,
+    UITabManager,
+)
 
 
 class SettingsWindow(QMainWindow):
@@ -16,8 +25,12 @@ class SettingsWindow(QMainWindow):
     settings_changed = Signal()  # 설정 변경 시그널
 
     def __init__(
-        self, config_manager, parent=None, mcp_manager=None, mcp_tool_manager=None
-    ):
+        self, 
+        config_manager: ConfigManager, 
+        parent: Optional[QWidget] = None, 
+        mcp_manager: Optional[MCPManager] = None, 
+        mcp_tool_manager: Optional[MCPToolManager] = None
+    ) -> None:
         super().__init__(parent)
         self.config_manager = config_manager
         self.setWindowTitle("설정")
@@ -57,7 +70,7 @@ class SettingsWindow(QMainWindow):
         self.ui_setup_manager.setup_ui()
         self.settings_manager.load_current_settings()
 
-    def on_tab_changed(self, index):
+    def on_tab_changed(self, index: int) -> None:
         """탭 변경 시 호출"""
         # LLM 탭(0)에서만 테스트 버튼 표시
         self.test_button.setVisible(index == 0)

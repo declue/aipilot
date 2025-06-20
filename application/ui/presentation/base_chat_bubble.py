@@ -72,18 +72,31 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
         return font_family, font_size
 
     def get_max_width(self) -> int:
-        """최대 너비 설정을 반환 - 화면 크기의 80%"""
+        """최대 너비 설정을 반환 - 윈도우 크기의 80%"""
         try:
-            # 현재 화면의 너비 가져오기
+            # QApplication을 통해 메인 윈도우 찾기
             app = QApplication.instance()
             if app is not None:
-                # QGuiApplication을 통해 화면 정보 가져오기
-
+                # 모든 최상위 위젯 중에서 MainWindow 찾기
+                for widget in app.topLevelWidgets():
+                    if widget.isVisible() and hasattr(widget, 'objectName'):
+                        # MainWindow나 QMainWindow인 경우
+                        if 'MainWindow' in str(type(widget)) or hasattr(widget, 'centralWidget'):
+                            window_width = widget.width()
+                            if window_width > 100:  # 유효한 크기인지 확인
+                                # 윈도우 크기의 80%로 설정
+                                calculated_width = int(window_width * 0.80)
+                                logger.info(
+                                    f"[DEBUG] Main window width: {window_width}px, calculated 80% width: {calculated_width}px"
+                                )
+                                return calculated_width
+                
+                # MainWindow를 찾지 못한 경우, 화면 크기 사용
                 screens = QGuiApplication.screens()
                 if screens:
                     primary_screen = screens[0]  # 첫 번째 화면을 primary로 사용
                     screen_width = primary_screen.geometry().width()
-                    # 화면 크기의 80%로 설정 (이전 75%보다 더 넓게)
+                    # 화면 크기의 80%로 설정
                     calculated_width = int(screen_width * 0.80)
                     logger.info(
                         f"[DEBUG] Screen width: {screen_width}px, calculated 80% width: {calculated_width}px"
@@ -91,7 +104,7 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
                     return calculated_width
 
             # 화면 정보를 가져올 수 없는 경우 기본값 사용
-            logger.warning("Could not get screen information, using default width")
+            logger.warning("Could not get screen/window information, using default width")
             # 화면 크기 기준 계산이 실패한 경우에만 설정값 사용
             config_max_width: int = int(
                 self.ui_config.get(
