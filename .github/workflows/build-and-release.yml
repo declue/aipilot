@@ -1,0 +1,58 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'  # Push events to matching v*, i.e. v1.0, v20.15.10
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_app.txt
+        pip install pyinstaller
+        
+    - name: Build application
+      run: |
+        python build.py
+        
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: output/DSPilot.exe
+        draft: false
+        prerelease: false
+        
+    - name: Upload artifact for non-tag builds
+      uses: actions/upload-artifact@v4
+      if: "!startsWith(github.ref, 'refs/tags/')"
+      with:
+        name: DSPilot
+        path: output/DSPilot.exe
+        
+    - name: Create Release for non-tag builds
+      uses: softprops/action-gh-release@v1
+      if: "!startsWith(github.ref, 'refs/tags/') && github.ref == 'refs/heads/main'"
+      with:
+        files: output/DSPilot.exe
+        tag_name: nightly-${{ github.sha }}
+        name: Nightly Build
+        draft: false
+        prerelease: true

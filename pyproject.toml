@@ -1,0 +1,134 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dspilot"
+version = "0.1.0"
+description = "DSPilot Application"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+authors = [
+    {name = "DSPilot Team"}
+]
+
+dependencies = [
+    "PySide6",
+    "notify-py",
+    "colorama",
+    "loguru",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "requests",
+    "openai",
+    "markdown",
+    "google-generativeai",
+    "pygments",
+    "types-requests",
+    "types-Markdown",
+    "types-psutil",
+    "PySide6-stubs",
+    "types-pytest",
+    "authlib",
+    "httpx",
+    "aiohttp",
+    "aiofiles",
+    "python-multipart",
+    "pydantic-settings",
+    "sse-starlette",
+    "python-dotenv",
+    "starlette",
+    "redis",
+    "cryptography",
+    "itsdangerous",
+    "sqlalchemy",
+    "psutil",
+    "mcp",
+    "apscheduler",
+    "twisted",
+    "Pillow",
+    # Additional dependencies from MCP tools and servers
+    "numpy",
+    "scipy",
+    "sympy",
+    "fastmcp",
+    "google-api-python-client",
+    "bs4",
+    "pytz",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-tornasync",
+    "pytest-trio",
+    "pytest-twisted",
+    "pytest-cov",
+    "coverage",
+    "anyio",
+]
+dev = [
+    "pyinstaller",
+    "build",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/dspilot"
+"Bug Tracker" = "https://github.com/yourusername/dspilot/issues"
+
+[tool.setuptools]
+packages = ["application"]
+
+[project.scripts]
+dspilot = "app:main"
+
+[project.gui-scripts]
+dspilot-gui = "app:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+py_version = 311
+
+[tool.ruff]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "W",  # pycodestyle warnings
+    "I",  # isort
+    "N",  # pep8-naming
+    "D",  # pydocstyle
+    "UP", # pyupgrade
+    "B",  # bugbear
+]
+ignore = ["D203", "D212"]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+strict_equality = true
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "tests/*",
+    "*/__init__.py",
+]
