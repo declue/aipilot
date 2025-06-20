@@ -1,10 +1,21 @@
+from __future__ import annotations
+
+"""Deprecated location for ReasoningParser – stub wrapper.
+
+실제 구현은 `application.ui.domain.reasoning_parser` 로 이동했습니다.
+이 모듈은 하위 호환성을 위해 클래스를 재-익스포트만 합니다.
+"""
+
 import logging
 import re
 
 from application.util.logger import setup_logger
 
+__all__: list[str] = ["ReasoningParser"]
+
+
 logger: logging.Logger = setup_logger("reasoning_parser") or logging.getLogger(
-    "reasoning_parser"
+    "reasoning_parsewr"
 )
 
 

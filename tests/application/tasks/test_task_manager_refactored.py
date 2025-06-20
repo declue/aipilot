@@ -1,6 +1,6 @@
 """리팩토링된 TaskManager 테스트"""
 
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,10 +13,10 @@ from application.tasks.task_manager import TaskManager
 class MockTaskConfiguration(ITaskConfiguration):
     """Mock 작업 설정 관리자"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._settings = TaskSettings()
         self._settings.enabled = True
-        self._tasks = {}
+        self._tasks: Dict[str, TaskConfig] = {}
         
     def load_settings(self) -> TaskSettings:
         return self._settings
@@ -57,11 +57,11 @@ class MockTaskConfiguration(ITaskConfiguration):
 class MockTaskScheduler(ITaskScheduler):
     """Mock 작업 스케줄러"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._is_running = False
-        self._jobs = {}
-        self._on_executed = None
-        self._on_error = None
+        self._jobs: Dict[str, TaskConfig] = {}
+        self._on_executed: Optional[Callable[[str, Any], None]] = None
+        self._on_error: Optional[Callable[[str, Any], None]] = None
         
     def start(self) -> None:
         self._is_running = True
@@ -86,7 +86,8 @@ class MockTaskScheduler(ITaskScheduler):
     def get_running_jobs(self) -> List[dict]:
         return [{"id": task.id, "name": task.name} for task in self._jobs.values()]
         
-    def set_job_listener(self, on_executed=None, on_error=None) -> None:
+    def set_job_listener(self, on_executed: Optional[Callable[[str, Any], None]] = None, 
+                        on_error: Optional[Callable[[str, Any], None]] = None) -> None:
         self._on_executed = on_executed
         self._on_error = on_error
         
@@ -99,17 +100,18 @@ class TestTaskManager:
     """리팩토링된 TaskManager 테스트 클래스"""
 
     @pytest.fixture
-    def mock_task_configuration(self):
+    def mock_task_configuration(self) -> MockTaskConfiguration:
         """Mock 작업 설정 관리자"""
         return MockTaskConfiguration()
 
     @pytest.fixture
-    def mock_task_scheduler(self):
+    def mock_task_scheduler(self) -> MockTaskScheduler:
         """Mock 작업 스케줄러"""
         return MockTaskScheduler()
 
     @pytest.fixture
-    def task_manager(self, mock_task_configuration, mock_task_scheduler):
+    def task_manager(self, mock_task_configuration: MockTaskConfiguration, 
+                    mock_task_scheduler: MockTaskScheduler) -> TaskManager:
         """TaskManager 인스턴스 (Mock 의존성 주입)"""
         with patch('application.tasks.task_manager.HttpClient') as mock_http:
             with patch('application.tasks.task_manager.TaskExecutor') as mock_executor:
@@ -121,7 +123,7 @@ class TestTaskManager:
                 return manager
 
     @pytest.fixture
-    def sample_task(self):
+    def sample_task(self) -> TaskConfig:
         """샘플 작업 생성"""
         return TaskConfig(
             id="test_task",
@@ -133,7 +135,8 @@ class TestTaskManager:
             enabled=True
         )
 
-    def test_init_with_dependencies(self, mock_task_configuration, mock_task_scheduler):
+    def test_init_with_dependencies(self, mock_task_configuration: MockTaskConfiguration, 
+                                   mock_task_scheduler: MockTaskScheduler) -> None:
         """의존성 주입을 통한 초기화 테스트"""
         with patch('application.tasks.task_manager.HttpClient') as mock_http:
             with patch('application.tasks.task_manager.TaskExecutor') as mock_executor:
@@ -147,13 +150,16 @@ class TestTaskManager:
                 assert mock_http.called
                 assert mock_executor.called
 
-    def test_start_scheduler(self, task_manager, mock_task_scheduler):
+    def test_start_scheduler(self, task_manager: TaskManager, 
+                           mock_task_scheduler: MockTaskScheduler) -> None:
         """스케줄러 시작 테스트"""
         task_manager.start()
         
         assert mock_task_scheduler.is_running
         
-    def test_start_scheduler_disabled(self, task_manager, mock_task_configuration, mock_task_scheduler):
+    def test_start_scheduler_disabled(self, task_manager: TaskManager, 
+                                    mock_task_configuration: MockTaskConfiguration, 
+                                    mock_task_scheduler: MockTaskScheduler) -> None:
         """스케줄러 비활성화 상태에서 시작 테스트"""
         mock_task_configuration.settings.enabled = False
         
@@ -161,7 +167,8 @@ class TestTaskManager:
         
         assert not mock_task_scheduler.is_running
 
-    def test_stop_scheduler(self, task_manager, mock_task_scheduler):
+    def test_stop_scheduler(self, task_manager: TaskManager, 
+                          mock_task_scheduler: MockTaskScheduler) -> None:
         """스케줄러 중지 테스트"""
         # 먼저 시작
         mock_task_scheduler._is_running = True
@@ -173,7 +180,9 @@ class TestTaskManager:
                 assert not mock_task_scheduler.is_running
                 mock_asyncio_run.assert_called_once()
 
-    def test_add_task_success(self, task_manager, sample_task, mock_task_configuration, mock_task_scheduler):
+    def test_add_task_success(self, task_manager: TaskManager, sample_task: TaskConfig, 
+                            mock_task_configuration: MockTaskConfiguration, 
+                            mock_task_scheduler: MockTaskScheduler) -> None:
         """작업 추가 성공 테스트"""
         # 스케줄러가 실행 중인 상태로 설정
         mock_task_scheduler._is_running = True
@@ -184,7 +193,10 @@ class TestTaskManager:
         assert sample_task.id in mock_task_configuration.get_all_tasks()
         assert sample_task.id in mock_task_scheduler._jobs
 
-    def test_add_task_scheduler_not_running(self, task_manager, sample_task, mock_task_configuration, mock_task_scheduler):
+    def test_add_task_scheduler_not_running(self, task_manager: TaskManager, 
+                                          sample_task: TaskConfig, 
+                                          mock_task_configuration: MockTaskConfiguration, 
+                                          mock_task_scheduler: MockTaskScheduler) -> None:
         """스케줄러가 실행 중이 아닐 때 작업 추가 테스트"""
         mock_task_scheduler._is_running = False
         
@@ -195,7 +207,9 @@ class TestTaskManager:
         # 스케줄러가 실행 중이 아니므로 작업이 스케줄러에 추가되지 않음
         assert sample_task.id not in mock_task_scheduler._jobs
 
-    def test_update_task_success(self, task_manager, sample_task, mock_task_configuration, mock_task_scheduler):
+    def test_update_task_success(self, task_manager: TaskManager, sample_task: TaskConfig, 
+                               mock_task_configuration: MockTaskConfiguration, 
+                               mock_task_scheduler: MockTaskScheduler) -> None:
         """작업 수정 성공 테스트"""
         # 먼저 작업 추가
         mock_task_configuration.add_task(sample_task)
@@ -207,9 +221,12 @@ class TestTaskManager:
         
         assert result is True
         updated_task = mock_task_configuration.get_task(sample_task.id)
+        assert updated_task is not None
         assert updated_task.name == "Updated Task"
 
-    def test_remove_task_success(self, task_manager, sample_task, mock_task_configuration, mock_task_scheduler):
+    def test_remove_task_success(self, task_manager: TaskManager, sample_task: TaskConfig, 
+                               mock_task_configuration: MockTaskConfiguration, 
+                               mock_task_scheduler: MockTaskScheduler) -> None:
         """작업 제거 성공 테스트"""
         # 먼저 작업 추가
         mock_task_configuration.add_task(sample_task)
@@ -223,7 +240,8 @@ class TestTaskManager:
         assert sample_task.id not in mock_task_configuration.get_all_tasks()
         assert sample_task.id not in mock_task_scheduler._jobs
 
-    def test_get_tasks(self, task_manager, sample_task, mock_task_configuration):
+    def test_get_tasks(self, task_manager: TaskManager, sample_task: TaskConfig, 
+                      mock_task_configuration: MockTaskConfiguration) -> None:
         """모든 작업 조회 테스트"""
         mock_task_configuration.add_task(sample_task)
         
@@ -232,7 +250,8 @@ class TestTaskManager:
         assert sample_task.id in tasks
         assert tasks[sample_task.id] == sample_task
 
-    def test_get_task(self, task_manager, sample_task, mock_task_configuration):
+    def test_get_task(self, task_manager: TaskManager, sample_task: TaskConfig, 
+                     mock_task_configuration: MockTaskConfiguration) -> None:
         """특정 작업 조회 테스트"""
         mock_task_configuration.add_task(sample_task)
         
@@ -240,13 +259,14 @@ class TestTaskManager:
         
         assert task == sample_task
 
-    def test_get_task_not_found(self, task_manager):
+    def test_get_task_not_found(self, task_manager: TaskManager) -> None:
         """존재하지 않는 작업 조회 테스트"""
         task = task_manager.get_task("non_existent_task")
         
         assert task is None
 
-    def test_get_running_jobs(self, task_manager, sample_task, mock_task_scheduler):
+    def test_get_running_jobs(self, task_manager: TaskManager, sample_task: TaskConfig, 
+                            mock_task_scheduler: MockTaskScheduler) -> None:
         """실행 중인 작업 조회 테스트"""
         mock_task_scheduler.add_job(sample_task)
         
@@ -256,7 +276,8 @@ class TestTaskManager:
         assert jobs[0]["id"] == sample_task.id
         assert jobs[0]["name"] == sample_task.name
 
-    def test_toggle_task_enable(self, task_manager, mock_task_configuration):
+    def test_toggle_task_enable(self, task_manager: TaskManager, 
+                              mock_task_configuration: MockTaskConfiguration) -> None:
         """작업 활성화 토글 테스트"""
         # 비활성화된 작업 생성
         task = TaskConfig(
@@ -275,9 +296,11 @@ class TestTaskManager:
         
         assert result is True
         updated_task = mock_task_configuration.get_task(task.id)
+        assert updated_task is not None
         assert updated_task.enabled is True
 
-    def test_toggle_task_disable(self, task_manager, sample_task, mock_task_configuration):
+    def test_toggle_task_disable(self, task_manager: TaskManager, sample_task: TaskConfig, 
+                                mock_task_configuration: MockTaskConfiguration) -> None:
         """작업 비활성화 토글 테스트"""
         mock_task_configuration.add_task(sample_task)
         
@@ -286,15 +309,18 @@ class TestTaskManager:
         
         assert result is True
         updated_task = mock_task_configuration.get_task(sample_task.id)
+        assert updated_task is not None
         assert updated_task.enabled is False
 
-    def test_toggle_task_not_found(self, task_manager):
+    def test_toggle_task_not_found(self, task_manager: TaskManager) -> None:
         """존재하지 않는 작업 토글 테스트"""
         result = task_manager.toggle_task("non_existent_task")
         
         assert result is False
 
-    def test_set_enabled_true(self, task_manager, mock_task_configuration, mock_task_scheduler):
+    def test_set_enabled_true(self, task_manager: TaskManager, 
+                            mock_task_configuration: MockTaskConfiguration, 
+                            mock_task_scheduler: MockTaskScheduler) -> None:
         """스케줄러 활성화 테스트"""
         mock_task_scheduler._is_running = False
         
@@ -302,7 +328,9 @@ class TestTaskManager:
         
         assert mock_task_configuration.settings.enabled is True
 
-    def test_set_enabled_false(self, task_manager, mock_task_configuration, mock_task_scheduler):
+    def test_set_enabled_false(self, task_manager: TaskManager, 
+                             mock_task_configuration: MockTaskConfiguration, 
+                             mock_task_scheduler: MockTaskScheduler) -> None:
         """스케줄러 비활성화 테스트"""
         mock_task_scheduler._is_running = True
         
@@ -312,7 +340,8 @@ class TestTaskManager:
             assert mock_task_configuration.settings.enabled is False
             mock_stop.assert_called_once()
 
-    def test_is_running_property(self, task_manager, mock_task_scheduler):
+    def test_is_running_property(self, task_manager: TaskManager, 
+                               mock_task_scheduler: MockTaskScheduler) -> None:
         """실행 상태 프로퍼티 테스트"""
         mock_task_scheduler._is_running = True
         assert task_manager.is_running is True
@@ -320,14 +349,15 @@ class TestTaskManager:
         mock_task_scheduler._is_running = False
         assert task_manager.is_running is False
 
-    def test_on_task_executed_callback(self, task_manager, sample_task, mock_task_configuration):
+    def test_on_task_executed_callback(self, task_manager: TaskManager, sample_task: TaskConfig, 
+                                     mock_task_configuration: MockTaskConfiguration) -> None:
         """작업 실행 완료 콜백 테스트"""
         # 작업 추가
         mock_task_configuration.add_task(sample_task)
         
         # 콜백 함수 설정
         callback_called = False
-        def test_callback(task_id, event):
+        def test_callback(task_id: str, event: Any) -> None:
             nonlocal callback_called
             callback_called = True
             assert task_id == sample_task.id
@@ -339,11 +369,11 @@ class TestTaskManager:
         
         assert callback_called
 
-    def test_on_task_error_callback(self, task_manager):
+    def test_on_task_error_callback(self, task_manager: TaskManager) -> None:
         """작업 실행 오류 콜백 테스트"""
         # 콜백 함수 설정
         callback_called = False
-        def test_callback(task_id, event):
+        def test_callback(task_id: str, event: Any) -> None:
             nonlocal callback_called
             callback_called = True
             assert task_id == "error_task"

@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import pytest
@@ -8,7 +9,7 @@ from application.util.filter_engine import FilterEngine
 
 
 @pytest.fixture()
-def fresh_config(tmp_path):
+def fresh_config(tmp_path: Path) -> ConfigManager:
     """임시 디렉토리에 독립적인 ConfigManager 인스턴스를 생성한다."""
     config_path = tmp_path / "app.config"
     cfg = ConfigManager(str(config_path))  # 새로운 파일 경로 사용
@@ -27,7 +28,7 @@ def make_push_message(commit_count: int = 1) -> Dict[str, Any]:
     }
 
 
-def test_global_disable(fresh_config: ConfigManager):
+def test_global_disable(fresh_config: ConfigManager) -> None:
     settings = {"enabled": False}
     fresh_config.set_config_value("GITHUB", "notification_settings", json.dumps(settings))
 
@@ -36,7 +37,7 @@ def test_global_disable(fresh_config: ConfigManager):
     assert (show_system, show_bubble) == (False, False)
 
 
-def test_min_commits_filter(fresh_config: ConfigManager):
+def test_min_commits_filter(fresh_config: ConfigManager) -> None:
     settings = {
         "enabled": True,
         "events": {
@@ -52,7 +53,7 @@ def test_min_commits_filter(fresh_config: ConfigManager):
     assert engine.should_show_notification(make_push_message(2))[0] is True
 
 
-def test_show_system_only(fresh_config: ConfigManager):
+def test_show_system_only(fresh_config: ConfigManager) -> None:
     settings = {
         "enabled": True,
         "events": {

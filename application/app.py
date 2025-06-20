@@ -1,6 +1,5 @@
 import logging
 import sys
-from typing import Optional, Tuple
 
 from application.api.api_server import APIServer
 from application.config.config_manager import ConfigManager
@@ -23,7 +22,7 @@ class App:
     api_app: APIServer
     notification_signals: NotificationSignals
     qt_app: QtApp
-    webhook_client: Optional[WebhookClient]
+    webhook_client: WebhookClient | None
 
     def _init_config(self) -> ConfigManager:
         config_manager = ConfigManager()
@@ -31,7 +30,7 @@ class App:
         logger.debug("Config 관리자 초기화 완료")
         return config_manager
 
-    def _init_mcp(self) -> Tuple[MCPManager, MCPToolManager]:
+    def _init_mcp(self) -> tuple[MCPManager, MCPToolManager]:
         mcp_manager = MCPManager(self.config_manager)
         logger.debug("MCP 관리자 초기화 완료")
         mcp_tool_manager = MCPToolManager(mcp_manager, self.config_manager)
@@ -67,7 +66,7 @@ class App:
         # QT 앱 초기화
         return QtApp(mcp_manager, mcp_tool_manager, api_app)
 
-    def _init_webhook_client(self) -> Optional[WebhookClient]:
+    def _init_webhook_client(self) -> WebhookClient | None:
         """Webhook 클라이언트 초기화"""
         # 설정에서 webhook 서버 정보 읽기
         webhook_enabled_str = self.config_manager.get_config_value(

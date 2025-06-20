@@ -1,6 +1,6 @@
 """작업 실행자 테스트"""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import pytest
 
@@ -19,19 +19,19 @@ class MockHttpClient(IHttpClient):
         
     async def get(self, url: str, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         self.called_methods.append(("GET", url, headers))
-        return self.responses.get("GET", {"status": "success"})
+        return cast(Dict[str, Any], self.responses.get("GET", {"status": "success"}))
         
     async def post(self, url: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         self.called_methods.append(("POST", url, data, headers))
-        return self.responses.get("POST", {"status": "success"})
+        return cast(Dict[str, Any], self.responses.get("POST", {"status": "success"}))
         
     async def put(self, url: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         self.called_methods.append(("PUT", url, data, headers))
-        return self.responses.get("PUT", {"status": "success"})
+        return cast(Dict[str, Any], self.responses.get("PUT", {"status": "success"}))
         
     async def delete(self, url: str, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         self.called_methods.append(("DELETE", url, headers))
-        return self.responses.get("DELETE", {"status": "success"})
+        return cast(Dict[str, Any], self.responses.get("DELETE", {"status": "success"}))
         
     async def close(self) -> None:
         pass
@@ -98,7 +98,7 @@ class TestTaskExecutor:
         )
 
     @pytest.mark.asyncio
-    async def test_execute_llm_request_success(self, task_executor: TaskExecutor, llm_task: TaskConfig, mock_http_client: MockHttpClient):
+    async def test_execute_llm_request_success(self, task_executor: TaskExecutor, llm_task: TaskConfig, mock_http_client: MockHttpClient) -> None:
         """LLM 요청 실행 성공 테스트"""
         # Mock 응답 설정
         mock_http_client.responses["POST"] = {"result": "LLM 응답"}
@@ -109,13 +109,13 @@ class TestTaskExecutor:
         # 검증
         assert result == {"result": "LLM 응답"}
         assert len(mock_http_client.called_methods) == 1
-        method, url, data, headers = mock_http_client.called_methods[0]
+        method, url, data, _headers = mock_http_client.called_methods[0]
         assert method == "POST"
         assert url == "http://localhost:8000/llm/request"
         assert data == {"prompt": "테스트 프롬프트"}
 
     @pytest.mark.asyncio
-    async def test_execute_llm_request_no_prompt(self, task_executor: TaskExecutor):
+    async def test_execute_llm_request_no_prompt(self, task_executor: TaskExecutor) -> None:
         """LLM 요청 - 프롬프트 없음 테스트"""
         task = TaskConfig(
             id="test_llm_no_prompt",
@@ -132,7 +132,7 @@ class TestTaskExecutor:
         assert "LLM 요청에 prompt가 없습니다" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_execute_api_call_get_success(self, task_executor: TaskExecutor, api_task: TaskConfig, mock_http_client: MockHttpClient):
+    async def test_execute_api_call_get_success(self, task_executor: TaskExecutor, api_task: TaskConfig, mock_http_client: MockHttpClient) -> None:
         """API 호출 (GET) 성공 테스트"""
         # Mock 응답 설정
         mock_http_client.responses["GET"] = {"data": "API 응답"}
@@ -149,7 +149,7 @@ class TestTaskExecutor:
         assert headers == {"Authorization": "Bearer token"}
 
     @pytest.mark.asyncio
-    async def test_execute_api_call_post_success(self, task_executor: TaskExecutor, mock_http_client: MockHttpClient):
+    async def test_execute_api_call_post_success(self, task_executor: TaskExecutor, mock_http_client: MockHttpClient) -> None:
         """API 호출 (POST) 성공 테스트"""
         task = TaskConfig(
             id="test_api_post",
@@ -181,7 +181,7 @@ class TestTaskExecutor:
         assert headers == {"Content-Type": "application/json"}
 
     @pytest.mark.asyncio
-    async def test_execute_api_call_no_url(self, task_executor: TaskExecutor):
+    async def test_execute_api_call_no_url(self, task_executor: TaskExecutor) -> None:
         """API 호출 - URL 없음 테스트"""
         task = TaskConfig(
             id="test_api_no_url",
@@ -198,7 +198,7 @@ class TestTaskExecutor:
         assert "API 호출에 URL이 없습니다" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_execute_api_call_unsupported_method(self, task_executor: TaskExecutor):
+    async def test_execute_api_call_unsupported_method(self, task_executor: TaskExecutor) -> None:
         """API 호출 - 지원하지 않는 메서드 테스트"""
         task = TaskConfig(
             id="test_api_patch",
@@ -218,7 +218,7 @@ class TestTaskExecutor:
         assert "지원하지 않는 HTTP 메서드: PATCH" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_execute_notification_success(self, task_executor: TaskExecutor, notification_task: TaskConfig, mock_http_client: MockHttpClient):
+    async def test_execute_notification_success(self, task_executor: TaskExecutor, notification_task: TaskConfig, mock_http_client: MockHttpClient) -> None:
         """알림 실행 성공 테스트"""
         # Mock 응답 설정
         mock_http_client.responses["POST"] = {"status": "sent"}
@@ -235,7 +235,7 @@ class TestTaskExecutor:
         assert data == {"title": "테스트 알림", "message": "테스트 알림 메시지"}
 
     @pytest.mark.asyncio
-    async def test_execute_notification_no_message(self, task_executor: TaskExecutor):
+    async def test_execute_notification_no_message(self, task_executor: TaskExecutor) -> None:
         """알림 실행 - 메시지 없음 테스트"""
         task = TaskConfig(
             id="test_notification_no_msg",
@@ -252,7 +252,7 @@ class TestTaskExecutor:
         assert "알림에 메시지가 없습니다" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_execute_task_success(self, task_executor: TaskExecutor, llm_task: TaskConfig, mock_http_client: MockHttpClient):
+    async def test_execute_task_success(self, task_executor: TaskExecutor, llm_task: TaskConfig, mock_http_client: MockHttpClient) -> None:
         """작업 실행 성공 테스트"""
         mock_http_client.responses["POST"] = {"result": "success"}
         
@@ -261,7 +261,7 @@ class TestTaskExecutor:
         assert result == {"result": "success"}
 
     @pytest.mark.asyncio
-    async def test_execute_task_unknown_type(self, task_executor: TaskExecutor):
+    async def test_execute_task_unknown_type(self, task_executor: TaskExecutor) -> None:
         """알 수 없는 작업 타입 테스트"""
         task = TaskConfig(
             id="test_unknown",
@@ -278,13 +278,13 @@ class TestTaskExecutor:
         assert "알 수 없는 작업 타입: unknown_type" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_execute_task_http_error(self, task_executor: TaskExecutor, llm_task: TaskConfig, mock_http_client: MockHttpClient):
+    async def test_execute_task_http_error(self, task_executor: TaskExecutor, llm_task: TaskConfig, mock_http_client: MockHttpClient) -> None:
         """HTTP 오류 처리 테스트"""
         # HTTP 클라이언트에서 예외 발생하도록 설정
-        async def mock_post_error(*args, **kwargs):
+        async def mock_post_error(url: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
             raise Exception("Network error")
         
-        mock_http_client.post = mock_post_error
+        mock_http_client.post = mock_post_error  # type: ignore[method-assign]
         
         with pytest.raises(TaskExecutionError) as exc_info:
             await task_executor.execute_task(llm_task)

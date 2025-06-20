@@ -3,6 +3,7 @@
 from typing import Any, Dict
 
 from application.api.handlers.base_handler import BaseHandler
+from application.api.models.ui_font_request import UIFontRequest
 from application.api.models.ui_settings_request import UISettingsRequest
 
 
@@ -59,19 +60,17 @@ class UIHandler(BaseHandler):
         except Exception as exception:
             return self._create_error_response("UI 설정 업데이트 실패", exception)
 
-    async def change_font_size(self, font_size: int) -> Dict[str, Any]:
+    async def change_font_size(self, request: UIFontRequest) -> Dict[str, Any]:
         """폰트 크기 변경"""
         try:
-            self._log_request("change_font_size", {"font_size": font_size})
-
-            if not 8 <= font_size <= 72:
-                return self._create_error_response("폰트 크기는 8-72 사이여야 합니다")
+            self._log_request("change_font_size", request.model_dump())
 
             # 폰트 크기 변경 시그널 전송
-            self.notification_signals.update_ui_settings.emit({"font_size": font_size})
+            self.notification_signals.update_ui_settings.emit({"font_size": request.font_size})
 
             return self._create_success_response(
-                f"폰트 크기가 {font_size}px로 변경되었습니다", {"font_size": font_size}
+                f"폰트 크기가 {request.font_size}px로 변경되었습니다", 
+                {"font_size": request.font_size}
             )
         except Exception as exception:
             return self._create_error_response("폰트 크기 변경 실패", exception)

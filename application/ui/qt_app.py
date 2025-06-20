@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -23,7 +24,7 @@ if sys.platform == "win32":
     except Exception:
         pass  # 실패해도 계속 진행
 
-logger = setup_logger("qt_app")
+logger: logging.Logger = setup_logger("qt_app") or logging.getLogger("qt_app")
 
 
 class QtApp:
@@ -41,15 +42,18 @@ class QtApp:
         self.qt_app: QApplication | None = None
         self.tray_app: TrayApp | None = None
 
-    def setup_qt_environment(self):
+    def setup_qt_environment(self) -> None:
         """QT 환경 설정"""
         # DPI 스케일링 제어 설정 (간소화된 방법)
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "0"
         os.environ["QT_SCALE_FACTOR"] = "1"
         os.environ["QT_SCREEN_SCALE_FACTORS"] = "1"
 
-    def set_application_icon(self):
+    def set_application_icon(self) -> None:
         """애플리케이션 아이콘 설정"""
+        if not self.qt_app:
+            return
+            
         try:
             # logo.png 파일을 애플리케이션 아이콘으로 설정
             logo_path = "logo.png"
@@ -79,7 +83,7 @@ class QtApp:
         except Exception as e:
             logger.error("애플리케이션 아이콘 설정 실패: %s", e)
 
-    def create_qt_application(self):
+    def create_qt_application(self) -> None:
         """QT 애플리케이션 생성 및 설정"""
         self.qt_app = QApplication(sys.argv)
 
@@ -107,8 +111,11 @@ class QtApp:
         # 윈도우에서는 트레이 아이콘만 켜져 있어도 앱이 살아있도록 설정해야 합니다.
         self.qt_app.setQuitOnLastWindowClosed(False)
 
-    def apply_qt_styles(self):
+    def apply_qt_styles(self) -> None:
         """QT 스타일 적용"""
+        if not self.qt_app:
+            return
+            
         # 시스템 테마와 무관하게 라이트 테마 강제 적용
         self.qt_app.setStyle("Fusion")  # 일관된 스타일 사용
         self.qt_app.setStyleSheet(
@@ -145,13 +152,13 @@ class QtApp:
         """
         )
 
-    def create_tray_app(self):
+    def create_tray_app(self) -> None:
         """트레이 애플리케이션 생성"""
         self.tray_app = TrayApp(
             self.qt_app, self.mcp_manager, self.mcp_tool_manager, self.api_app_instance
         )
 
-    def run(self):
+    def run(self) -> int:
         """QT 애플리케이션 실행"""
         if not self.qt_app:
             raise RuntimeError("QT 애플리케이션이 초기화되지 않았습니다")

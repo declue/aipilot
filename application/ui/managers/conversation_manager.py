@@ -1,30 +1,10 @@
-import logging
+from __future__ import annotations
 
-logger = logging.getLogger("main_window")
+"""Deprecated location for ConversationManager.
 
+실제 구현은 `application.ui.domain.conversation_manager` 로 이동했습니다.
+"""
 
-class ConversationManager:
-    """대화 히스토리 관리 담당 클래스"""
+from application.ui.domain.conversation_manager import ConversationManager  # type: ignore
 
-    def __init__(self):
-        self.conversation_history = []
-
-    def add_user_message(self, content: str):
-        """사용자 메시지를 히스토리에 추가"""
-        self.conversation_history.append({"role": "user", "content": content})
-        logger.debug("대화 히스토리 길이: %s", len(self.conversation_history))
-
-    def add_assistant_message(self, content: str):
-        """어시스턴트 메시지를 히스토리에 추가"""
-        self.conversation_history.append({"role": "assistant", "content": content})
-        logger.debug(
-            "AI 응답 추가 후 대화 히스토리 길이: %s", len(self.conversation_history)
-        )
-
-    def clear_history(self):
-        """대화 히스토리 초기화"""
-        self.conversation_history = []
-
-    def get_history(self):
-        """대화 히스토리 반환"""
-        return self.conversation_history
+__all__: list[str] = ["ConversationManager"]

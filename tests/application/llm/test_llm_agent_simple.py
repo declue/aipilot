@@ -6,6 +6,7 @@ import asyncio
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock
 
 # 프로젝트 루트 경로 추가
@@ -21,8 +22,8 @@ except ImportError:
     MODULES_AVAILABLE = False
     
     # 간단한 Mock 클래스들
-    class ConfigManager:
-        def get_llm_config(self):
+    class ConfigManager:  # type: ignore
+        def get_llm_config(self) -> Dict[str, Any]:
             return {
                 "api_key": "test-key",
                 "base_url": "http://test-url",
@@ -32,14 +33,14 @@ except ImportError:
                 "show_cot": "false"
             }
         
-        def get_config_value(self, section, key, default=None):
+        def get_config_value(self, section: str, key: str, default: Any = None) -> Any:
             return default
     
-    class LLMAgent:
-        def __init__(self, config_manager, mcp_tool_manager):
+    class LLMAgent:  # type: ignore
+        def __init__(self, config_manager: Any, mcp_tool_manager: Any) -> None:
             self.config_manager = config_manager
             self.mcp_tool_manager = mcp_tool_manager
-            self.history = []
+            self.history: list[Dict[str, str]] = []
             self._client = None
         
         def add_user_message(self, text: str) -> None:
@@ -61,35 +62,35 @@ except ImportError:
 class SimpleOpenAIClient:
     """가장 간단한 OpenAI 클라이언트 모킹"""
     
-    def __init__(self, response_content="hi there"):
+    def __init__(self, response_content: str = "hi there") -> None:
         self.response_content = response_content
         self.chat = self.Chat(self)
     
     class Chat:
-        def __init__(self, parent):
+        def __init__(self, parent: Any) -> None:
             self.parent = parent
             self.completions = self.Completions(parent)
         
         class Completions:
-            def __init__(self, parent):
+            def __init__(self, parent: Any) -> None:
                 self.parent = parent
             
-            async def create(self, **kwargs):
+            async def create(self, **kwargs: Any) -> Any:
                 class Response:
-                    def __init__(self, content):
+                    def __init__(self, content: str) -> None:
                         self.choices = [Choice(content)]
                 
                 class Choice:
-                    def __init__(self, content):
+                    def __init__(self, content: str) -> None:
                         self.message = SimpleNamespace(content=content)
                 
                 return Response(self.parent.parent.response_content)
 
 
-def test_llm_agent_basic_functionality():
+def test_llm_agent_basic_functionality() -> None:
     """LLM Agent 기본 기능 테스트"""
     config = ConfigManager()
-    agent = LLMAgent(config, None)
+    agent = LLMAgent(config, None)  # type: ignore
     
     # 초기 상태 확인
     assert agent.config_manager == config
@@ -112,13 +113,13 @@ def test_llm_agent_basic_functionality():
     assert len(agent.history) == 0
 
 
-async def test_llm_agent_response_generation():
+async def test_llm_agent_response_generation() -> None:
     """LLM Agent 응답 생성 테스트"""
     config = ConfigManager()
-    agent = LLMAgent(config, None)
+    agent = LLMAgent(config, None)  # type: ignore
     
     # 클라이언트 모킹
-    agent._client = SimpleOpenAIClient("Test response")
+    agent._client = SimpleOpenAIClient("Test response")  # type: ignore
     
     response = await agent.generate_response("Hello")
     
@@ -135,10 +136,10 @@ async def test_llm_agent_response_generation():
     assert agent.history[0]["content"] == "Hello"
 
 
-def test_llm_agent_multiple_messages():
+def test_llm_agent_multiple_messages() -> None:
     """여러 메시지 처리 테스트"""
     config = ConfigManager()
-    agent = LLMAgent(config, None)
+    agent = LLMAgent(config, None)  # type: ignore
     
     # 여러 메시지 추가
     messages = ["First", "Second", "Third"]
@@ -154,10 +155,10 @@ def test_llm_agent_multiple_messages():
         assert agent.history[i*2+1]["content"] == f"Response to {msg}"
 
 
-def test_llm_agent_edge_cases():
+def test_llm_agent_edge_cases() -> None:
     """엣지 케이스 테스트"""
     config = ConfigManager()
-    agent = LLMAgent(config, None)
+    agent = LLMAgent(config, None)  # type: ignore
     
     # 빈 문자열 처리
     agent.add_user_message("")
@@ -177,7 +178,7 @@ def test_llm_agent_edge_cases():
     assert agent.history[-1]["content"] == special_message
 
 
-def run_async_test():
+def run_async_test() -> None:
     """비동기 테스트 실행"""
     asyncio.run(test_llm_agent_response_generation())
 

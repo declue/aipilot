@@ -1,24 +1,19 @@
 import logging
 import os
-from application.tasks.task_thread import TaskThread
+from typing import Any, Optional
+
 from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (
-    QLabel,
-    QMainWindow,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtGui import QIcon, QKeyEvent
+from PySide6.QtWidgets import QLabel, QMainWindow, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from application.config.config_manager import ConfigManager
 from application.llm.llm_agent import LLMAgent
 from application.llm.mcp.mcp_manager import MCPManager
 from application.llm.mcp.mcp_tool_manager import MCPToolManager
-from application.ui.managers.conversation_manager import ConversationManager
-from application.ui.managers.message_manager import MessageManager
-from application.ui.managers.streaming_manager import StreamingManager
+from application.tasks.task_thread import TaskThread
+from application.ui.domain.conversation_manager import ConversationManager
+from application.ui.domain.message_manager import MessageManager
+from application.ui.domain.streaming_manager import StreamingManager
 from application.ui.managers.ui_setup_manager import UISetupManager
 from application.ui.runnables.llm_agent_worker import LLMAgentWorker
 from application.ui.settings_window import SettingsWindow
@@ -39,11 +34,21 @@ class MainWindow(QMainWindow):
         self.ui_config = self.config_manager.get_ui_config()
         self.tray_app = None  # TrayApp 참조
         self.settings_window: SettingsWindow | None = None
-        self.task_thread = None  # TaskThread 참조
+        self.task_thread: Any = None  # TaskThread 참조
 
         # 스크롤 관련 속성
         self.auto_scroll_enabled = True  # 자동 스크롤 활성화 여부
-        self.new_message_notification = None  # 새 메시지 알림 위젯
+        self.new_message_notification: Optional[NewMessageNotification] = None  # 새 메시지 알림 위젯
+        
+        # UI 컴포넌트들 (UISetupManager에서 설정됨)
+        self.input_text: Any = None
+        self.send_button: Any = None
+        self.stop_button: Any = None
+        self.status_label: Any = None
+        self.model_selector: Any = None
+        self.model_label: Any = None
+        self.scroll_area: Any = None
+        self.chat_layout: Any = None
 
         # 창 설정
         self.setWindowTitle("💬 DS Pilot")
@@ -104,7 +109,7 @@ class MainWindow(QMainWindow):
         # TaskThread 초기화 및 시작
         self.init_task_scheduler()
 
-    def set_window_icon(self):
+    def set_window_icon(self) -> None:
         """윈도우 아이콘 설정"""
         try:
             # logo.png 파일을 윈도우 아이콘으로 설정
@@ -144,7 +149,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error("윈도우 아이콘 설정 실패: %s", e)
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """UI 설정"""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -168,13 +173,13 @@ class MainWindow(QMainWindow):
         ui_setup_manager.setup_input_area(layout)
 
         # 모델 프로필 변경 시그널 연결
-        if hasattr(self, "model_selector"):
+        if hasattr(self, "model_selector") and self.model_selector is not None:
             self.model_selector.currentIndexChanged.connect(self.on_profile_changed)
 
         # OpenAI 워커 풀
         self.thread_pool = QThreadPool()
 
-    def on_profile_changed(self, index: int):
+    def on_profile_changed(self, index: int) -> None:
         """모델 프로필 변경 시 호출되는 슬롯"""
         if not hasattr(self, "model_selector") or index < 0:
             return
@@ -204,9 +209,10 @@ class MainWindow(QMainWindow):
                     self.llm_agent.reinitialize_client()
                     logger.info("LLM Agent 클라이언트 재초기화 완료")
 
-                if hasattr(self, "mcp_tool_manager"):
-                    self.mcp_tool_manager.reinitialize_client()
-                    logger.info("MCP Tool Manager 클라이언트 재초기화 완료")
+                # MCPToolManager는 reinitialize_client 메서드가 없으므로 주석 처리
+                # if hasattr(self, "mcp_tool_manager"):
+                #     self.mcp_tool_manager.reinitialize_client()
+                #     logger.info("MCP Tool Manager 클라이언트 재초기화 완료")
 
                 # 4. UI의 모델 라벨 업데이트
                 self.update_model_label()
@@ -231,7 +237,7 @@ class MainWindow(QMainWindow):
                 f"❌ **오류**: 프로필 변경 중 문제가 발생했습니다: {str(e)}"
             )
 
-    def on_settings_changed(self):
+    def on_settings_changed(self) -> None:
         """설정이 변경되었을 때 호출"""
         logger.debug("UI 설정이 변경되었습니다")
         self.ui_config = self.config_manager.get_ui_config()
@@ -240,7 +246,7 @@ class MainWindow(QMainWindow):
         # 모델 선택 드롭다운 업데이트
         self.refresh_model_selector()
 
-    def update_ui_styles(self):
+    def update_ui_styles(self) -> None:
         """UI 스타일 업데이트"""
         # 메인 윈도우 스타일 업데이트
         self.setStyleSheet(
@@ -261,7 +267,7 @@ class MainWindow(QMainWindow):
         # UI 요소들을 다시 설정하여 새로운 폰트 설정 적용
         self.refresh_ui_elements()
 
-    def refresh_ui_elements(self):
+    def refresh_ui_elements(self) -> None:
         """UI 요소들의 스타일을 새로운 설정으로 업데이트"""
         # 모델 라벨 업데이트
         if hasattr(self, "model_label"):
@@ -279,10 +285,8 @@ class MainWindow(QMainWindow):
                     font-family: '{self.ui_config['font_family']}';
                 }}
             """
-            )
-
-        # 상태 라벨 업데이트
-        if hasattr(self, "status_label"):
+            )        # 상태 라벨 업데이트
+        if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setStyleSheet(
                 f"""
                 QLabel {{
@@ -429,7 +433,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "message_manager"):
             self.message_manager.update_all_message_styles()
 
-    def update_model_label(self):
+    def update_model_label(self) -> None:
         """모델명 라벨 업데이트"""
         if hasattr(self, "model_label"):
             try:
@@ -441,7 +445,7 @@ class MainWindow(QMainWindow):
                 self.model_label.setText("📋 설정 필요")
                 logger.warning(f"모델명 업데이트 실패: {e}")
 
-    def input_key_press_event(self, event):
+    def input_key_press_event(self, event: QKeyEvent) -> None:
         """입력창 키 이벤트 처리"""
         if event.key() == Qt.Key.Key_Return:
             if event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
@@ -453,7 +457,7 @@ class MainWindow(QMainWindow):
         else:
             QTextEdit.keyPressEvent(self.input_text, event)
 
-    def send_message(self):
+    def send_message(self) -> None:
         """메시지 전송"""
         message = self.input_text.toPlainText().strip()
         if not message:
@@ -475,15 +479,15 @@ class MainWindow(QMainWindow):
         # AI 응답 요청
         self.request_ai_response(message)
 
-    def add_user_message(self, message: str):
+    def add_user_message(self, message: str) -> None:
         """사용자 메시지 추가"""
         self.message_manager.add_user_message(message)
 
-    def add_ai_message(self, message: str, used_tools=None):
+    def add_ai_message(self, message: str, used_tools: Optional[list] = None) -> None:
         """AI 메시지 추가"""
         self.message_manager.add_ai_message(message, used_tools)
 
-    def setup_new_message_notification(self):
+    def setup_new_message_notification(self) -> None:
         """새 메시지 알림 위젯 설정"""
         if hasattr(self, "scroll_area") and self.scroll_area:
             # 스크롤 영역 위에 새 메시지 알림 위젯 생성
@@ -499,7 +503,7 @@ class MainWindow(QMainWindow):
                     scrollbar.valueChanged.connect(self._on_scroll_changed)
                     scrollbar.rangeChanged.connect(self._on_scroll_range_changed)
 
-    def _on_scroll_changed(self, value):
+    def _on_scroll_changed(self, value: int) -> None:
         """스크롤 위치 변경 감지"""
         if hasattr(self, "scroll_area") and self.scroll_area:
             scrollbar = self.scroll_area.verticalScrollBar()
@@ -514,7 +518,7 @@ class MainWindow(QMainWindow):
                     if self.new_message_notification:
                         self.new_message_notification.hide()
 
-    def _on_scroll_range_changed(self, _min_val, _max_val):
+    def _on_scroll_range_changed(self, _min_val: int, _max_val: int) -> None:
         """스크롤 범위 변경 감지 (새 메시지 추가 시)"""
         if not self.auto_scroll_enabled and self.new_message_notification:
             # 자동 스크롤이 비활성화된 상태에서 새 메시지가 추가되면 알림 표시
@@ -522,7 +526,7 @@ class MainWindow(QMainWindow):
             self.new_message_notification.show_notification()
             logger.debug("새 메시지 알림 표시")
 
-    def scroll_to_bottom(self):
+    def scroll_to_bottom(self) -> None:
         """스크롤을 맨 아래로 이동 (자동 스크롤 활성화 시에만)"""
         if (
             self.auto_scroll_enabled
@@ -532,13 +536,13 @@ class MainWindow(QMainWindow):
             # 약간의 지연을 두고 스크롤 (레이아웃 업데이트 후)
             QTimer.singleShot(50, self._do_scroll_to_bottom)
 
-    def force_scroll_to_bottom(self):
+    def force_scroll_to_bottom(self) -> None:
         """강제로 스크롤을 맨 아래로 이동 (알림 클릭 시)"""
         self.auto_scroll_enabled = True  # 자동 스크롤 다시 활성화
         if hasattr(self, "scroll_area") and self.scroll_area:
             QTimer.singleShot(50, self._do_scroll_to_bottom)
 
-    def _do_scroll_to_bottom(self):
+    def _do_scroll_to_bottom(self) -> None:
         """실제 스크롤 동작 실행"""
         if hasattr(self, "scroll_area") and self.scroll_area:
             # 수직 스크롤바를 맨 아래로 이동
@@ -546,16 +550,14 @@ class MainWindow(QMainWindow):
             if vertical_scrollbar:
                 vertical_scrollbar.setValue(vertical_scrollbar.maximum())
 
-    def adjust_window_size(self):
+    def adjust_window_size(self) -> None:
         """창 크기 조정 - 스크롤 방식에서는 사용하지 않음"""
         # 스크롤 방식을 사용하므로 창 크기를 고정적으로 유지
 
-    def stop_ai_response(self):
+    def stop_ai_response(self) -> None:
         """AI 응답 중단"""
-        self.streaming_manager.stop_streaming()
-
-        # UI 상태 복원
-        if hasattr(self, "status_label"):
+        self.streaming_manager.stop_streaming()        # UI 상태 복원
+        if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("중단됨")
             self.status_label.setStyleSheet(
                 f"""
@@ -577,16 +579,13 @@ class MainWindow(QMainWindow):
         if hasattr(self, "stop_button"):
             self.stop_button.hide()
 
-    def request_ai_response(self, _message: str):
+    def request_ai_response(self, _message: str) -> None:
         """AI 응답 요청 (LLM Agent 사용)"""
         # 이전 워커가 실행 중이면 중지
-        if self.streaming_manager.current_worker and hasattr(
-            self.streaming_manager.current_worker, "stop"
-        ):
-            self.streaming_manager.current_worker.stop()
-
-        # UI 상태 업데이트
-        if hasattr(self, "status_label"):
+        current_worker = self.streaming_manager.current_worker()
+        if current_worker and hasattr(current_worker, "stop"):
+            current_worker.stop()        # UI 상태 업데이트
+        if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("생각 중...")
             self.status_label.setStyleSheet(
                 f"""
@@ -609,42 +608,42 @@ class MainWindow(QMainWindow):
             self.stop_button.show()
 
         # LLM Agent Worker 실행
-        self.streaming_manager.current_worker = LLMAgentWorker(
+        worker = LLMAgentWorker(
             _message,  # 사용자 메시지
             self.llm_agent,  # LLM Agent 인스턴스
             self.handle_ai_response,  # 콜백
         )
+        
+        # StreamingState에 current_worker 저장
+        self.streaming_manager.state.current_worker = worker
 
         # 스트리밍 시그널 연결
-        worker = self.streaming_manager.current_worker
         worker.signals.streaming_started.connect(self.on_streaming_started)
         worker.signals.streaming_chunk.connect(self.on_streaming_chunk)
         worker.signals.streaming_finished.connect(self.on_streaming_finished)
 
-        QThreadPool.globalInstance().start(self.streaming_manager.current_worker)
+        QThreadPool.globalInstance().start(worker)
 
-    def on_streaming_started(self):
+    def on_streaming_started(self) -> None:
         """스트리밍 시작 시 호출"""
         logger.info("스트리밍 시작됨")
-        if hasattr(self, "status_label"):
+        if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("답변 중...")
         self.streaming_manager.start_streaming()
 
-    def on_streaming_chunk(self, chunk: str):
+    def on_streaming_chunk(self, chunk: str) -> None:
         """스트리밍 청크 수신 시 호출"""
         logger.debug(f"📦 스트리밍 청크 수신: {chunk[:50]}...")
         self.streaming_manager.add_streaming_chunk(chunk)
 
-    def on_streaming_finished(self):
+    def on_streaming_finished(self) -> None:
         """스트리밍 완료 시 호출"""
-        if not self.streaming_manager.is_streaming:  # 이미 중단된 경우 무시
+        if not self.streaming_manager.is_streaming():  # 이미 중단된 경우 무시
             return
 
         # StreamingManager의 스트리밍 완료 처리 호출
-        self.streaming_manager.on_streaming_finished()
-
-        # UI 상태 복원
-        if hasattr(self, "status_label"):
+        self.streaming_manager.on_streaming_finished()        # UI 상태 복원
+        if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("준비됨")
             self.status_label.setStyleSheet(
                 f"""
@@ -674,7 +673,7 @@ class MainWindow(QMainWindow):
         # 창 크기 조정 (스트리밍 완료 후 강제 스크롤)
         self.force_scroll_to_bottom()
 
-    def handle_ai_response(self, response_data):
+    def handle_ai_response(self, response_data: Any) -> None:
         """AI 응답 처리 (LLM Agent 완료 후 호출)"""
         logger.debug(f"AI 응답 처리: {response_data}")
 
@@ -695,13 +694,13 @@ class MainWindow(QMainWindow):
 
         logger.debug("AI 응답 처리 완료")
 
-    def adjust_browser_height(self, browser):
+    def adjust_browser_height(self, browser: Any) -> None:
         """브라우저 높이 자동 조정"""
         document = browser.document()
         document_height = document.size().height()
         browser.setFixedHeight(int(document_height) + 10)
 
-    def closeEvent(self, event):  # pylint: disable=invalid-name
+    def closeEvent(self, event: Any) -> None:  # pylint: disable=invalid-name
         """창 닫기 이벤트"""
         # 창 닫기 시 트레이로 숨김
         if hasattr(self, "tray_app") and self.tray_app:
@@ -718,7 +717,7 @@ class MainWindow(QMainWindow):
                 logger.info("작업 스케줄러 스레드 종료 완료")
             event.accept()
 
-    def showEvent(self, event):  # pylint: disable=invalid-name
+    def showEvent(self, event: Any) -> None:  # pylint: disable=invalid-name
         """창 표시 이벤트 - 윈도우가 표시될 때마다 최신 알림으로 스크롤"""
         super().showEvent(event)
         # 윈도우가 완전히 표시된 후 최신 알림으로 스크롤
@@ -728,7 +727,7 @@ class MainWindow(QMainWindow):
             self.tray_app.on_window_activated()
         logger.debug("윈도우 표시됨 - 최신 알림으로 스크롤")
 
-    def focusInEvent(self, event):  # pylint: disable=invalid-name
+    def focusInEvent(self, event: Any) -> None:  # pylint: disable=invalid-name
         """포커스 입력 이벤트 - 윈도우가 포커스를 받았을 때"""
         super().focusInEvent(event)
         # 트레이 깜박임 중지
@@ -736,15 +735,15 @@ class MainWindow(QMainWindow):
             self.tray_app.on_window_activated()
         logger.debug("윈도우 포커스 받음 - 트레이 깜박임 중지")
 
-    def activateEvent(self, event):  # pylint: disable=invalid-name
+    def activateEvent(self, event: Any) -> None:  # pylint: disable=invalid-name
         """윈도우 활성화 이벤트"""
-        super().activateEvent(event)
+        # super().activateEvent(event)  # QMainWindow에 activateEvent가 없음
         # 트레이 깜박임 중지
         if hasattr(self, "tray_app") and self.tray_app:
             self.tray_app.on_window_activated()
         logger.debug("윈도우 활성화됨 - 트레이 깜박임 중지")
 
-    def changeEvent(self, event):  # pylint: disable=invalid-name
+    def changeEvent(self, event: Any) -> None:  # pylint: disable=invalid-name
         """윈도우 상태 변경 이벤트 - 최소화/복원 등"""
         super().changeEvent(event)
 
@@ -783,7 +782,7 @@ class MainWindow(QMainWindow):
                 self.tray_app.on_window_activated()
                 logger.debug("윈도우 활성화로 인한 트레이 깜박임 중지")
 
-    def init_task_scheduler(self):
+    def init_task_scheduler(self) -> None:
         """작업 스케줄러 초기화"""
         try:
 
@@ -793,16 +792,14 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"작업 스케줄러 초기화 실패: {e}")
 
-    def open_settings(self):
+    def open_settings(self) -> None:
         """설정창 열기"""
         if not hasattr(self, "settings_window") or self.settings_window is None:
             # MCP 관리자와 TaskThread를 설정창에 전달
             self.settings_window = SettingsWindow(
                 self.config_manager, self, self.mcp_manager, self.mcp_tool_manager
             )
-            self.settings_window.settings_changed.connect(self.on_settings_changed)
-
-            # TaskThread를 TaskTabManager에 전달
+            self.settings_window.settings_changed.connect(self.on_settings_changed)            # TaskThread를 TaskTabManager에 전달
             if self.task_thread and hasattr(self.settings_window, "task_tab_manager"):
                 self.settings_window.task_tab_manager.set_task_thread(self.task_thread)
 
@@ -810,8 +807,12 @@ class MainWindow(QMainWindow):
         self.settings_window.raise_()
         self.settings_window.activateWindow()
 
-    def start_new_conversation(self):
+    def start_new_conversation(self) -> None:
         """새로운 대화 시작"""
+        # message_manager가 초기화되지 않았으면 리턴
+        if not hasattr(self, "message_manager") or self.message_manager is None:
+            return
+            
         # 대화 히스토리 초기화
         self.conversation_manager.clear_history()
 
@@ -838,7 +839,7 @@ class MainWindow(QMainWindow):
 
         logger.debug("새로운 대화 시작됨")
 
-    def add_api_message_to_chat(self, message_type: str, content: str):
+    def add_api_message_to_chat(self, message_type: str, content: str) -> None:
         """API로 받은 메시지를 대화창에 추가"""
         logger.debug("API 메시지 추가: %s - %s", message_type, content)
 
@@ -887,8 +888,7 @@ class MainWindow(QMainWindow):
             "워크플로우",
             "workflow",
             "GitHub Actions",
-            "체크",
-            "check",
+            "체크",            "check",
         ]
 
         # 메시지 내용에 GitHub 관련 키워드가 포함되어 있는지 확인
@@ -902,16 +902,17 @@ class MainWindow(QMainWindow):
 
         return is_github
 
-    def add_system_message(self, message: str):
+    def add_system_message(self, message: str) -> None:
         """시스템 메시지 추가 (API 알림 등)"""
-        self.message_manager.add_system_message(message)
+        if hasattr(self, "message_manager") and self.message_manager is not None:
+            self.message_manager.add_system_message(message)
 
-    def add_user_message_from_api(self, content: str):
+    def add_user_message_from_api(self, content: str) -> None:
         """API로부터 사용자 메시지 추가"""
         logger.debug("API 사용자 메시지 추가: %s...", content[:50])
         self.add_user_message(content)
 
-    def trigger_llm_response_from_api(self, prompt: str):
+    def trigger_llm_response_from_api(self, prompt: str) -> None:
         """API로부터 LLM 응답 요청"""
         logger.debug("API LLM 응답 요청: %s...", prompt[:50])
 
@@ -924,7 +925,7 @@ class MainWindow(QMainWindow):
         # 그 다음 AI 응답 요청
         self.request_ai_response(prompt)
 
-    def refresh_model_selector(self):
+    def refresh_model_selector(self) -> None:
         """모델 선택 드롭다운 새로고침"""
         if hasattr(self, "model_selector"):
             try:
