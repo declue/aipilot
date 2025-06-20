@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import List, Tuple
+from typing import List, Match, Tuple, cast
 
 import markdown
 
@@ -14,7 +14,7 @@ except ImportError:
 
 
 class MarkdownManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(__name__)
 
     def apply_table_styles(self, html_content: str) -> str:
@@ -74,7 +74,7 @@ class MarkdownManager:
             processed_content = markdown_content
 
             # 1. Fenced code blocks 찾기 및 처리
-            def process_fenced_code(match):
+            def process_fenced_code(match: Match[str]) -> str:
                 language = match.group(1) or ""
                 code_content = match.group(2).strip()
 
@@ -151,7 +151,9 @@ class MarkdownManager:
             )
 
             # 문법 하이라이트 적용
-            highlighted = highlight(code_content, lexer, formatter)
+            highlighted_raw = highlight(code_content, lexer, formatter)
+            # Pygments highlight stubs may return Any; cast to str for static typing tools
+            highlighted: str = cast(str, highlighted_raw)
 
             # 어두운 글자색으로 색상 조정
             highlighted = self._adjust_colors_for_light_background(highlighted)
@@ -195,6 +197,20 @@ class MarkdownManager:
         """코드 내용을 분석하여 프로그래밍 언어를 추정합니다."""
         code_lower = code_content.lower().strip()
 
+        # SQL 패턴 (Python보다 먼저 검사)
+        if any(
+            keyword in code_lower
+            for keyword in [
+                "select ",
+                "from ",
+                "where ",
+                "insert ",
+                "update ",
+                "delete ",
+            ]
+        ):
+            return "sql"
+
         # Python 패턴
         if any(
             keyword in code_lower
@@ -226,20 +242,6 @@ class MarkdownManager:
             ]
         ):
             return "java"
-
-        # SQL 패턴
-        if any(
-            keyword in code_lower
-            for keyword in [
-                "select ",
-                "from ",
-                "where ",
-                "insert ",
-                "update ",
-                "delete ",
-            ]
-        ):
-            return "sql"
 
         # HTML 패턴
         if any(

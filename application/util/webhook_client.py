@@ -1,16 +1,20 @@
 import logging
+import random
 import threading
 import time
-import random
-from typing import Any, Dict, List, Optional
 from collections import defaultdict
+from typing import Any, Dict, List, Optional, cast
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from application.util.logger import setup_logger
 from application.config.config_manager import ConfigManager
+from application.util.filter_engine import FilterEngine
+from application.util.friendly_message_builder import build_friendly_message
+from application.util.logger import setup_logger
+from application.util.notification_service import NotificationService
+from application.util.polling_manager import PollingManager
 
 logger = setup_logger("webhook_client") or logging.getLogger("webhook_client")
 
@@ -42,6 +46,9 @@ class WebhookClient:
         self.interested_orgs: List[str] = []
         self.interested_repos: List[str] = []
         self.api_server_url = "http://127.0.0.1:8001"  # 기본값
+        self.filter_engine: Optional[FilterEngine] = None
+        self.notification_service: Optional[NotificationService] = None
+        self._polling_manager: Optional[PollingManager] = None
 
         # HTTP 세션 설정 (재시도 로직 포함)
         self.session = requests.Session()
@@ -68,6 +75,16 @@ class WebhookClient:
             host = self.config_manager.get_config_value("API", "host", "127.0.0.1") or "127.0.0.1"
             port = self.config_manager.get_config_value("API", "port", "8001") or "8001"
             self.api_server_url = f"http://{host}:{port}"
+
+            # 필터 엔진 초기화
+            if self.filter_engine is None:
+                self.filter_engine = FilterEngine(self.config_manager)
+
+            # NotificationService 초기화 / URL 반영
+            if self.notification_service is None:
+                self.notification_service = NotificationService(self.session, self.api_server_url)
+            else:
+                self.notification_service.api_server_url = self.api_server_url
 
             return True
         except Exception as e:
@@ -153,14 +170,14 @@ class WebhookClient:
                 summary_parts.append(f"📝 Pull Request: {action_summary} (저장소: {', '.join(repos)})")
 
             elif event_type == "issues":
-                actions: defaultdict[str, int] = defaultdict(int)
+                issue_actions: defaultdict[str, int] = defaultdict(int)
                 repos = set()
                 for msg in messages:
                     action = msg.get("payload", {}).get("action", "unknown")
-                    actions[action] += 1
+                    issue_actions[action] += 1
                     repos.add(msg.get("repo_name", ""))
 
-                action_summary = ", ".join([f"{action} {cnt}개" for action, cnt in actions.items()])
+                action_summary = ", ".join([f"{action} {cnt}개" for action, cnt in issue_actions.items()])
                 summary_parts.append(f"🐛 Issues: {action_summary} (저장소: {', '.join(repos)})")
 
             else:
@@ -216,7 +233,7 @@ class WebhookClient:
             mcp_tool_manager = None
 
             # LLM 에이전트 초기화
-            llm_agent = LLMAgent(self.config_manager, mcp_tool_manager)
+            llm_agent = LLMAgent(self.config_manager, mcp_tool_manager)  # type: ignore
 
             # 메시지 정보를 텍스트로 변환
             message_details = []
@@ -388,7 +405,7 @@ class WebhookClient:
             if pr_title == "제목 없음" and pr_number == "번호 없음" and not pr_url:
                 logger.warning("PR 데이터가 부족하여 기본 알림으로 대체합니다.")
                 # 기본 친숙한 메시지로 돌아가기
-                title, content = self._create_friendly_message(message)
+                title, content = build_friendly_message(message)
                 if content and content.strip():
                     url = f"{self.api_server_url}/notifications/info"
                     notification_data = {
@@ -516,19 +533,29 @@ class WebhookClient:
             chat_message = f"🎉 새로운 Pull Request가 열렸어요!{newline}{newline}**{pr_title}** (#{pr_number}){newline}작성자: {pr_author}{newline}저장소: {repo_name}{newline}{newline}코드 리뷰가 필요합니다! 📝"
 
             # HTML 다이얼로그 전송 (높이 최적화)
-            url = f"{self.api_server_url}/notifications/dialog/html"
-            dialog_data = {
-                "title": f"🎉 새 PR: {pr_title}",
-                "html_message": html_content,  # html_content -> html_message로 변경
-                "message": chat_message,  # 채팅에 표시할 메시지
-                "notification_type": "info",
-                "width": 550,
-                "height": 380 if body_preview else 340,  # 더 작은 높이로 조정
-                "duration": 0  # 자동으로 닫히지 않음
-            }
-
-            response = self.session.post(url, json=dialog_data, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
-            response.raise_for_status()
+            if self.notification_service:
+                self.notification_service.send_dialog_html(
+                    title=f"🎉 새 PR: {pr_title}",
+                    html_message=html_content,
+                    message=chat_message,
+                    notification_type="info",
+                    width=550,
+                    height=380 if body_preview else 340,
+                    duration=0,
+                )
+            else:
+                # Fallback to direct HTTP if service missing
+                url = f"{self.api_server_url}/notifications/dialog/html"
+                dialog_data = {
+                    "title": f"🎉 새 PR: {pr_title}",
+                    "html_message": html_content,
+                    "message": chat_message,
+                    "notification_type": "info",
+                    "width": 550,
+                    "height": 380 if body_preview else 340,
+                    "duration": 0,
+                }
+                self.session.post(url, json=dialog_data, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
 
             logger.info(f"PR HTML 다이얼로그 전송 성공: {pr_title} (#{pr_number}) - URL: {pr_url}")
             logger.info(f"=== PR HTML 다이얼로그 디버그 종료 ===")
@@ -577,7 +604,8 @@ class WebhookClient:
             response.raise_for_status()
 
             result = response.json()
-            messages = result.get("messages", [])
+            result_dict = cast(Dict[str, Any], result)
+            messages = cast(List[Dict[str, Any]], result_dict.get("messages", []))
 
             if messages:
                 logger.info(f"새로운 메시지 {len(messages)}개 수신")
@@ -1572,7 +1600,14 @@ class WebhookClient:
         """수신된 메시지를 자기 자신의 API로 전달"""
         try:
             # 필터링 체크
-            should_show_system, should_show_bubble = self._should_show_notification(message)
+            if self.filter_engine is None and self.config_manager:
+                self.filter_engine = FilterEngine(self.config_manager)
+
+            should_show_system, should_show_bubble = (
+                self.filter_engine.should_show_notification(message)
+                if self.filter_engine else (True, True)
+            )
+
             if not should_show_system and not should_show_bubble:
                 logger.debug(f"필터링으로 인해 알림 건너뜀: {message.get('event_type', 'unknown')}")
                 return True
@@ -1583,7 +1618,7 @@ class WebhookClient:
                 return self._send_pr_html_dialog(message)
 
             # 친숙한 메시지로 변환
-            title, content = self._create_friendly_message(message)
+            title, content = build_friendly_message(message)
 
             # 빈 메시지 체크
             if not content or not content.strip():
@@ -1591,20 +1626,15 @@ class WebhookClient:
                 return True
 
             # 자기 자신의 API로 알림 전송 (시스템 알림인 경우)
-            if should_show_system:
-                url = f"{self.api_server_url}/notifications/info"
-                notification_data = {
-                    "title": title or "알림",  # 제목도 빈 값 방지
-                    "message": content,
-                    "duration": 5000,  # 5초 표시
-                    "priority": "normal",
-                    "show_bubble": should_show_bubble,  # 버블 표시 여부 전달
-                }
-
-                response = self.session.post(url, json=notification_data, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
-                response.raise_for_status()
-
-                logger.info(f"알림 전송 성공: {title}")
+            if should_show_system and self.notification_service:
+                self.notification_service.send_info(
+                    title or "알림",
+                    content,
+                    duration=5000,
+                    priority="normal",
+                    show_bubble=should_show_bubble,
+                )
+                logger.info("알림 전송 성공: %s", title)
             else:
                 logger.debug(f"시스템 알림 비활성화로 건너뜀: {title}")
 
@@ -1614,143 +1644,7 @@ class WebhookClient:
             logger.error(f"알림 전송 실패: {e}")
             return False
 
-    def _should_show_notification(self, message: Dict[str, Any]) -> tuple[bool, bool]:
-        """메시지가 필터링 조건에 따라 표시되어야 하는지 확인"""
-        try:
-            # 설정 로드
-            if not self.config_manager:
-                return True, True  # 설정이 없으면 기본적으로 표시
-
-            settings_json = self.config_manager.get_config_value("GITHUB", "notification_settings", "{}")
-            if not settings_json:
-                return True, True  # 설정이 없으면 기본적으로 표시
-
-            import json
-            try:
-                settings = json.loads(settings_json)
-            except json.JSONDecodeError:
-                return True, True  # 파싱 오류시 기본적으로 표시
-
-            # 전역 활성화 확인
-            if not settings.get("enabled", True):
-                return False, False
-
-            # 이벤트 정보 추출
-            event_type = message.get("event_type", "")
-            payload = message.get("payload", {})
-            action = payload.get("action", "")
-
-            # 이벤트별 설정 확인
-            events_settings = settings.get("events", {})
-            
-            # 이벤트 타입 매핑
-            event_key = self._map_event_type(event_type, action, payload)
-            if not event_key or event_key not in events_settings:
-                return True, True  # 매핑되지 않은 이벤트는 기본적으로 표시
-
-            event_config = events_settings[event_key]
-            
-            # 이벤트 활성화 확인
-            if not event_config.get("enabled", True):
-                return False, False
-
-            # 액션별 필터링
-            if event_config.get("actions") and action:
-                if not event_config["actions"].get(action, False):
-                    return False, False
-
-            # 커스텀 필터링
-            if not self._check_custom_filters(event_key, event_config, message):
-                return False, False
-
-            # 시스템 알림과 채팅 버블 설정 반환
-            show_system = event_config.get("show_system_notification", True)
-            show_bubble = event_config.get("show_chat_bubble", True)
-            
-            return show_system, show_bubble
-
-        except Exception as e:
-            logger.error(f"필터링 확인 중 오류: {e}")
-            return True, True  # 오류시 기본적으로 표시
-
-    def _map_event_type(self, event_type: str, action: str, payload: Dict[str, Any]) -> str:
-        """이벤트 타입을 설정 키로 매핑"""
-        if event_type == "push":
-            return "push"
-        elif event_type == "pull_request":
-            return "pull_request"
-        elif event_type == "issues":
-            return "issues"
-        elif event_type == "release":
-            return "release"
-        elif event_type in ["workflow_run", "workflow_job"]:
-            return "workflow"
-        elif event_type in ["check_run", "check_suite"]:
-            return "workflow"  # 체크도 워크플로우로 분류
-        elif event_type in ["star", "fork", "watch", "create", "delete"]:
-            return "repository"
-        else:
-            return None
-
-    def _check_custom_filters(self, event_key: str, event_config: Dict[str, Any], message: Dict[str, Any]) -> bool:
-        """커스텀 필터링 조건 확인"""
-        try:
-            payload = message.get("payload", {})
-            
-            if event_key == "push":
-                # 커밋 수 필터링
-                commits = payload.get("commits", [])
-                commit_count = len(commits)
-                min_commits = event_config.get("min_commits", 1)
-                max_commits = event_config.get("max_commits", 50)
-                
-                if commit_count < min_commits or commit_count > max_commits:
-                    return False
-
-                # 브랜치 필터링
-                ref = payload.get("ref", "")
-                branch = ref.replace("refs/heads/", "") if ref.startswith("refs/heads/") else ref
-                
-                exclude_branches = event_config.get("exclude_branches", [])
-                include_branches = event_config.get("include_branches", [])
-                
-                if exclude_branches and branch in exclude_branches:
-                    return False
-                if include_branches and branch not in include_branches:
-                    return False
-
-            elif event_key == "release":
-                # 프리릴리즈/드래프트 필터링
-                release = payload.get("release", {})
-                is_prerelease = release.get("prerelease", False)
-                is_draft = release.get("draft", False)
-                
-                if is_prerelease and not event_config.get("include_prerelease", True):
-                    return False
-                if is_draft and not event_config.get("include_draft", False):
-                    return False
-
-            elif event_key == "workflow":
-                # 워크플로우 상태/결론 필터링
-                if message.get("event_type") in ["workflow_run", "workflow_job"]:
-                    workflow_run = payload.get("workflow_run", {}) or payload.get("workflow_job", {})
-                    status = workflow_run.get("status", "")
-                    conclusion = workflow_run.get("conclusion", "")
-                    
-                    # 액션 설정에서 상태별 확인
-                    actions = event_config.get("actions", {})
-                    if status and not actions.get(status, False):
-                        return False
-                    if conclusion and not actions.get(conclusion, False):
-                        return False
-
-            return True
-
-        except Exception as e:
-            logger.error(f"커스텀 필터링 확인 중 오류: {e}")
-            return True  # 오류시 기본적으로 표시
-
-    def _polling_loop(self):
+    def _polling_loop(self) -> None:
         """백그라운드에서 실행되는 polling 루프"""
         logger.info("Webhook polling 시작")
         first_poll = True
@@ -1786,7 +1680,7 @@ class WebhookClient:
 
         logger.info("Webhook polling 종료")
 
-    def _process_messages_with_summary_sync(self, messages: List[Dict[str, Any]]):
+    def _process_messages_with_summary_sync(self, messages: List[Dict[str, Any]]) -> None:
         """메시지들을 요약하여 처리 (동기 버전)"""
         try:
             import asyncio
@@ -1813,12 +1707,12 @@ class WebhookClient:
             for message in messages:
                 self.send_notification_to_self(message)
 
-    def _run_async_summary(self, messages: List[Dict[str, Any]]):
+    def _run_async_summary(self, messages: List[Dict[str, Any]]) -> None:
         """별도 스레드에서 비동기 요약 실행"""
         import asyncio
         asyncio.run(self._process_messages_with_summary(messages))
 
-    async def _process_messages_with_summary(self, messages: List[Dict[str, Any]]):
+    async def _process_messages_with_summary(self, messages: List[Dict[str, Any]]) -> None:
         """메시지들을 요약하여 처리"""
         try:
             # 먼저 "요약 중" 알림 전송
@@ -1895,25 +1789,23 @@ class WebhookClient:
                 logger.error("클라이언트 등록에 실패했습니다.")
                 return False
 
-        self.is_polling = True
-        self.polling_thread = threading.Thread(target=self._polling_loop, daemon=True)
-        self.polling_thread.start()
-
-        logger.info("백그라운드 polling 시작")
+        if self._polling_manager is None:
+            self._polling_manager = PollingManager(
+                self.poll_messages,
+                self._handle_polled_messages,
+                self.poll_interval,
+            )
+        self._polling_manager.start()
+        logger.info("백그라운드 polling 시작 (PollingManager)")
         return True
 
-    def stop_polling(self):
+    def stop_polling(self) -> None:
         """백그라운드 polling 중지"""
-        if not self.is_polling:
-            logger.warning("Polling이 실행 중이 아닙니다.")
+        if self._polling_manager is None:
+            logger.warning("PollingManager 가 초기화되지 않았습니다.")
             return
-
-        self.is_polling = False
-
-        if self.polling_thread and self.polling_thread.is_alive():
-            self.polling_thread.join(timeout=5)
-
-        logger.info("백그라운드 polling 중지")
+        self._polling_manager.stop()
+        logger.info("백그라운드 polling 중지 (PollingManager)")
 
     def get_client_info(self) -> Optional[Dict[str, Any]]:
         """클라이언트 정보 조회"""
@@ -1925,13 +1817,23 @@ class WebhookClient:
             response = self.session.get(url, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
             response.raise_for_status()
 
-            return response.json()
+            result = cast(Dict[str, Any], response.json())
+            return result
 
         except requests.exceptions.RequestException as e:
             logger.error(f"클라이언트 정보 조회 실패: {e}")
             return None
 
-    def __del__(self):
+    def __del__(self) -> None:
         """소멸자에서 polling 정리"""
         if self.is_polling:
             self.stop_polling() 
+
+    def _handle_polled_messages(self, messages: List[Dict[str, Any]], first_poll: bool) -> None:
+        """PollingManager 에서 전달된 메시지 처리"""
+        should_summarize = first_poll and len(messages) >= 3
+        if should_summarize:
+            self._process_messages_with_summary_sync(messages)
+        else:
+            for message in messages:
+                self.send_notification_to_self(message)

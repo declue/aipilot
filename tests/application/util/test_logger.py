@@ -246,7 +246,7 @@ class TestLoggerIntegration:
     """Integration tests for the logger module."""
     
     @pytest.fixture
-    def temp_output_dir(self, tmp_path: Path):
+    def temp_output_dir(self, tmp_path: Path) -> Path:
         """Fixture providing a temporary output directory."""
         return tmp_path / "logs"
     
@@ -257,6 +257,7 @@ class TestLoggerIntegration:
         
         # Execute
         logger = setup_logger("integration_test", output_dir=output_dir)
+        assert logger is not None, "Logger should not be None"
         
         # Log some messages
         logger.debug("Debug message")
