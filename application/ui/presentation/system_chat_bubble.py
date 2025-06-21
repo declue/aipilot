@@ -89,15 +89,9 @@ class SystemChatBubble(ChatBubble):
             message_bubble_frame: QFrame = QFrame()
             max_width: int = self.get_max_width()
             message_bubble_frame.setMaximumWidth(max_width)
-            message_bubble_frame.setStyleSheet(
-                """
-                QFrame {
-                    background-color: #FEF3C7;
-                    border: 1px solid #F59E0B;
-                    border-radius: 20px;
-                }
-            """
-            )
+            # 버블 프레임 참조 저장 및 테마 적용
+            self.bubble_frame = message_bubble_frame
+            self._update_bubble_theme()
             bubble_layout: QVBoxLayout = QVBoxLayout(message_bubble_frame)
             bubble_layout.setContentsMargins(12, 16, 12, 16)
             bubble_layout.setSpacing(8)
@@ -111,44 +105,15 @@ class SystemChatBubble(ChatBubble):
             self.toggle_button = QPushButton("📝")
             self.toggle_button.setMinimumSize(32, 28)
             self.toggle_button.setToolTip("RAW 전환")
-            self.toggle_button.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #F3F4F6;
-                    color: #92400E;
-                    border: 1px solid #D97706;
-                    border-radius: 8px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 6px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #E5E7EB;
-                }
-            """
-            )
             self.toggle_button.clicked.connect(self.toggle_raw_mode)  # type: ignore
 
             self.copy_button = QPushButton("📋")
             self.copy_button.setMinimumSize(32, 28)
             self.copy_button.setToolTip("내용 복사")
-            self.copy_button.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #F3F4F6;
-                    color: #92400E;
-                    border: 1px solid #D97706;
-                    border-radius: 8px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 6px 12px;
-                }
-                QPushButton:hover {
-                    background-color: #E5E7EB;
-                }
-            """
-            )
             self.copy_button.clicked.connect(self.copy_content)  # type: ignore
+            
+            # 버튼 테마 적용
+            self._update_button_theme()
 
             btn_layout.addWidget(self.copy_button)
             btn_layout.addSpacing(4)
@@ -253,6 +218,61 @@ class SystemChatBubble(ChatBubble):
         self.text_browser.setStyleSheet(self._get_markdown_stylesheet())
         self.text_browser.document().setDefaultFontFamily(font_family)  # type: ignore
         self.text_browser.document().setDefaultFontPointSize(font_size)  # type: ignore
+
+    def update_theme_styles(self) -> None:
+        """테마에 맞는 스타일을 적용합니다."""
+        try:
+            if hasattr(self, 'bubble_frame'):
+                self._update_bubble_theme()
+            if hasattr(self, 'text_browser'):
+                self._update_text_browser_theme()
+            if hasattr(self, 'copy_button'):
+                self._update_button_theme()
+            if hasattr(self, 'toggle_button'):
+                self._update_button_theme()
+        except Exception as e:
+            logger.error(f"시스템 버블 테마 업데이트 실패: {e}")
+
+    def _update_bubble_theme(self) -> None:
+        """버블 프레임의 테마를 업데이트합니다."""
+        colors = self.get_theme_colors()
+        if hasattr(self, 'bubble_frame'):
+            # 시스템 메시지는 경고 색상 사용
+            self.bubble_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {colors.get('warning_background', '#FEF3C7')};
+                    border: 1px solid {colors.get('warning', '#F59E0B')};
+                    border-radius: 20px;
+                }}
+            """)
+
+    def _update_text_browser_theme(self) -> None:
+        """텍스트 브라우저의 테마를 업데이트합니다."""
+        if hasattr(self, 'text_browser'):
+            self.text_browser.setStyleSheet(self._get_markdown_stylesheet())
+
+    def _update_button_theme(self) -> None:
+        """버튼들의 테마를 업데이트합니다."""
+        colors = self.get_theme_colors()
+        button_style = f"""
+            QPushButton {{
+                background-color: {colors.get('button_background', '#F3F4F6')};
+                color: {colors.get('warning_text', '#92400E')};
+                border: 1px solid {colors.get('warning', '#D97706')};
+                border-radius: 8px;
+                font-size: 11px;
+                font-weight: 500;
+                padding: 6px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors.get('button_hover', '#E5E7EB')};
+            }}
+        """
+        
+        if hasattr(self, 'copy_button'):
+            self.copy_button.setStyleSheet(button_style)
+        if hasattr(self, 'toggle_button'):
+            self.toggle_button.setStyleSheet(button_style)
 
 
 __all__: list[str] = ["SystemChatBubble"]

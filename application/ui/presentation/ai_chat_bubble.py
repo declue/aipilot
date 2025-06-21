@@ -83,14 +83,9 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         max_width = self.get_max_width()
         bubble_frame.setMaximumWidth(max_width)
         
-        bubble_frame.setStyleSheet(
-            """
-            QFrame {
-                background-color: #F8FAFC;
-                border: 1px solid #E2E8F0;
-                border-radius: 12px;
-            }"""
-        )
+        # 초기 스타일 설정 (나중에 테마 적용 시 업데이트됨)
+        self.bubble_frame = bubble_frame
+        self._update_bubble_theme()
         bubble_layout = QVBoxLayout(bubble_frame)
         bubble_layout.setContentsMargins(12, 8, 12, 8)
 
@@ -108,10 +103,9 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         text_browser.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         text_browser.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
-        font_family, font_size = self.get_font_config()
-        text_browser.setStyleSheet(
-            f"QTextBrowser {{ background: transparent; border: none; font-family: '{font_family}'; font-size: {font_size}px; }}"
-        )
+        # 텍스트 브라우저 참조 보관
+        self.text_browser = text_browser
+        self._update_text_browser_theme()
         
         # 초기 메시지에 마크다운 렌더링 적용
         try:
@@ -128,6 +122,7 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
             md_manager = MarkdownManager()
             html_content = md_manager.apply_table_styles(html_content)
             
+            font_family, font_size = self.get_font_config()
             styled_html = f"""
             <div style="
                 color: #1F2937;
@@ -164,54 +159,12 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         self.copy_button = QPushButton("📋")
         self.copy_button.setMinimumSize(32, 28)
         self.copy_button.setToolTip("내용 복사")
-        self.copy_button.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #F3F4F6;
-                color: #374151;
-                border: 1px solid #D1D5DB;
-                border-radius: 8px;
-                font-size: 11px;
-                font-weight: 500;
-                padding: 6px 12px;
-            }
-            QPushButton:hover {
-                background-color: #E5E7EB;
-                border-color: #9CA3AF;
-            }
-            QPushButton:pressed {
-                background-color: #D1D5DB;
-                border-color: #6B7280;
-            }
-        """
-        )
         self.copy_button.clicked.connect(self.copy_content)
 
         # Raw 토글 버튼
         self.toggle_button = QPushButton("📝")
         self.toggle_button.setMinimumSize(32, 28)
         self.toggle_button.setToolTip("RAW 전환")
-        self.toggle_button.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #F3F4F6;
-                color: #374151;
-                border: 1px solid #D1D5DB;
-                border-radius: 8px;
-                font-size: 11px;
-                font-weight: 500;
-                padding: 6px 12px;
-            }
-            QPushButton:hover {
-                background-color: #E5E7EB;
-                border-color: #9CA3AF;
-            }
-            QPushButton:pressed {
-                background-color: #D1D5DB;
-                border-color: #6B7280;
-            }
-        """
-        )
         self.toggle_button.clicked.connect(self.toggle_raw_mode)
 
         # 버튼들을 컨테이너에 추가
@@ -398,6 +351,121 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         self.update_message_content(self.message)
         
         logger.debug(f"표시 모드 전환: {'RAW' if self.raw_mode else 'Markdown'}")
+
+    def update_theme_styles(self) -> None:
+        """테마에 맞는 스타일을 적용합니다."""
+        try:
+            if hasattr(self, 'bubble_frame'):
+                self._update_bubble_theme()
+            if hasattr(self, 'text_browser'):
+                self._update_text_browser_theme()
+            if hasattr(self, 'copy_button'):
+                self._update_button_theme()
+            if hasattr(self, 'toggle_button'):
+                self._update_button_theme()
+        except Exception as e:
+            logger.error(f"AI 버블 테마 업데이트 실패: {e}")
+
+    def _update_bubble_theme(self) -> None:
+        """버블 프레임의 테마를 업데이트합니다."""
+        colors = self.get_theme_colors()
+        if hasattr(self, 'bubble_frame'):
+            self.bubble_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {colors.get('surface', '#F8FAFC')};
+                    border: 1px solid {colors.get('border', '#E2E8F0')};
+                    border-radius: 12px;
+                }}
+            """)
+
+    def _update_text_browser_theme(self) -> None:
+        """텍스트 브라우저의 테마를 업데이트합니다."""
+        colors = self.get_theme_colors()
+        font_family, font_size = self.get_font_config()
+        if hasattr(self, 'text_browser'):
+            self.text_browser.setStyleSheet(
+                f"""QTextBrowser {{ 
+                    background: transparent; 
+                    border: none; 
+                    font-family: '{font_family}'; 
+                    font-size: {font_size}px; 
+                    color: {colors.get('text', '#1F2937')}; 
+                }}"""
+            )
+            # HTML 콘텐츠도 다시 렌더링
+            self._rerender_content()
+
+    def _update_button_theme(self) -> None:
+        """버튼들의 테마를 업데이트합니다."""
+        colors = self.get_theme_colors()
+        button_style = f"""
+            QPushButton {{
+                background-color: {colors.get('button_background', '#F3F4F6')};
+                color: {colors.get('text', '#374151')};
+                border: 1px solid {colors.get('button_border', '#D1D5DB')};
+                border-radius: 8px;
+                font-size: 11px;
+                font-weight: 500;
+                padding: 6px 12px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors.get('button_hover', '#E5E7EB')};
+                border-color: {colors.get('border', '#9CA3AF')};
+            }}
+            QPushButton:pressed {{
+                background-color: {colors.get('button_pressed', '#D1D5DB')};
+                border-color: {colors.get('text_secondary', '#6B7280')};
+            }}
+        """
+        
+        if hasattr(self, 'copy_button'):
+            self.copy_button.setStyleSheet(button_style)
+        if hasattr(self, 'toggle_button'):
+            self.toggle_button.setStyleSheet(button_style)
+
+    def _rerender_content(self) -> None:
+        """테마 변경 시 콘텐츠를 다시 렌더링합니다."""
+        try:
+            if not hasattr(self, 'text_browser'):
+                return
+                
+            colors = self.get_theme_colors()
+            font_family, font_size = self.get_font_config()
+            
+            # 현재 표시 중인 내용 결정
+            content = self.streaming_content if self.is_streaming else self.message
+            
+            # 마크다운 렌더링 적용
+            import markdown
+
+            from application.util.markdown_manager import MarkdownManager
+            
+            html_content = markdown.markdown(
+                content,
+                extensions=["codehilite", "fenced_code", "tables", "toc"],
+            )
+            
+            # 테이블 스타일 적용
+            md_manager = MarkdownManager()
+            html_content = md_manager.apply_table_styles(html_content)
+            
+            styled_html = f"""
+            <div style="
+                color: {colors.get('text', '#1F2937')};
+                line-height: 1.6;
+                font-family: '{font_family}';
+                font-size: {font_size}px;
+            ">
+                {html_content}
+            </div>
+            """
+            self.text_browser.setHtml(styled_html)
+            
+        except Exception as e:
+            logger.warning(f"콘텐츠 재렌더링 실패: {e}")
+            if hasattr(self, 'text_browser'):
+                content = self.streaming_content if self.is_streaming else self.message
+                self.text_browser.setHtml(content.replace("\n", "<br>"))
 
 
 __all__: list[str] = ["AIChatBubble"] 

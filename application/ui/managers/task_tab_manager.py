@@ -1,20 +1,37 @@
 """작업 스케줄링 탭 관리자"""
 
+import logging
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-                               QFormLayout, QFrame, QGroupBox, QHBoxLayout,
-                               QHeaderView, QLabel, QLineEdit, QMessageBox,
-                               QPushButton, QSpinBox, QSplitter, QTableWidget,
-                               QTableWidgetItem, QTextEdit, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from application.tasks.models.task_config import TaskConfig
 from application.util.logger import setup_logger
-from typing import Optional
-import logging
+
 logger = setup_logger("task_tab_manager") or logging.getLogger(__name__)
 
 
@@ -708,4 +725,64 @@ Cron 표현식: {task.cron_expression}
         if self.task_thread:
             self.task_thread.stop_scheduler()
             self.task_thread.quit()
-            self.task_thread.wait() 
+            self.task_thread.wait()
+
+    def update_theme(self):
+        """테마 업데이트"""
+        try:
+            if hasattr(self.settings_window, 'theme_manager'):
+                colors = self.settings_window.theme_manager.get_theme_colors()
+                
+                # 테이블 위젯들 테마 업데이트
+                self._update_table_themes(colors)
+                self._update_text_edit_themes(colors)
+                
+        except Exception as e:
+            print(f"작업 탭 테마 업데이트 실패: {e}")
+
+    def _update_table_themes(self, colors):
+        """테이블 위젯 테마 업데이트"""
+        table_style = f"""
+            QTableWidget {{
+                background-color: {colors['background']};
+                color: {colors['text']};
+                border: 1px solid {colors['border']};
+                border-radius: 6px;
+                gridline-color: {colors['border_light']};
+            }}
+            QTableWidget::item {{
+                padding: 8px;
+                border-bottom: 1px solid {colors['border_light']};
+            }}
+            QTableWidget::item:selected {{
+                background-color: {colors['primary']}30;
+                color: {colors['primary']};
+            }}
+            QHeaderView::section {{
+                background-color: {colors['surface']};
+                color: {colors['text']};
+                border: 1px solid {colors['border']};
+                padding: 8px;
+                font-weight: 600;
+            }}
+        """
+        
+        if hasattr(self, 'task_table'):
+            self.task_table.setStyleSheet(table_style)
+        if hasattr(self, 'running_table'):
+            self.running_table.setStyleSheet(table_style)
+
+    def _update_text_edit_themes(self, colors):
+        """텍스트 편집 위젯 테마 업데이트"""
+        if hasattr(self, 'details_text'):
+            self.details_text.setStyleSheet(f"""
+                QTextEdit {{
+                    background-color: {colors['surface']};
+                    color: {colors['text']};
+                    border: 1px solid {colors['border']};
+                    border-radius: 6px;
+                    padding: 8px;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 12px;
+                }}
+            """) 

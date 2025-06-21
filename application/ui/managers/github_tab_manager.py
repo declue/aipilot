@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -36,9 +36,9 @@ class GitHubTabManager:
 
     repo_list: QListWidget
     config_manager: ConfigManager
-    parent: MainWindow
+    parent: Any  # SettingsWindow 또는 MainWindow
 
-    def __init__(self, parent: MainWindow):
+    def __init__(self, parent: Any):
         self.parent = parent
         self.config_manager: ConfigManager = parent.config_manager
         # UI 위젯 속성들
@@ -50,6 +50,11 @@ class GitHubTabManager:
         self.rate_limit_interval: QSpinBox
         self.event_widgets: Dict[str, QWidget]
         self.event_configs: Dict[str, Dict[str, Any]]
+        
+        # 테마 적용을 위한 위젯 참조 저장
+        self.scroll_area = None
+        self.group_boxes: list[QGroupBox] = []
+        self.buttons: list[QPushButton] = []
 
     def create_github_tab(self):
         """GitHub 설정 탭 생성"""
@@ -58,28 +63,8 @@ class GitHubTabManager:
         # 스크롤 영역 생성
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet(
-            """
-            QScrollArea {
-                border: none;
-                background-color: transparent;
-            }
-            QScrollBar:vertical {
-                border: none;
-                background-color: #F3F4F6;
-                width: 8px;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #D1D5DB;
-                border-radius: 4px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #9CA3AF;
-            }
-        """
-        )
+        self.scroll_area = scroll_area  # 참조 저장
+        self._apply_scroll_area_theme(scroll_area)
 
         # 스크롤 내용 위젯
         scroll_content = QWidget()
@@ -108,27 +93,8 @@ class GitHubTabManager:
     def setup_repository_group(self, layout):
         """Repository/Organization 설정 그룹"""
         group = QGroupBox("📁 Repository/Organization 설정")
-        group.setStyleSheet(
-            """
-            QGroupBox {
-                font-weight: 600;
-                font-size: 12px;
-                color: #374151;
-                border: 1px solid #E5E7EB;
-                border-radius: 8px;
-                margin-top: 12px;
-                padding-top: 8px;
-                background-color: #FFFFFF;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 12px;
-                padding: 0 8px 0 8px;
-                color: #1F2937;
-                background-color: #FFFFFF;
-            }
-        """
-        )
+        self.group_boxes.append(group)  # 참조 저장
+        self._apply_group_box_theme(group)
         group_layout = QVBoxLayout(group)
         group_layout.setContentsMargins(16, 16, 16, 16)
         group_layout.setSpacing(12)
@@ -183,17 +149,20 @@ class GitHubTabManager:
 
         # 추가 버튼
         add_button = QPushButton("➕ 추가")
-        add_button.setStyleSheet(self.get_button_style("#10B981"))
+        self.buttons.append(add_button)  # 참조 저장
+        self._apply_button_theme(add_button, "#10B981")
         add_button.clicked.connect(self.add_repository)
 
         # 제거 버튼
         remove_button = QPushButton("➖ 제거")
-        remove_button.setStyleSheet(self.get_button_style("#EF4444"))
+        self.buttons.append(remove_button)  # 참조 저장
+        self._apply_button_theme(remove_button, "#EF4444")
         remove_button.clicked.connect(self.remove_repository)
 
         # 편집 버튼
         edit_button = QPushButton("✏️ 편집")
-        edit_button.setStyleSheet(self.get_button_style("#F59E0B"))
+        self.buttons.append(edit_button)  # 참조 저장
+        self._apply_button_theme(edit_button, "#F59E0B")
         edit_button.clicked.connect(self.edit_repository)
 
         button_layout.addWidget(add_button)
@@ -818,3 +787,148 @@ class GitHubTabManager:
             return json.loads(settings_json) if settings_json else {}
         except json.JSONDecodeError:
             return {}
+
+    def update_theme(self):
+        """테마 업데이트"""
+        try:
+            if hasattr(self.parent, 'theme_manager'):
+                colors = self.parent.theme_manager.get_theme_colors()
+                
+                # 모든 위젯 테마 업데이트
+                self._update_scroll_area_theme(colors)
+                self._update_group_boxes_theme(colors)
+                self._update_repo_list_theme(colors)
+                self._update_buttons_theme(colors)
+                
+        except Exception as e:
+            print(f"GitHub 탭 테마 업데이트 실패: {e}")
+
+    def _apply_scroll_area_theme(self, scroll_area):
+        """스크롤 영역 테마 적용"""
+        if hasattr(self.parent, 'theme_manager'):
+            colors = self.parent.theme_manager.get_theme_colors()
+        else:
+            # 기본 라이트 테마 색상
+            colors = {
+                'surface': '#F3F4F6',
+                'scrollbar': '#D1D5DB',
+                'scrollbar_hover': '#9CA3AF'
+            }
+            
+        scroll_area.setStyleSheet(f"""
+            QScrollArea {{
+                border: none;
+                background-color: transparent;
+            }}
+            QScrollBar:vertical {{
+                border: none;
+                background-color: {colors['surface']};
+                width: 8px;
+                border-radius: 4px;
+            }}
+            QScrollBar::handle:vertical {{
+                background-color: {colors['scrollbar']};
+                border-radius: 4px;
+                min-height: 20px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background-color: {colors['scrollbar_hover']};
+            }}
+        """)
+
+    def _apply_group_box_theme(self, group_box):
+        """그룹박스 테마 적용"""
+        if hasattr(self.parent, 'theme_manager'):
+            colors = self.parent.theme_manager.get_theme_colors()
+        else:
+            # 기본 라이트 테마 색상
+            colors = {
+                'text': '#374151',
+                'border': '#E5E7EB',
+                'background': '#FFFFFF'
+            }
+            
+        group_box.setStyleSheet(f"""
+            QGroupBox {{
+                font-weight: 600;
+                font-size: 12px;
+                color: {colors['text']};
+                border: 1px solid {colors['border']};
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 8px;
+                background-color: {colors['background']};
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: 12px;
+                padding: 0 8px 0 8px;
+                color: {colors['text']};
+                background-color: {colors['background']};
+            }}
+        """)
+
+    def _apply_button_theme(self, button, color):
+        """버튼 테마 적용"""
+        button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {color};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 11px;
+                padding: 8px 16px;
+                min-width: 80px;
+            }}
+            QPushButton:hover {{
+                background-color: {color}DD;
+            }}
+            QPushButton:pressed {{
+                background-color: {color}BB;
+            }}
+        """)
+
+    def _update_scroll_area_theme(self, colors):
+        """스크롤 영역 테마 업데이트"""
+        if self.scroll_area:
+            self._apply_scroll_area_theme(self.scroll_area)
+
+    def _update_group_boxes_theme(self, colors):
+        """그룹박스들 테마 업데이트"""
+        for group_box in self.group_boxes:
+            self._apply_group_box_theme(group_box)
+
+    def _update_buttons_theme(self, colors):
+        """버튼들 테마 업데이트"""
+        button_colors = ["#10B981", "#EF4444", "#F59E0B"]
+        for i, button in enumerate(self.buttons):
+            if i < len(button_colors):
+                self._apply_button_theme(button, button_colors[i])
+
+    def _update_repo_list_theme(self, colors):
+        """저장소 리스트 테마 업데이트"""
+        if hasattr(self, 'repo_list') and self.repo_list:
+            self.repo_list.setStyleSheet(f"""
+                QListWidget {{
+                    border: 1px solid {colors['border']};
+                    border-radius: 6px;
+                    background-color: {colors['background']};
+                    font-size: 11px;
+                    min-height: 150px;
+                    padding: 4px;
+                    color: {colors['text']};
+                }}
+                QListWidget::item {{
+                    padding: 8px 12px;
+                    border-bottom: 1px solid {colors['border_light']};
+                    color: {colors['text']};
+                }}
+                QListWidget::item:selected {{
+                    background-color: {colors['primary']}30;
+                    color: {colors['primary']};
+                }}
+                QListWidget::item:hover {{
+                    background-color: {colors['surface']};
+                }}
+            """)

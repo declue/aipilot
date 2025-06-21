@@ -1,5 +1,4 @@
 import logging
-from typing import Any, Dict
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -12,7 +11,6 @@ from application.api.handlers import (
     NotificationHandler,
     UIHandler,
 )
-from application.api.models import ConversationFileRequest, UIFontRequest
 from application.llm.mcp.mcp_manager import MCPManager
 from application.llm.mcp.mcp_tool_manager import MCPToolManager
 from application.ui.signals.notification_signals import NotificationSignals
@@ -31,9 +29,9 @@ class APIServer:
         notification_signals: NotificationSignals,
     ) -> None:
         self.api_app = FastAPI(
-            title="메신저 알림 API", 
+            title="메신저 알림 API",
             version="1.0.0",
-            description="AI 어시스턴트 메신저 알림 API 서버"
+            description="AI 어시스턴트 메신저 알림 API 서버",
         )
         self.notification_signals = notification_signals
 
@@ -41,19 +39,13 @@ class APIServer:
         self.notification_handler = NotificationHandler(
             mcp_manager, mcp_tool_manager, notification_signals
         )
-        self.llm_handler = LLMHandler(
-            mcp_manager, mcp_tool_manager, notification_signals
-        )
-        self.chat_handler = ChatHandler(
-            mcp_manager, mcp_tool_manager, notification_signals
-        )
+        self.llm_handler = LLMHandler(mcp_manager, mcp_tool_manager, notification_signals)
+        self.chat_handler = ChatHandler(mcp_manager, mcp_tool_manager, notification_signals)
         self.ui_handler = UIHandler(mcp_manager, mcp_tool_manager, notification_signals)
         self.conversation_handler = ConversationHandler(
             mcp_manager, mcp_tool_manager, notification_signals
         )
-        self.mcp_handler = MCPHandler(
-            mcp_manager, mcp_tool_manager, notification_signals
-        )
+        self.mcp_handler = MCPHandler(mcp_manager, mcp_tool_manager, notification_signals)
 
         # 전역 예외 핸들러 등록
         self.api_app.add_exception_handler(Exception, self._handle_unexpected_exception)
@@ -100,7 +92,9 @@ class APIServer:
         chat_router = APIRouter(prefix="/chat", tags=["chat"])
         chat_router.add_api_route("/messages", self.chat_handler.add_chat_message, methods=["POST"])
         chat_router.add_api_route("/clear", self.chat_handler.clear_chat, methods=["POST"])
-        chat_router.add_api_route("/history", self.chat_handler.chat_history_action, methods=["POST"])
+        chat_router.add_api_route(
+            "/history", self.chat_handler.chat_history_action, methods=["POST"]
+        )
         self.api_app.include_router(chat_router)
 
         # ------------------------------------------------------------------
@@ -108,7 +102,9 @@ class APIServer:
         # ------------------------------------------------------------------
         llm_router = APIRouter(prefix="/llm", tags=["llm"])
         llm_router.add_api_route("/request", self.llm_handler.send_llm_request, methods=["POST"])
-        llm_router.add_api_route("/streaming", self.llm_handler.send_streaming_request, methods=["POST"])
+        llm_router.add_api_route(
+            "/streaming", self.llm_handler.send_streaming_request, methods=["POST"]
+        )
         self.api_app.include_router(llm_router)
 
         # ------------------------------------------------------------------
@@ -145,37 +141,31 @@ class APIServer:
         mcp_router = APIRouter(prefix="/mcp", tags=["mcp"])
         mcp_router.add_api_route("/servers", self.mcp_handler.get_mcp_servers, methods=["GET"])
         mcp_router.add_api_route(
-            "/servers/{server_name}/status", 
-            self.mcp_handler.get_mcp_server_status, 
-            methods=["GET"]
+            "/servers/{server_name}/status", self.mcp_handler.get_mcp_server_status, methods=["GET"]
         )
         mcp_router.add_api_route(
-            "/servers/{server_name}/tools", 
-            self.mcp_handler.get_mcp_server_tools, 
-            methods=["GET"]
+            "/servers/{server_name}/tools", self.mcp_handler.get_mcp_server_tools, methods=["GET"]
         )
-        mcp_router.add_api_route("/enabled", self.mcp_handler.get_enabled_mcp_servers, methods=["GET"])
+        mcp_router.add_api_route(
+            "/enabled", self.mcp_handler.get_enabled_mcp_servers, methods=["GET"]
+        )
         self.api_app.include_router(mcp_router)
 
         # ------------------------------------------------------------------
         # 호환성 유지용 레거시 엔드포인트
         # ------------------------------------------------------------------
         self.api_app.add_api_route(
-            "/notify", 
-            self.notification_handler.send_notification_legacy, 
-            methods=["POST"]
+            "/notify", self.notification_handler.send_notification_legacy, methods=["POST"]
         )
         self.api_app.add_api_route(
-            "/llm", 
-            self.llm_handler.send_llm_request_legacy, 
-            methods=["POST"]
+            "/llm", self.llm_handler.send_llm_request_legacy, methods=["POST"]
         )
 
-    def index(self) -> Dict[str, str]:
+    def index(self) -> dict[str, str]:
         """루트 엔드포인트"""
         return {"message": "메신저 알림 API 서버가 실행 중입니다"}
 
-    async def health_check(self) -> Dict[str, str]:
+    async def health_check(self) -> dict[str, str]:
         """헬스 체크 엔드포인트"""
         return {"status": "healthy", "message": "API 서버가 정상 작동 중입니다"}
 
@@ -184,16 +174,14 @@ class APIServer:
     # ---------------------------------------------------------------------
 
     @staticmethod
-    async def _handle_unexpected_exception(
-        _request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def _handle_unexpected_exception(_request: Request, exc: Exception) -> JSONResponse:
         """예상하지 못한 예외를 JSON 형태로 변환"""
         logger.error("Unhandled exception: %s", exc, exc_info=True)
         return JSONResponse(
             status_code=500,
             content={
-                "status": "error", 
+                "status": "error",
                 "message": f"서버 내부 오류: {str(exc)}",
-                "type": "internal_server_error"
+                "type": "internal_server_error",
             },
         )

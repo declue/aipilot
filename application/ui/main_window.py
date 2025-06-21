@@ -4,13 +4,23 @@ from typing import Any, Optional
 
 from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QIcon, QKeyEvent
-from PySide6.QtWidgets import QLabel, QMainWindow, QPushButton, QTextEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from application.config.config_manager import ConfigManager
 from application.llm.llm_agent import LLMAgent
 from application.llm.mcp.mcp_manager import MCPManager
 from application.llm.mcp.mcp_tool_manager import MCPToolManager
 from application.tasks.task_thread import TaskThread
+from application.ui.common.style_manager import StyleManager
+from application.ui.common.theme_manager import ThemeManager, ThemeMode
 from application.ui.domain.conversation_manager import ConversationManager
 from application.ui.domain.message_manager import MessageManager
 from application.ui.domain.streaming_manager import StreamingManager
@@ -36,6 +46,13 @@ class MainWindow(QMainWindow):
         self.settings_window: SettingsWindow | None = None
         self.task_thread: Any = None  # TaskThread 참조
 
+        # 테마 관리자 초기화
+        self.theme_manager = ThemeManager(self.config_manager)
+        StyleManager.set_theme_manager(self.theme_manager)
+        
+        # 테마 변경 시그널 연결
+        self.theme_manager.theme_changed.connect(self.on_theme_changed)
+
         # 스크롤 관련 속성
         self.auto_scroll_enabled = True  # 자동 스크롤 활성화 여부
         self.new_message_notification: Optional[NewMessageNotification] = None  # 새 메시지 알림 위젯
@@ -49,6 +66,7 @@ class MainWindow(QMainWindow):
         self.model_label: Any = None
         self.scroll_area: Any = None
         self.chat_layout: Any = None
+        self.theme_toggle_button: Any = None
 
         # 창 설정
         self.setWindowTitle("💬 DS Pilot")
@@ -107,6 +125,13 @@ class MainWindow(QMainWindow):
         # 윈도우가 완전히 표시된 후 최신 메시지(환영 메시지)로 스크롤
         QTimer.singleShot(100, self.force_scroll_to_bottom)
 
+        # 초기 테마 적용
+        self.apply_current_theme()
+        
+        # 테마 토글 버튼 업데이트
+        if hasattr(self, 'theme_toggle_button'):
+            self.update_theme_toggle_button()
+
         # TaskThread 초기화 및 시작
         self.init_task_scheduler()
 
@@ -160,6 +185,7 @@ class MainWindow(QMainWindow):
 
         # UI 매니저 생성 및 설정
         ui_setup_manager = UISetupManager(self)
+        self._ui_setup_manager = ui_setup_manager  # 참조 저장
 
         # 헤더
         ui_setup_manager.setup_header(layout)
@@ -800,9 +826,15 @@ class MainWindow(QMainWindow):
             self.settings_window = SettingsWindow(
                 self.config_manager, self, self.mcp_manager, self.mcp_tool_manager
             )
-            self.settings_window.settings_changed.connect(self.on_settings_changed)            # TaskThread를 TaskTabManager에 전달
+            self.settings_window.settings_changed.connect(self.on_settings_changed)
+            
+            # TaskThread를 TaskTabManager에 전달
             if self.task_thread and hasattr(self.settings_window, "task_tab_manager"):
                 self.settings_window.task_tab_manager.set_task_thread(self.task_thread)
+            
+            # 현재 테마를 설정창에 적용
+            if hasattr(self.settings_window, 'update_theme'):
+                self.settings_window.update_theme()
 
         self.settings_window.show()
         self.settings_window.raise_()
@@ -945,6 +977,411 @@ class MainWindow(QMainWindow):
                     if self.model_selector.itemData(i) == current_profile:
                         self.model_selector.setCurrentIndex(i)
                         break
-
             except Exception as e:
                 logger.error(f"모델 선택 드롭다운 새로고침 실패: {e}")
+
+    def toggle_theme(self) -> None:
+        """테마를 토글합니다."""
+        try:
+            new_theme = self.theme_manager.toggle_theme()
+            logger.info(f"테마 변경됨: {new_theme.value}")
+        except Exception as e:
+            logger.error(f"테마 토글 실패: {e}")
+
+    def on_theme_changed(self, theme: ThemeMode) -> None:
+        """테마 변경 시 호출되는 슬롯"""
+        try:
+            logger.info(f"테마 변경 신호 수신: {theme.value}")
+            self.apply_current_theme()
+            self.update_theme_toggle_button()
+        except Exception as e:
+            logger.error(f"테마 변경 처리 실패: {e}")
+
+    def apply_current_theme(self) -> None:
+        """현재 테마를 UI에 적용합니다."""
+        try:
+            # 테마 색상 가져오기
+            colors = self.theme_manager.get_theme_colors()
+            
+            # 메인 윈도우 전체 스타일 적용
+            main_window_style = f"""
+            QMainWindow {{
+                background-color: {colors['background']};
+                color: {colors['text']};
+                font-family: '{self.ui_config['font_family']}';
+                font-size: {self.ui_config['font_size']}px;
+            }}
+            
+            QWidget {{
+                background-color: {colors['background']};
+                color: {colors['text']};
+                font-family: '{self.ui_config['font_family']}';
+            }}
+            
+            QFrame {{
+                background-color: {colors['background']};
+                color: {colors['text']};
+            }}
+            
+            QLabel {{
+                color: {colors['text']};
+                background-color: transparent;
+            }}
+            
+            QTextEdit {{
+                background-color: {colors['input_background']};
+                color: {colors['text']};
+                border: 1px solid {colors['border']};
+                border-radius: 6px;
+            }}
+            
+            QScrollArea {{
+                background-color: {colors['background']};
+                border: none;
+            }}
+            
+            QScrollBar:vertical {{
+                background-color: {colors['surface']};
+                width: 12px;
+                border-radius: 6px;
+            }}
+            
+            QScrollBar::handle:vertical {{
+                background-color: {colors['scrollbar']};
+                border-radius: 6px;
+                min-height: 20px;
+            }}
+            
+            QScrollBar::handle:vertical:hover {{
+                background-color: {colors['scrollbar_hover']};
+            }}
+            """
+            
+            self.setStyleSheet(main_window_style)
+            
+            # UI 컴포넌트 개별 업데이트
+            self.update_header_theme()
+            self.update_input_area_theme()
+            
+            # 컨테이너 테마 업데이트
+            self.update_container_themes()
+            
+            # 기존 채팅 메시지들에도 테마 적용
+            self.update_existing_messages_theme()
+            
+            # 설정창이 열려있으면 테마 업데이트
+            self.update_settings_window_theme()
+            
+            logger.info(f"테마 적용 완료: {self.theme_manager.get_current_theme().value}")
+        except Exception as e:
+            logger.error(f"테마 적용 실패: {e}")
+
+    def update_header_theme(self) -> None:
+        """헤더 컴포넌트의 테마를 업데이트합니다."""
+        try:
+            colors = self.theme_manager.get_theme_colors()
+            
+            # 헤더 프레임 찾기
+            header_frame = self.findChild(QFrame, "header_frame")
+            if header_frame:
+                header_frame.setStyleSheet(f"""
+                    QFrame {{
+                        background-color: {colors['header_background']};
+                        border: none;
+                        border-bottom: 1px solid {colors['border']};
+                        padding: 0;
+                    }}
+                """)
+                
+            # 모든 QPushButton 찾아서 업데이트
+            buttons = self.findChildren(QPushButton)
+            for button in buttons:
+                button_text = button.text()
+                
+                if "새 대화" in button_text:
+                    # 새 대화 버튼
+                    button.setStyleSheet(f"""
+                        QPushButton {{
+                            background-color: {colors['success']};
+                            color: white;
+                            border: 2px solid {colors['success']};
+                            border-radius: 20px;
+                            font-size: 14px;
+                            font-weight: 600;
+                            font-family: '{self.ui_config['font_family']}';
+                        }}
+                        QPushButton:hover {{
+                            background-color: {colors['success_hover']};
+                            border-color: {colors['success_hover']};
+                        }}
+                        QPushButton:pressed {{
+                            background-color: {colors['success_pressed']};
+                            border-color: {colors['success_pressed']};
+                        }}
+                    """)
+                elif "설정" in button_text:
+                    # 설정 버튼
+                    button.setStyleSheet(f"""
+                        QPushButton {{
+                            background-color: {colors['button_background']};
+                            color: {colors['text']};
+                            border: 2px solid {colors['button_border']};
+                            border-radius: 20px;
+                            font-size: 14px;
+                            font-weight: 600;
+                            font-family: '{self.ui_config['font_family']}';
+                        }}
+                        QPushButton:hover {{
+                            background-color: {colors['button_hover']};
+                            border-color: {colors['border']};
+                        }}
+                        QPushButton:pressed {{
+                            background-color: {colors['button_pressed']};
+                            border-color: {colors['border']};
+                        }}
+                    """)
+                    
+            # 모든 QLabel 업데이트
+            labels = self.findChildren(QLabel)
+            for label in labels:
+                if "DS Pilot" in label.text():
+                    # 타이틀 라벨
+                    label.setStyleSheet(f"""
+                        QLabel {{
+                            color: {colors['text']};
+                            font-size: 20px;
+                            font-weight: 700;
+                            font-family: '{self.ui_config['font_family']}';
+                            background-color: transparent;
+                        }}
+                    """)
+                else:
+                    # 일반 라벨
+                    label.setStyleSheet(f"""
+                        QLabel {{
+                            color: {colors['text']};
+                            background-color: transparent;
+                        }}
+                    """)
+                    
+            # 모델 선택 ComboBox 업데이트
+            if hasattr(self, 'model_selector') and self.model_selector:
+                self.model_selector.setStyleSheet(f"""
+                    QComboBox {{
+                        background-color: {colors['input_background']};
+                        border: none;
+                        color: {colors['text']};
+                        font-size: 14px;
+                        font-weight: 500;
+                        font-family: '{self.ui_config['font_family']}';
+                        padding: 0 8px;
+                    }}
+                    QComboBox::drop-down {{
+                        subcontrol-origin: padding;
+                        subcontrol-position: top right;
+                        width: 20px;
+                        border: none;
+                    }}
+                    QComboBox::down-arrow {{
+                        image: none;
+                        border: none;
+                        width: 12px;
+                        height: 12px;
+                    }}
+                    QComboBox QAbstractItemView {{
+                        background-color: {colors['background']};
+                        border: 2px solid {colors['border']};
+                        border-radius: 8px;
+                        padding: 4px;
+                        selection-background-color: {colors['primary']};
+                        selection-color: white;
+                        font-size: 14px;
+                        font-family: '{self.ui_config['font_family']}';
+                    }}
+                    QComboBox QAbstractItemView::item {{
+                        padding: 8px 12px;
+                        border-radius: 4px;
+                        margin: 2px;
+                        color: {colors['text']};
+                    }}
+                    QComboBox QAbstractItemView::item:selected {{
+                        background-color: {colors['primary']};
+                        color: white;
+                    }}
+                """)
+                    
+        except Exception as e:
+            logger.error(f"헤더 테마 업데이트 실패: {e}")
+
+    def update_input_area_theme(self) -> None:
+        """입력 영역의 테마를 업데이트합니다."""
+        try:
+            colors = self.theme_manager.get_theme_colors()
+            
+            # 입력 텍스트 영역 업데이트
+            if hasattr(self, 'input_text') and self.input_text:
+                self.input_text.setStyleSheet(f"""
+                    QTextEdit {{
+                        background-color: {colors['input_background']};
+                        color: {colors['text']};
+                        border: 1px solid {colors['border']};
+                        border-radius: 24px;
+                        padding: 8px 16px;
+                        font-size: {self.ui_config['font_size']}px;
+                        font-family: '{self.ui_config['font_family']}';
+                    }}
+                    QTextEdit:focus {{
+                        border-color: {colors['primary']};
+                    }}
+                """)
+            
+            # 전송 버튼 업데이트
+            if hasattr(self, 'send_button') and self.send_button:
+                self.send_button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {colors['primary']};
+                        color: white;
+                        border: none;
+                        border-radius: 24px;
+                        font-weight: 700;
+                        font-size: {self.ui_config['font_size']}px;
+                        font-family: '{self.ui_config['font_family']}';
+                    }}
+                    QPushButton:hover {{
+                        background-color: {colors['primary_hover']};
+                    }}
+                    QPushButton:pressed {{
+                        background-color: {colors['primary_pressed']};
+                    }}
+                    QPushButton:disabled {{
+                        background-color: {colors['text_secondary']};
+                        color: {colors['text']};
+                    }}
+                """)
+            
+            # 중단 버튼 업데이트
+            if hasattr(self, 'stop_button') and self.stop_button:
+                self.stop_button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {colors['danger']};
+                        color: white;
+                        border: none;
+                        border-radius: 24px;
+                        font-weight: 700;
+                        font-size: {self.ui_config['font_size']}px;
+                        font-family: '{self.ui_config['font_family']}';
+                    }}
+                    QPushButton:hover {{
+                        background-color: #DC2626;
+                    }}
+                    QPushButton:pressed {{
+                        background-color: #B91C1C;
+                    }}
+                """)
+                
+        except Exception as e:
+            logger.error(f"입력 영역 테마 업데이트 실패: {e}")
+
+    def update_theme_toggle_button(self) -> None:
+        """테마 토글 버튼 업데이트"""
+        try:
+            if hasattr(self, 'theme_toggle_button') and self.theme_toggle_button:
+                colors = self.theme_manager.get_theme_colors()
+                current_theme = self.theme_manager.get_current_theme()
+                
+                # 테마에 따른 아이콘 선택
+                icon = "🌙" if current_theme == ThemeMode.LIGHT else "☀️"
+                self.theme_toggle_button.setText(icon)
+                
+                # 테마별 스타일 적용
+                style = f"""
+                    QPushButton {{
+                        background-color: {colors['button_background']};
+                        color: {colors['text']};
+                        border: 2px solid {colors['button_border']};
+                        border-radius: 20px;
+                        padding: 8px 16px;
+                        font-weight: 600;
+                        font-size: 16px;
+                        font-family: '{self.ui_config['font_family']}';
+                    }}
+                    QPushButton:hover {{
+                        background-color: {colors['button_hover']};
+                        border-color: {colors['border']};
+                    }}
+                    QPushButton:pressed {{
+                        background-color: {colors['button_pressed']};
+                        border-color: {colors['border']};
+                    }}
+                """
+                self.theme_toggle_button.setStyleSheet(style)
+                
+                # 툴팁 업데이트
+                tooltip = "라이트 모드로 전환" if current_theme == ThemeMode.DARK else "다크 모드로 전환"
+                self.theme_toggle_button.setToolTip(tooltip)
+                
+                logger.debug(f"테마 토글 버튼 업데이트 완료: {icon}")
+                
+        except Exception as e:
+            logger.error(f"테마 토글 버튼 업데이트 실패: {e}")
+
+    def update_existing_messages_theme(self) -> None:
+        """기존 채팅 메시지들에 새 테마를 적용합니다."""
+        try:
+            if not hasattr(self, 'message_manager') or not self.message_manager:
+                return
+                
+            # MessageManager를 통해 모든 채팅 버블의 테마 업데이트
+            if hasattr(self.message_manager, 'update_all_message_styles'):
+                # UI 설정도 테마에 맞게 업데이트
+                self.ui_config = self.config_manager.get_ui_config()
+                self.message_manager.ui_config = self.ui_config
+                self.message_manager.update_all_message_styles()
+                logger.debug("기존 메시지들에 테마 적용 완료")
+            
+            # 채팅 영역 강제 업데이트
+            if hasattr(self, 'chat_layout') and self.chat_layout:
+                for i in range(self.chat_layout.count()):
+                    item = self.chat_layout.itemAt(i)
+                    if item and item.widget():
+                        widget = item.widget()
+                        # 위젯이 테마 업데이트를 지원하는 경우
+                        if hasattr(widget, 'apply_theme'):
+                            try:
+                                widget.apply_theme(self.theme_manager)
+                            except Exception as e:
+                                logger.debug(f"위젯 테마 적용 실패: {e}")
+                        
+                        # 위젯 강제 업데이트
+                        widget.update()
+                        if hasattr(widget, 'repaint'):
+                            widget.repaint()
+                            
+        except Exception as e:
+            logger.error(f"기존 메시지 테마 업데이트 실패: {e}")
+
+    def update_container_themes(self) -> None:
+        """UI 컨테이너들의 테마를 업데이트합니다."""
+        try:
+            # UI 설정 매니저를 찾아서 컨테이너 테마 업데이트
+            if hasattr(self, '_ui_setup_manager'):
+                self._ui_setup_manager.update_container_themes()
+            else:
+                # UI 설정 매니저가 없으면 직접 업데이트
+                from application.ui.managers.ui_setup_manager import UISetupManager
+                ui_manager = UISetupManager(self)
+                ui_manager.update_container_themes()
+                
+        except Exception as e:
+            logger.error(f"컨테이너 테마 업데이트 실패: {e}")
+
+    def update_settings_window_theme(self) -> None:
+        """설정창의 테마를 업데이트합니다."""
+        try:
+            # 설정창이 존재하고 표시 중인 경우 테마 업데이트
+            if hasattr(self, '_settings_window') and self._settings_window is not None:
+                if hasattr(self._settings_window, 'update_theme'):
+                    self._settings_window.update_theme()
+                    
+        except Exception as e:
+            logger.error(f"설정창 테마 업데이트 실패: {e}")

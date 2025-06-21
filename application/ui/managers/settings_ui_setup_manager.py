@@ -1,13 +1,6 @@
 """설정창 UI 설정 관리 모듈"""
 
-from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QTabWidget,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QTabWidget, QVBoxLayout, QWidget
 
 
 class UISetupManager:
@@ -235,3 +228,90 @@ class UISetupManager:
         button_layout.addWidget(save_button)
 
         layout.addLayout(button_layout)
+
+    def update_theme(self) -> None:
+        """테마 업데이트"""
+        try:
+            if hasattr(self.parent, 'theme_manager'):
+                colors = self.parent.theme_manager.get_theme_colors()
+                
+                # 헤더 라벨들 업데이트
+                self._update_header_theme(colors)
+                
+                # 탭 위젯 테마 업데이트
+                self._update_tab_widget_theme(colors)
+                
+                # 버튼들 테마 업데이트
+                self._update_buttons_theme(colors)
+                
+        except Exception as e:
+            print(f"설정창 테마 업데이트 실패: {e}")
+
+    def _update_header_theme(self, colors):
+        """헤더 영역 테마 업데이트"""
+        # 헤더 라벨 스타일은 setup_header에서 직접 참조하는 위젯이 없으므로
+        # 필요시 위젯 참조를 저장해서 업데이트
+        pass
+
+    def _update_tab_widget_theme(self, colors):
+        """탭 위젯 테마 업데이트"""
+        if hasattr(self.parent, 'tab_widget'):
+            self.parent.tab_widget.setStyleSheet(f"""
+                QTabWidget::pane {{
+                    border: 1px solid {colors['border']};
+                    border-radius: 6px;
+                    background-color: {colors['background']};
+                }}
+                QTabWidget::tab-bar {{
+                    alignment: left;
+                }}
+                QTabBar::tab {{
+                    background-color: {colors['surface']};
+                    color: {colors['text_secondary']};
+                    border: 1px solid {colors['border']};
+                    padding: 8px 16px;
+                    margin-right: 2px;
+                    font-weight: 500;
+                    font-size: 11px;
+                    border-bottom: none;
+                    border-top-left-radius: 6px;
+                    border-top-right-radius: 6px;
+                }}
+                QTabBar::tab:selected {{
+                    background-color: {colors['background']};
+                    color: {colors['primary']};
+                    border-bottom: 1px solid {colors['background']};
+                    font-weight: 600;
+                }}
+                QTabBar::tab:hover {{
+                    background-color: {colors['button_hover']};
+                    color: {colors['text']};
+                }}
+            """)
+
+    def _update_buttons_theme(self, colors):
+        """버튼들 테마 업데이트"""
+        try:
+            # 테스트 버튼
+            if hasattr(self.parent, 'test_button'):
+                self.parent.test_button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {colors['warning']};
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        font-size: 11px;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        padding: 8px 16px;
+                        min-width: 100px;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {colors.get('warning_hover', colors['warning'])};
+                    }}
+                    QPushButton:pressed {{
+                        background-color: {colors.get('warning_pressed', colors['warning'])};
+                    }}
+                """)
+        except Exception as e:
+            print(f"버튼 테마 업데이트 실패: {e}")

@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .style_manager import StyleManager
+from application.ui.managers.style_manager import StyleManager
 
 
 class UITabManager:
@@ -289,3 +289,46 @@ class UITabManager:
                 min-width: 32px;
             }
         """
+
+    def update_theme(self):
+        """테마 업데이트"""
+        try:
+            if hasattr(self.parent, 'theme_manager'):
+                # 스타일 매니저에 테마 매니저 설정
+                StyleManager.set_theme_manager(self.parent.theme_manager)
+                
+                colors = self.parent.theme_manager.get_theme_colors()
+                
+                # 스크롤 영역 테마 업데이트
+                self._update_scroll_area_theme(colors)
+                
+                # 미리보기 라벨 테마 업데이트
+                self._update_preview_theme(colors)
+                
+        except Exception as e:
+            print(f"UI 탭 테마 업데이트 실패: {e}")
+
+    def _update_scroll_area_theme(self, colors):
+        """스크롤 영역 테마 업데이트"""
+        # 이미 생성된 탭에서 스크롤 영역을 찾아서 업데이트
+        # 실제 구현에서는 위젯 참조를 저장해서 업데이트해야 함
+        pass
+
+    def _update_preview_theme(self, colors):
+        """미리보기 테마 업데이트"""
+        if hasattr(self.parent, 'preview_label'):
+            font_family = self.parent.font_family_combo.currentFont().family()
+            font_size = self.parent.font_size_slider.value()
+            
+            self.parent.preview_label.setStyleSheet(f"""
+                QLabel {{
+                    color: {colors['text']};
+                    background-color: {colors['surface']};
+                    border: 1px solid {colors['border']};
+                    border-radius: 6px;
+                    padding: 12px;
+                    font-family: '{font_family}', -apple-system, BlinkMacSystemFont, 
+                    'Segoe UI', Roboto, sans-serif;
+                    font-size: {font_size}px;
+                }}
+            """)

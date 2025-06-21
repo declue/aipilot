@@ -21,16 +21,10 @@ class UISetupManager:
     def setup_header(self, layout):
         """헤더 설정 - 모델 선택 기능 추가"""
         header_frame = QFrame()
-        header_frame.setStyleSheet(
-            """
-            QFrame {
-                background-color: #FFFFFF;
-                border: none;
-                border-bottom: 1px solid #E5E7EB;
-                padding: 0;
-            }
-        """
-        )
+        header_frame.setObjectName("header_frame")  # 나중에 테마 적용을 위한 식별자
+        # 헤더 프레임 참조 저장 (테마 적용을 위해)
+        self.main_window.header_frame = header_frame
+        self._apply_header_theme(header_frame)
 
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(24, 16, 24, 16)
@@ -55,16 +49,9 @@ class UISetupManager:
         # 모델 선택 컨테이너 (새 대화 버튼 좌측에 배치)
         model_container = QFrame()
         model_container.setFixedHeight(40)  # 버튼과 같은 높이
-        model_container.setStyleSheet(
-            """
-            QFrame {
-                background-color: #F9FAFB;
-                border: 1px solid #E5E7EB;
-                border-radius: 20px;
-                padding: 0;
-            }
-        """
-        )
+        # 모델 컨테이너 참조 저장 (테마 적용을 위해)
+        self.main_window.model_container = model_container
+        self._apply_model_container_theme(model_container)
         model_layout = QHBoxLayout(model_container)
         model_layout.setContentsMargins(12, 0, 12, 0)  # 상하 패딩 제거, 좌우만 유지
         model_layout.setSpacing(8)
@@ -140,6 +127,37 @@ class UISetupManager:
 
         model_layout.addWidget(self.main_window.model_selector)
         header_layout.addWidget(model_container)
+
+        # 테마 토글 버튼
+        theme_toggle_button = QPushButton("🌙")
+        theme_toggle_button.setFixedSize(40, 40)
+        theme_toggle_button.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: #F3F4F6;
+                color: #374151;
+                border: 2px solid #D1D5DB;
+                border-radius: 20px;
+                font-size: 16px;
+                font-weight: 600;
+                font-family: '{self.ui_config['font_family']}';
+            }}
+            QPushButton:hover {{
+                background-color: #E5E7EB;
+                border-color: #9CA3AF;
+            }}
+            QPushButton:pressed {{
+                background-color: #D1D5DB;
+                border-color: #6B7280;
+            }}
+        """
+        )
+        theme_toggle_button.setToolTip("다크/라이트 모드 전환")
+        theme_toggle_button.clicked.connect(self.main_window.toggle_theme)
+        header_layout.addWidget(theme_toggle_button)
+        
+        # 메인 윈도우에 테마 토글 버튼 참조 저장
+        self.main_window.theme_toggle_button = theme_toggle_button
 
         # 새 대화 버튼
         new_chat_button = QPushButton("🆕 새 대화")
@@ -253,17 +271,9 @@ class UISetupManager:
         """채팅 영역 설정 (스크롤 지원)"""
         # 채팅 영역 컨테이너
         chat_frame = QFrame()
-        # 최대 너비 제한 없이 설정
-        chat_frame.setStyleSheet(
-            """
-            QFrame {
-                background-color: #FFFFFF;
-                border: 1px solid #E5E7EB;
-                border-radius: 12px;
-                margin: 0px;
-            }
-        """
-        )
+        # 채팅 프레임 참조 저장 (테마 적용을 위해)
+        self.main_window.chat_frame = chat_frame
+        self._apply_chat_frame_theme(chat_frame)
 
         # 스크롤 영역 생성
         self.main_window.scroll_area = QScrollArea()
@@ -275,27 +285,8 @@ class UISetupManager:
         self.main_window.scroll_area.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
-        self.main_window.scroll_area.setStyleSheet(
-            """
-            QScrollArea {
-                border: none;
-                background-color: transparent;
-            }
-            QScrollBar:vertical {
-                background-color: #F3F4F6;
-                width: 8px;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #D1D5DB;
-                border-radius: 4px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #9CA3AF;
-            }
-        """
-        )
+        # 스크롤 영역 테마 적용
+        self._apply_scroll_area_theme(self.main_window.scroll_area)
 
         # 채팅 컨테이너 및 레이아웃
         self.main_window.chat_container = chat_frame
@@ -315,16 +306,9 @@ class UISetupManager:
     def setup_input_area(self, layout):
         """Material UI 스타일 입력 영역 (중단 버튼 추가)"""
         input_frame = QFrame()
-        input_frame.setStyleSheet(
-            """
-            QFrame {
-                background-color: #FFFFFF;
-                border: none;
-                border-top: 1px solid #E5E7EB;
-                padding: 0;
-            }
-        """
-        )
+        # 입력 프레임 참조 저장 (테마 적용을 위해)
+        self.main_window.input_frame = input_frame
+        self._apply_input_frame_theme(input_frame)
 
         input_layout = QVBoxLayout(input_frame)
         input_layout.setContentsMargins(8, 20, 8, 28)  # 좌우 패딩을 8px로 최소화
@@ -332,20 +316,9 @@ class UISetupManager:
 
         # 입력 컨테이너
         input_container = QFrame()
-        input_container.setStyleSheet(
-            """
-            QFrame {
-                background-color: #F8FAFC;
-                border: 2px solid #E2E8F0;
-                border-radius: 28px;
-                padding: 0;
-            }
-            QFrame:focus-within {
-                border-color: #2563EB;
-                background-color: #FFFFFF;
-            }
-        """
-        )
+        # 입력 컨테이너 참조 저장 (테마 적용을 위해)
+        self.main_window.input_container = input_container
+        self._apply_input_container_theme(input_container)
 
         container_layout = QHBoxLayout(input_container)
         container_layout.setContentsMargins(24, 12, 12, 12)  # 더 큰 패딩
@@ -456,3 +429,189 @@ class UISetupManager:
         input_layout.addWidget(help_text)
 
         layout.addWidget(input_frame)
+
+    def _apply_header_theme(self, header_frame):
+        """헤더 프레임에 테마 적용"""
+        if hasattr(self.main_window, 'theme_manager'):
+            colors = self.main_window.theme_manager.get_theme_colors()
+            header_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {colors['header_background']};
+                    border: none;
+                    border-bottom: 1px solid {colors['border']};
+                    padding: 0;
+                }}
+            """)
+        else:
+            # 기본 라이트 테마
+            header_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #FFFFFF;
+                    border: none;
+                    border-bottom: 1px solid #E5E7EB;
+                    padding: 0;
+                }
+            """)
+
+    def _apply_model_container_theme(self, model_container):
+        """모델 컨테이너에 테마 적용"""
+        if hasattr(self.main_window, 'theme_manager'):
+            colors = self.main_window.theme_manager.get_theme_colors()
+            model_container.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {colors['surface']};
+                    border: 1px solid {colors['border']};
+                    border-radius: 20px;
+                    padding: 0;
+                }}
+            """)
+        else:
+            # 기본 라이트 테마
+            model_container.setStyleSheet("""
+                QFrame {
+                    background-color: #F9FAFB;
+                    border: 1px solid #E5E7EB;
+                    border-radius: 20px;
+                    padding: 0;
+                }
+            """)
+
+    def _apply_chat_frame_theme(self, chat_frame):
+        """채팅 프레임에 테마 적용"""
+        if hasattr(self.main_window, 'theme_manager'):
+            colors = self.main_window.theme_manager.get_theme_colors()
+            chat_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {colors['background']};
+                    border: 1px solid {colors['border']};
+                    border-radius: 12px;
+                    margin: 0px;
+                }}
+            """)
+        else:
+            # 기본 라이트 테마
+            chat_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #FFFFFF;
+                    border: 1px solid #E5E7EB;
+                    border-radius: 12px;
+                    margin: 0px;
+                }
+            """)
+
+    def _apply_scroll_area_theme(self, scroll_area):
+        """스크롤 영역에 테마 적용"""
+        if hasattr(self.main_window, 'theme_manager'):
+            colors = self.main_window.theme_manager.get_theme_colors()
+            scroll_area.setStyleSheet(f"""
+                QScrollArea {{
+                    border: none;
+                    background-color: transparent;
+                }}
+                QScrollBar:vertical {{
+                    background-color: {colors['surface']};
+                    width: 8px;
+                    border-radius: 4px;
+                }}
+                QScrollBar::handle:vertical {{
+                    background-color: {colors['scrollbar']};
+                    border-radius: 4px;
+                    min-height: 20px;
+                }}
+                QScrollBar::handle:vertical:hover {{
+                    background-color: {colors['scrollbar_hover']};
+                }}
+            """)
+        else:
+            # 기본 라이트 테마
+            scroll_area.setStyleSheet("""
+                QScrollArea {
+                    border: none;
+                    background-color: transparent;
+                }
+                QScrollBar:vertical {
+                    background-color: #F3F4F6;
+                    width: 8px;
+                    border-radius: 4px;
+                }
+                QScrollBar::handle:vertical {
+                    background-color: #D1D5DB;
+                    border-radius: 4px;
+                    min-height: 20px;
+                }
+                QScrollBar::handle:vertical:hover {
+                    background-color: #9CA3AF;
+                }
+            """)
+
+    def _apply_input_frame_theme(self, input_frame):
+        """입력 프레임에 테마 적용"""
+        if hasattr(self.main_window, 'theme_manager'):
+            colors = self.main_window.theme_manager.get_theme_colors()
+            input_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {colors['background']};
+                    border: none;
+                    border-top: 1px solid {colors['border']};
+                    padding: 0;
+                }}
+            """)
+        else:
+            # 기본 라이트 테마
+            input_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #FFFFFF;
+                    border: none;
+                    border-top: 1px solid #E5E7EB;
+                    padding: 0;
+                }
+            """)
+
+    def _apply_input_container_theme(self, input_container):
+        """입력 컨테이너에 테마 적용"""
+        if hasattr(self.main_window, 'theme_manager'):
+            colors = self.main_window.theme_manager.get_theme_colors()
+            input_container.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {colors['surface']};
+                    border: 2px solid {colors['border']};
+                    border-radius: 28px;
+                    padding: 0;
+                }}
+                QFrame:focus-within {{
+                    border-color: {colors['primary']};
+                    background-color: {colors['input_background']};
+                }}
+            """)
+        else:
+            # 기본 라이트 테마
+            input_container.setStyleSheet("""
+                QFrame {
+                    background-color: #F8FAFC;
+                    border: 2px solid #E2E8F0;
+                    border-radius: 28px;
+                    padding: 0;
+                }
+                QFrame:focus-within {
+                    border-color: #2563EB;
+                    background-color: #FFFFFF;
+                }
+            """)
+
+    def update_container_themes(self):
+        """모든 컨테이너의 테마를 업데이트합니다."""
+        try:
+            if hasattr(self.main_window, 'header_frame'):
+                self._apply_header_theme(self.main_window.header_frame)
+            if hasattr(self.main_window, 'model_container'):
+                self._apply_model_container_theme(self.main_window.model_container)
+            if hasattr(self.main_window, 'chat_frame'):
+                self._apply_chat_frame_theme(self.main_window.chat_frame)
+            if hasattr(self.main_window, 'scroll_area'):
+                self._apply_scroll_area_theme(self.main_window.scroll_area)
+            if hasattr(self.main_window, 'input_frame'):
+                self._apply_input_frame_theme(self.main_window.input_frame)
+            if hasattr(self.main_window, 'input_container'):
+                self._apply_input_container_theme(self.main_window.input_container)
+        except Exception as e:
+            print(f"컨테이너 테마 업데이트 실패: {e}")

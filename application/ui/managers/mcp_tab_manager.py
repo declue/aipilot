@@ -4,11 +4,11 @@ import os
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
-from .mcp_data_manager import MCPDataManager
-from .mcp_log_manager import MCPLogManager
-from .mcp_server_status_manager import MCPServerStatusManager
-from .mcp_tools_manager import MCPToolsManager
-from .mcp_ui_builder import MCPUIBuilder
+from application.ui.managers.mcp_data_manager import MCPDataManager
+from application.ui.managers.mcp_log_manager import MCPLogManager
+from application.ui.managers.mcp_server_status_manager import MCPServerStatusManager
+from application.ui.managers.mcp_tools_manager import MCPToolsManager
+from application.ui.managers.mcp_ui_builder import MCPUIBuilder
 
 
 class MCPSignals(QObject):
@@ -237,3 +237,29 @@ class MCPTabManager:
     def get_tools_data(self):
         """도구 데이터 반환 (기존 호환성)"""
         return self.data_manager.get_tools_data() if self.data_manager else []
+
+    def update_theme(self):
+        """테마 업데이트"""
+        try:
+            if hasattr(self.parent, 'theme_manager'):
+                colors = self.parent.theme_manager.get_theme_colors()
+                
+                # UI 컴포넌트들이 있으면 테마 적용
+                if self.ui_components:
+                    self._update_status_labels_theme(colors)
+                    self._update_ui_builder_theme(colors)
+                
+        except Exception as e:
+            print(f"MCP 탭 테마 업데이트 실패: {e}")
+
+    def _update_status_labels_theme(self, colors):
+        """상태 라벨 테마 업데이트"""
+        if self.ui_components and "status_label" in self.ui_components:
+            # 기본 상태 라벨 스타일은 그대로 두고, 배경만 테마에 맞게 조정
+            pass
+
+    def _update_ui_builder_theme(self, colors):
+        """UI 빌더 컴포넌트 테마 업데이트"""
+        # UI 빌더에 테마 업데이트 메서드가 있으면 호출
+        if hasattr(self.ui_builder, 'update_theme'):
+            self.ui_builder.update_theme(colors)

@@ -25,8 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from application.llm.llm_agent import LLMAgent
-
-from .style_manager import StyleManager
+from application.ui.managers.style_manager import StyleManager
 
 
 class LLMTabManager:
@@ -660,13 +659,7 @@ class LLMTabManager:
                 content = f.read()
 
             # 편집 대화상자 생성
-            from PySide6.QtWidgets import (
-                QDialog,
-                QHBoxLayout,
-                QPushButton,
-                QTextEdit,
-                QVBoxLayout,
-            )
+            from PySide6.QtWidgets import QDialog, QHBoxLayout, QPushButton, QTextEdit, QVBoxLayout
 
             dialog = QDialog(self.parent)
             dialog.setWindowTitle(
@@ -725,3 +718,23 @@ class LLMTabManager:
             QMessageBox.critical(
                 self.parent, "파일 편집 실패", f"파일 편집에 실패했습니다: {str(e)}"
             )
+
+    def update_theme(self):
+        """테마 업데이트"""
+        try:
+            if hasattr(self.parent, 'theme_manager'):
+                # 스타일 매니저에 테마 매니저 설정
+                StyleManager.set_theme_manager(self.parent.theme_manager)
+                
+                colors = self.parent.theme_manager.get_theme_colors()
+                
+                # 스크롤 영역 테마 업데이트
+                self._update_scroll_area_theme(colors)
+                
+        except Exception as e:
+            print(f"LLM 탭 테마 업데이트 실패: {e}")
+
+    def _update_scroll_area_theme(self, colors):
+        """스크롤 영역 테마 업데이트"""
+        # 스크롤 영역 스타일 업데이트 (실제 구현에서는 위젯 참조 필요)
+        pass

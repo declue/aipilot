@@ -1,12 +1,15 @@
 import logging
 import re
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication, QFrame, QLayout, QTextBrowser
 
 from application.util.logger import setup_logger
+
+if TYPE_CHECKING:
+    from application.ui.common.theme_manager import ThemeManager
 
 logger: logging.Logger = setup_logger("chat_bubble") or logging.getLogger("chat_bubble")
 
@@ -50,6 +53,7 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
             "font_size": self.DEFAULT_FONT_SIZE,
             "chat_bubble_max_width": self.DEFAULT_CHAT_BUBBLE_MAX_WIDTH,
         }
+        self.theme_manager: Optional["ThemeManager"] = None
 
         try:
             logger.debug(f"ChatBubble creating: message={message[:50]}...")
@@ -190,4 +194,35 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
             if child.widget():
                 child.widget().deleteLater()
             elif child.layout():
-                self.clear_child_layout(child.layout()) 
+                self.clear_child_layout(child.layout())
+
+    def apply_theme(self, theme_manager: "ThemeManager") -> None:
+        """테마 매니저를 설정하고 테마를 적용합니다."""
+        try:
+            self.theme_manager = theme_manager
+            self.update_theme_styles()
+            logger.debug(f"테마 적용 완료: {type(self).__name__}")
+        except Exception as e:
+            logger.error(f"테마 적용 실패 {type(self).__name__}: {e}")
+
+    def update_theme_styles(self) -> None:
+        """테마에 맞는 스타일을 적용합니다. 서브클래스에서 구현해야 합니다."""
+        # 기본 구현: 기존 update_styles 호출
+        self.update_styles()
+
+    def get_theme_colors(self) -> Dict[str, str]:
+        """현재 테마의 색상을 반환합니다."""
+        if self.theme_manager:
+            return self.theme_manager.get_theme_colors()
+        else:
+            # 기본 라이트 테마 색상 반환
+            return {
+                'background': '#FFFFFF',
+                'text': '#1F2937',
+                'surface': '#F8FAFC',
+                'border': '#E5E7EB',
+                'primary': '#2563EB',
+                'primary_hover': '#1D4ED8',
+                'success': '#10B981',
+                'danger': '#EF4444'
+            } 

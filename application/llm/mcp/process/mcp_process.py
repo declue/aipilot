@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import subprocess
-from typing import Any, Dict, Optional
+from typing import Any
 
 # 연결 테스트에 필요한 MCP SDK
 from agents.mcp import MCPServerStdio  # type: ignore
@@ -19,7 +19,7 @@ class MCPProcess:
 
     def __init__(self, server: MCPServer):
         self.server: MCPServer = server
-        self.process: Optional[subprocess.Popen] = None
+        self.process: subprocess.Popen | None = None
         self.status: MCPServerStatus = MCPServerStatus(name=server.name, connected=False)
         # 개별 로거 ‒ 서버 이름을 서브 로거로 사용
         self.logger: logging.Logger = setup_logger(f"mcp_process.{server.name}") or logging.getLogger(__name__)
@@ -119,7 +119,7 @@ class MCPProcess:
     # ---------------------------------------------------------------------
     # 직렬화 / 헬퍼
     # ---------------------------------------------------------------------
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """상태 포함 정보를 dict 로 직렬화 (UI/API 용)"""
         return {
             "name": self.server.name,

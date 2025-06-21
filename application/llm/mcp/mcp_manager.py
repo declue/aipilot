@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Any
 
 from application.config.config_manager import ConfigManager
 from application.llm.mcp.config.mcp_config_manager import MCPConfigManager
@@ -16,7 +16,7 @@ class MCPManager:
     def __init__(
         self,
         config_manager: ConfigManager,
-        mcp_config: Optional[MCPConfigManager] = None,
+        mcp_config: MCPConfigManager | None = None,
     ) -> None:
         """MCPManager 생성자
 
@@ -28,13 +28,11 @@ class MCPManager:
             별도의 MCPConfigManager 인스턴스를 주입 받아 테스트 용이성을 높입니다. 미지정 시 내부에서 생성합니다.
         """
 
-        self.logger: logging.Logger = setup_logger("mcp_manager") or logging.getLogger(
-            __name__
-        )
+        self.logger: logging.Logger = setup_logger("mcp_manager") or logging.getLogger(__name__)
 
         self.config_manager: ConfigManager = config_manager
         self.mcp_config: MCPConfigManager = mcp_config or MCPConfigManager()
-        self.processes: Dict[str, MCPProcess] = {}
+        self.processes: dict[str, MCPProcess] = {}
         self.load_config()
 
     def get_config_manager(self) -> MCPConfigManager:
@@ -67,21 +65,21 @@ class MCPManager:
             return True
         return False
 
-    def get_server_list(self) -> List[str]:
+    def get_server_list(self) -> list[str]:
         """MCP 서버 목록 반환"""
         return self.mcp_config.get_server_list()
 
-    def get_server(self, name: str) -> Optional[MCPServer]:
+    def get_server(self, name: str) -> MCPServer | None:
         """특정 MCP 서버 정보 반환"""
         return self.mcp_config.get_server(name)
 
-    def load_config(self):
+    def load_config(self) -> None:
         """ConfigManager로부터 MCP 서버 설정을 로드합니다."""
         self.mcp_config.clear_servers()
         self.processes.clear()
 
-        mcp_config = self.config_manager.get_mcp_config()
-        server_configs = mcp_config.get("mcpServers", {})
+        mcp_config: dict[str, Any] = self.config_manager.get_mcp_config()
+        server_configs: Any = mcp_config.get("mcpServers", {})
         for server_name, server_config in server_configs.items():
             # server_config가 딕셔너리인 경우 MCPServer 객체로 변환
             if isinstance(server_config, dict):
@@ -113,29 +111,27 @@ class MCPManager:
             return False
         return process.stop()
 
-    def get_server_status(self, name: str) -> Optional[MCPServerStatus]:
+    def get_server_status(self, name: str) -> MCPServerStatus | None:
         """서버 상태 반환"""
         process = self.processes.get(name)
         return process.status if process else None
 
-    def get_all_server_statuses(self) -> Dict[str, MCPServerStatus]:
+    def get_all_server_statuses(self) -> dict[str, MCPServerStatus]:
         """모든 서버 상태 반환"""
         return {name: proc.status for name, proc in self.processes.items()}
 
-    def get_all_servers(self) -> List[MCPServer]:
+    def get_all_servers(self) -> list[MCPServer]:
         """설정된 모든 MCP 서버 목록을 반환합니다."""
         return list(self.mcp_config.get_servers().values())
 
-    def get_server_by_name(self, name: str) -> Optional[MCPServer]:
+    def get_server_by_name(self, name: str) -> MCPServer | None:
         """이름으로 MCP 서버를 찾아 반환합니다."""
         return self.mcp_config.get_server(name)
 
-    def get_enabled_servers(self) -> Dict[str, MCPServer]:
+    def get_enabled_servers(self) -> dict[str, MCPServer]:
         """활성화된 서버 목록을 반환합니다."""
         return {
-            name: server
-            for name, server in self.mcp_config.get_servers().items()
-            if server.enabled
+            name: server for name, server in self.mcp_config.get_servers().items() if server.enabled
         }
 
     async def test_server_connection(self, server_name: str) -> MCPServerStatus:
