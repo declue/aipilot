@@ -9,6 +9,7 @@ from application.config.libs.config_change_notifier import (
     ConfigChangeCallback,
     get_config_change_notifier,
 )
+from application.llm.mcp.config.mcp_config_manager import MCPConfigManager
 from application.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("config_manager") or logging.getLogger(
@@ -45,6 +46,8 @@ class ConfigManager:
         # 컴포지션을 통한 책임 분리
         self.app_config_manager = AppConfigManager(config_file)
         self.llm_profile_manager = LLMProfileManager()
+        # MCP 설정 관리자 (기존 코드와의 호환성 확보)
+        self.mcp_config_manager = MCPConfigManager()
 
         # 기존 인터페이스 호환성을 위한 속성들
         self.config_file = self.app_config_manager.config_file
@@ -485,3 +488,15 @@ GitHub 관련 키워드("이슈", "issue", "PR", "pull request", "커밋", "comm
             self.cleanup()
         except Exception:
             pass
+
+    # ------------------------------------------------------------------
+    # MCP 설정 관련 호환 API
+    # ------------------------------------------------------------------
+
+    def get_mcp_config(self) -> Dict[str, Any]:
+        """MCP 설정 반환 (하위 호환성을 위해 제공)"""
+        try:
+            return self.mcp_config_manager.get_config().model_dump()
+        except Exception as exc:  # pragma: no cover – 예상치 못한 오류 로그
+            logger.error("MCP 설정 가져오기 실패: %s", exc)
+            return {}
