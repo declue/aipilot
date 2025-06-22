@@ -1,15 +1,27 @@
 """설정창 UI 설정 관리 모듈"""
 
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QTabWidget, QVBoxLayout, QWidget
+from __future__ import annotations
+
+from typing import Any, cast
+
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class UISetupManager:
     """UI 설정 관리 클래스"""
 
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, parent: QMainWindow):
+        self.parent = cast(Any, parent)
 
-    def setup_ui(self):
+    def setup_ui(self) -> None:
         """UI 설정"""
         central_widget = QWidget()
         self.parent.setCentralWidget(central_widget)
@@ -26,7 +38,7 @@ class UISetupManager:
         # 버튼 영역
         self.setup_buttons(layout)
 
-    def setup_header(self, layout):
+    def setup_header(self, layout: QVBoxLayout) -> None:
         """헤더 설정"""
         header_label = QLabel("⚙️ 설정")
         header_label.setStyleSheet(
@@ -55,7 +67,7 @@ class UISetupManager:
         )
         layout.addWidget(desc_label)
 
-    def setup_tabs(self, layout):
+    def setup_tabs(self, layout: QVBoxLayout) -> None:
         """탭 위젯 설정"""
         self.parent.tab_widget = QTabWidget()
         self.parent.tab_widget.setStyleSheet(
@@ -111,7 +123,7 @@ class UISetupManager:
 
         layout.addWidget(self.parent.tab_widget)
 
-    def setup_buttons(self, layout):
+    def setup_buttons(self, layout: QVBoxLayout) -> None:
         """버튼 영역 설정"""
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
@@ -247,13 +259,13 @@ class UISetupManager:
         except Exception as e:
             print(f"설정창 테마 업데이트 실패: {e}")
 
-    def _update_header_theme(self, colors):
+    def _update_header_theme(self, colors: dict[str, str]) -> None:
         """헤더 영역 테마 업데이트"""
         # 헤더 라벨 스타일은 setup_header에서 직접 참조하는 위젯이 없으므로
         # 필요시 위젯 참조를 저장해서 업데이트
         pass
 
-    def _update_tab_widget_theme(self, colors):
+    def _update_tab_widget_theme(self, colors: dict[str, str]) -> None:
         """탭 위젯 테마 업데이트"""
         if hasattr(self.parent, 'tab_widget'):
             self.parent.tab_widget.setStyleSheet(f"""
@@ -289,7 +301,7 @@ class UISetupManager:
                 }}
             """)
 
-    def _update_buttons_theme(self, colors):
+    def _update_buttons_theme(self, colors: dict[str, str]) -> None:
         """버튼들 테마 업데이트"""
         try:
             # 테스트 버튼
