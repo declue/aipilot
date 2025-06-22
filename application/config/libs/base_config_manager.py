@@ -2,7 +2,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Optional, List
-
+from .serializers import SerializerFactory
 from .config_change_notifier import (
     ConfigChangeCallback,
     get_config_change_notifier,
@@ -30,9 +30,9 @@ from .utils import (
 try:
     from application.util.logger import setup_logger
     logger: logging.Logger = setup_logger(
-        "base_config_manager") or logging.getLogger("base_config_manager")
+        "config") or logging.getLogger("config")
 except ImportError:
-    logger = logging.getLogger("base_config_manager")
+    logger = logging.getLogger("config")
 
 
 class BaseConfigManager(IConfigManager, ABC):
@@ -152,7 +152,7 @@ class BaseConfigManager(IConfigManager, ABC):
                     self._config_data = self._serializer.deserialize(content)
                 else:
                     # 직렬화기가 없으면 파일 타입에 따라 자동 생성
-                    from .serializers import SerializerFactory
+
                     serializer = SerializerFactory.create_serializer(
                         self._config_type)
                     self._config_data = serializer.deserialize(content)
@@ -180,7 +180,6 @@ class BaseConfigManager(IConfigManager, ABC):
             if self._serializer:
                 content = self._serializer.serialize(self._config_data)
             else:
-                from .serializers import SerializerFactory
                 serializer = SerializerFactory.create_serializer(
                     self._config_type)
                 content = serializer.serialize(self._config_data)
@@ -255,7 +254,6 @@ class BaseConfigManager(IConfigManager, ABC):
 
     def on_config_changed(self, file_path: str, change_type: str) -> None:
         """설정 변경 후 추가 처리 (하위 클래스에서 오버라이드 가능)"""
-        
 
     def on_before_save(self) -> None:
         """저장 전 처리 (하위 클래스에서 오버라이드 가능)"""

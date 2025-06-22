@@ -6,7 +6,7 @@
 
 import logging
 
-from . import (
+from .. import (
     ConfigType,
     create_config_manager,
     register_config_manager,
@@ -76,7 +76,7 @@ def example_registry_usage():
         print(f"UI 테마: {app_mgr.get_value('UI.theme')}")
 
     # 3. 모든 설정 리로드
-    from . import reload_all_configs
+    from .. import reload_all_configs
     reload_all_configs()
     print("모든 설정이 리로드되었습니다.")
 
@@ -279,7 +279,7 @@ def run_all_examples():
 
     finally:
         # 정리
-        from . import cleanup_all_configs
+        from .. import cleanup_all_configs
         cleanup_all_configs()
         print("리소스 정리 완료")
 

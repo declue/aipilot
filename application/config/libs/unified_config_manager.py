@@ -3,9 +3,9 @@ import json
 import os
 from typing import Any, Dict, List, Optional
 
-from application.config.app_config_manager import AppConfigManager
-from application.config.llm_profile_manager import LLMProfileManager
-from application.config.mcp_config_manager import MCPConfigManager
+from application.config.apps.managers.app_config_manager import AppConfigManager
+from application.config.apps.managers.llm_profile_manager import LLMProfileManager
+from application.config.apps.managers.mcp_config_manager import MCPConfigManager
 from application.config.github_notification_config import GitHubNotificationConfig
 from application.util.logger import setup_logger
 

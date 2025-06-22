@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Any, Dict
 
-from application.config.default_llm_profiles import (
+from application.config.apps.defaults.default_llm_profiles import (
     DEFAULT_LLM_PROFILES_JSON,
     DEFAULT_LLM_PROFILE,
     DEFAULT_LLM_PROFILES,

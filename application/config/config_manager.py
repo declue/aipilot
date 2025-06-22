@@ -3,12 +3,12 @@ import os
 import threading
 from typing import Any, Dict, List, Optional
 
-from application.config.app_config_manager import AppConfigManager
-from application.config.config_change_notifier import (
+from application.config.apps.managers.app_config_manager import AppConfigManager
+from application.config.libs.config_change_notifier import (
     ConfigChangeCallback,
     get_config_change_notifier,
 )
-from application.config.llm_profile_manager import LLMProfileManager
+from application.config.apps.managers.llm_profile_manager import LLMProfileManager
 from application.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("config_manager") or logging.getLogger(

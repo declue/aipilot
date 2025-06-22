@@ -27,7 +27,7 @@
 
 import logging
 # 핵심 인터페이스들
-from .interfaces import (
+from .libs.interfaces import (
     ConfigType,
     ConfigDict,
     ConfigValue,
@@ -42,11 +42,11 @@ from .interfaces import (
 )
 
 # 기본 구현체들
-from .base_config_manager import BaseConfigManager
-from .generic_config_manager import GenericConfigManager
+from .libs.base_config_manager import BaseConfigManager
+from .libs.generic_config_manager import GenericConfigManager
 
 # 직렬화기들
-from .serializers import (
+from .libs.serializers import (
     JSONConfigSerializer,
     INIConfigSerializer,
     YAMLConfigSerializer,
@@ -57,7 +57,7 @@ from .serializers import (
 )
 
 # 검증기들
-from .validators import (
+from .libs.validators import (
     SchemaValidator,
     LLMConfigValidator,
     MCPConfigValidator,
@@ -71,7 +71,7 @@ from .validators import (
 )
 
 # 유틸리티 함수들
-from .utils import (
+from .libs.utils import (
     get_nested_value,
     set_nested_value,
     has_nested_key,
@@ -88,7 +88,7 @@ from .utils import (
 )
 
 # 레지스트리 및 팩토리
-from .registry import (
+from .libs.registry import (
     ConfigRegistry,
     ConfigFactory,
     get_config_registry,
@@ -101,20 +101,20 @@ from .registry import (
 )
 
 # 마이그레이션된 관리자들
-from .migrated_managers import (
+from .libs.migrated_managers import (
     ModernAppConfigManager,
     ModernLLMProfileManager,
     ModernMCPConfigManager,
 )
 
 # 파일 변경 감지 (기존)
-from .config_change_notifier import (
+from .libs.config_change_notifier import (
     get_config_change_notifier,
 )
 
 # 기본 설정들
-from .default_app_config import *
-from .default_llm_profiles import *
+from .apps.defaults.default_app_config import *
+from .apps.defaults.default_llm_profiles import *
 
 logger = logging.getLogger(__name__)
 logger.info("설정 시스템 초기화 완료")

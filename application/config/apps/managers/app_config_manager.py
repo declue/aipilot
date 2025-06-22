@@ -4,7 +4,7 @@ import os
 import shutil
 from typing import Any, Dict, List, Optional
 
-from application.config.default_app_config import (
+from application.config.apps.defaults.default_app_config import (
     DEFAULT_APP_CONFIG_FILE_NAME,
     DEFAULT_APP_CONFIG_TEMPLATE_SUFFIX,
     DEFAULT_APP_CONFIG_SECTIONS,
