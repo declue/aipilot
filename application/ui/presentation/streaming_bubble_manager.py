@@ -114,29 +114,20 @@ class StreamingBubbleManager:
             bubble.set_used_tools(used_tools)
 
         bubble.original_message = final_content
-
-        if is_reasoning_model and reasoning_content:
-            self.html_renderer.ui_config = current_ui_config
-            styled_html = self.html_renderer.create_reasoning_html(
-                reasoning_content, final_answer
-            )
-        else:
-            html_content = markdown.markdown(
-                final_content,
-                extensions=["codehilite", "fenced_code", "tables", "toc"],
-            )
-            styled_html = (
-                f"<div style=\"color:#1F2937;line-height:1.6;font-family:'{current_ui_config['font_family']}';font-size:{current_ui_config['font_size']}px;\">{html_content}</div>"
-            )
-
-        text_browser.setHtml(styled_html)
-        bubble.adjust_browser_height(text_browser)
-
         bubble.is_streaming = False
+        
+        logger.info(f"🔄 버블 최종화: 추론모델={is_reasoning_model}, 추론내용={len(reasoning_content)}자, 답변={len(final_answer)}자")
+        
+        # 추론 정보를 먼저 설정 (렌더링이 포함됨)
         bubble.set_reasoning_info(is_reasoning_model, reasoning_content, final_answer)
-        bubble.update_message_content(final_content)
-        bubble.show_raw_button()
-        QTimer.singleShot(100, self.main_window.scroll_to_bottom)
+        
+        # 사용 도구 정보 표시
+        if used_tools:
+            bubble.show_raw_button()
+
+        # 모든 설정이 완료된 후 높이 조정
+        if text_browser:
+            bubble.adjust_browser_height(text_browser)
 
     def show_stopped_bubble(self, bubble: AIChatBubble, content: str) -> None:
         """중단된 버블 표시"""
@@ -149,4 +140,4 @@ class StreamingBubbleManager:
             text_browser.setHtml(final_html)
             bubble.adjust_browser_height(text_browser)
 
-    # copy rest of methods without change 
+    # copy rest of methods without change ㅌ

@@ -98,6 +98,12 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         self.toggle_button: Optional[QPushButton] = None
         self.copy_button: Optional[QPushButton] = None
         
+        # 추론 과정 관련 초기화
+        self.is_reasoning_model: bool = False
+        self.reasoning_content: str = ""
+        self.final_answer: str = ""
+        self.show_reasoning: bool = True  # 기본적으로 추론 과정 표시
+        
         super().__init__(message=message, ui_config=ui_config, parent=parent)
 
     # ------------------------------------------------------------------
@@ -147,31 +153,8 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         self.text_browser = text_browser
         self._update_text_browser_theme()
         
-        # 초기 메시지에 마크다운 렌더링 적용
-        try:
-            from application.util.markdown_manager import MarkdownManager
-
-            html_content = self._markdown_to_styled_html(self.message)
-
-            # 테이블 스타일 적용 (MarkdownManager may add extra css)
-            md_manager = MarkdownManager()
-            html_content = md_manager.apply_table_styles(html_content)
-            
-            font_family, font_size = self.get_font_config()
-            styled_html = f"""
-            <div style="
-                color: #1F2937;
-                line-height: 1.6;
-                font-family: '{font_family}';
-                font-size: {font_size}px;
-            ">
-                {html_content}
-            </div>
-            """
-            text_browser.setHtml(styled_html)
-        except Exception as e:
-            logger.warning(f"초기 마크다운 변환 실패: {e}")
-            text_browser.setHtml(self.message.replace("\n", "<br>"))
+        # 초기 메시지 렌더링
+        self._render_message_content()
         
         # 텍스트 내용에 맞게 높이 자동 조절
         self._adjust_text_browser_height(text_browser)
@@ -216,6 +199,183 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         # bubble_frame을 stretch factor 1로 추가하여 사용자 버블과 동일한 동작 구현
         root_layout.addWidget(bubble_frame, 1)
         root_layout.addStretch()
+
+    # ------------------------------------------------------------------
+    # Reasoning display methods
+    # ------------------------------------------------------------------
+    def set_reasoning_info(self, is_reasoning: bool, reasoning_content: str = "", final_answer: str = "") -> None:
+        """추론 모델의 추론 과정 정보를 설정합니다."""
+        self.is_reasoning_model = is_reasoning
+        self.reasoning_content = reasoning_content
+        self.final_answer = final_answer
+        
+        if is_reasoning:
+            logger.debug(f"추론 모델 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자")
+        
+        # 메시지 내용 다시 렌더링
+        self._render_message_content()
+
+    def _render_message_content(self) -> None:
+        """현재 설정에 따라 메시지 내용을 렌더링합니다."""
+        if not hasattr(self, 'text_browser') or not self.text_browser:
+            return
+            
+        try:
+            # Raw 모드인 경우
+            if self.raw_mode:
+                self._render_raw_content()
+                return
+                
+            # 추론 모델인 경우 추론 과정과 함께 표시
+            if self.is_reasoning_model and self.reasoning_content and self.show_reasoning:
+                self._render_reasoning_content()
+            else:
+                # 일반 마크다운 렌더링
+                self._render_normal_content()
+                
+        except Exception as e:
+            logger.warning(f"메시지 렌더링 실패: {e}")
+            # 실패 시 기본 텍스트 표시
+            self.text_browser.setHtml(self.message.replace("\n", "<br>"))
+        
+        # 높이 자동 조절
+        self._adjust_text_browser_height(self.text_browser)
+
+    def _render_raw_content(self) -> None:
+        """Raw 모드로 내용을 렌더링합니다."""
+        font_family, font_size = self.get_font_config()
+        content = self.message
+        
+        # 추론 모델인 경우 원본 메시지 표시
+        if self.is_reasoning_model and self.reasoning_content:
+            # 원본 형태로 조합
+            if self.final_answer:
+                content = f"<think>\n{self.reasoning_content}\n</think>\n\n{self.final_answer}"
+            else:
+                content = f"<think>\n{self.reasoning_content}\n</think>"
+        
+        raw_html = f"""
+        <div style="
+            color: #1F2937;
+            line-height: 1.6;
+            font-family: 'monospace';
+            font-size: {font_size}px;
+            white-space: pre-wrap;
+            background-color: #F3F4F6;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #D1D5DB;
+        ">
+            {content}
+        </div>
+        """
+        self.text_browser.setHtml(raw_html)
+
+    def _render_reasoning_content(self) -> None:
+        """추론 과정과 함께 내용을 렌더링합니다."""
+        from application.util.markdown_manager import MarkdownManager
+        import markdown
+        
+        # 추론 과정을 마크다운으로 변환
+        reasoning_html = self._markdown_to_styled_html(self.reasoning_content)
+        
+        # 최종 답변을 마크다운으로 변환
+        final_html = ""
+        if self.final_answer:
+            final_html = self._markdown_to_styled_html(self.final_answer)
+        
+        # 테이블 스타일 적용
+        md_manager = MarkdownManager()
+        reasoning_html = md_manager.apply_table_styles(reasoning_html)
+        if final_html:
+            final_html = md_manager.apply_table_styles(final_html)
+        
+        # UI 설정 가져오기
+        font_family, font_size = self.get_font_config()
+        colors = self.get_theme_colors()
+        
+        # 추론 과정을 접을 수 있는 details/summary HTML 생성
+        styled_html = f"""
+        <div style="
+            color: {colors.get('text', '#1F2937')};
+            line-height: 1.6;
+            font-family: '{font_family}';
+            font-size: {font_size}px;
+        ">
+            <details style="
+                margin-bottom: 16px; 
+                border: 1px solid #F59E0B; 
+                border-radius: 8px; 
+                padding: 12px; 
+                background-color: #FFFBEB;
+            ">
+                <summary style="
+                    cursor: pointer;
+                    font-size: {max(font_size - 2, 10)}px;
+                    color: #F59E0B;
+                    font-weight: 500;
+                    margin-bottom: 8px;
+                    user-select: none;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                ">
+                    <span style="font-size: 14px;">🤔</span>
+                    <span>&lt;think&gt; 추론 과정 보기</span>
+                </summary>
+                <div style="
+                    font-size: {max(font_size - 2, 10)}px;
+                    color: #6B7280;
+                    background-color: #F9FAFB;
+                    padding: 12px;
+                    border-radius: 6px;
+                    margin-top: 8px;
+                    border-left: 3px solid #F59E0B;
+                ">
+                    {reasoning_html}
+                </div>
+            </details>
+            {final_html if final_html else ""}
+        </div>
+        """
+        
+        self.text_browser.setHtml(styled_html)
+
+    def _render_normal_content(self) -> None:
+        """일반 마크다운 내용을 렌더링합니다."""
+        # 표시할 내용 결정
+        content = self.final_answer if (self.is_reasoning_model and self.final_answer) else self.message
+        
+        # 마크다운을 HTML로 변환
+        from application.util.markdown_manager import MarkdownManager
+        
+        html_content = self._markdown_to_styled_html(content)
+        
+        # 테이블 스타일 적용
+        md_manager = MarkdownManager()
+        html_content = md_manager.apply_table_styles(html_content)
+        
+        # Final tweaks for tests
+        import re as _re
+        html_content = _re.sub(r"<td[^>]*>", "<td>", html_content, flags=_re.DOTALL)
+        
+        # UI 설정 가져오기
+        font_family, font_size = self.get_font_config()
+        colors = self.get_theme_colors()
+        
+        # 스타일이 적용된 HTML 생성
+        styled_html = f"""
+        <div style="
+            color: {colors.get('text', '#1F2937')};
+            line-height: 1.6;
+            font-family: '{font_family}';
+            font-size: {font_size}px;
+        ">
+            {html_content}
+        </div>
+        """
+        
+        self.text_browser.setHtml(styled_html)
 
     # ------------------------------------------------------------------
     # Convenience factory (GitHub icon etc.) – stubbed
@@ -292,82 +452,22 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         """Store tools list for later (unused)."""
         self._used_tools = _tools  # type: ignore
 
-    def set_reasoning_info(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401
-        """Stub for reasoning-model metadata."""
-        pass
-
     def update_message_content(self, new_content: str) -> None:  # noqa: D401
         """Update displayed HTML with new content."""
-        import markdown
-
-        from application.util.markdown_manager import MarkdownManager
-        
         self.message = new_content
-        if hasattr(self, "text_browser") and self.text_browser:
-            # Raw 모드인 경우 플레인 텍스트 표시
-            if self.raw_mode:
-                font_family, font_size = self.get_font_config()
-                raw_html = f"""
-                <div style="
-                    color: #1F2937;
-                    line-height: 1.6;
-                    font-family: 'monospace';
-                    font-size: {font_size}px;
-                    white-space: pre-wrap;
-                    background-color: #F3F4F6;
-                    padding: 12px;
-                    border-radius: 8px;
-                    border: 1px solid #D1D5DB;
-                ">
-                    {new_content}
-                </div>
-                """
-                self.text_browser.setHtml(raw_html)
-                # 높이 자동 조절
-                self._adjust_text_browser_height(self.text_browser)
-                return
-            
-            # 마크다운을 HTML로 변환
-            try:
-                html_content = self._markdown_to_styled_html(new_content)
-                
-                # 테이블 스타일 적용 (MarkdownManager may add extra css)
-                md_manager = MarkdownManager()
-                html_content = md_manager.apply_table_styles(html_content)
-                
-                # Final tweaks for tests (e.g., remove <td> attrs added by MarkdownManager)
-                import re as _re
-                html_content = _re.sub(r"<td[^>]*>", "<td>", html_content, flags=_re.DOTALL)
-                
-                # UI 설정 가져오기
-                font_family, font_size = self.get_font_config()
-                
-                # 스타일이 적용된 HTML 생성
-                styled_html = f"""
-                <div style="
-                    color: #1F2937;
-                    line-height: 1.6;
-                    font-family: '{font_family}';
-                    font-size: {font_size}px;
-                ">
-                    {html_content}
-                </div>
-                """
-                
-                self.text_browser.setHtml(styled_html)
-            except Exception as e:
-                logger.warning(f"마크다운 변환 실패, 플레인 HTML 사용: {e}")
-                # 변환 실패 시 기본 줄바꿈 처리
-                self.text_browser.setHtml(new_content.replace("\n", "<br>"))
-            
-            # 마크다운 렌더링 후 높이 자동 조절
-            self._adjust_text_browser_height(self.text_browser)
+        self._render_message_content()
 
     def copy_content(self) -> None:
         """메시지 내용을 클립보드에 복사"""
         try:
             clipboard = QApplication.clipboard()
-            clipboard.setText(self.message)
+            
+            # 복사할 내용 결정 (추론 모델인 경우 최종 답변만 복사)
+            content_to_copy = self.message
+            if self.is_reasoning_model and self.final_answer and not self.raw_mode:
+                content_to_copy = self.final_answer
+                
+            clipboard.setText(content_to_copy)
             logger.debug("메시지 내용이 클립보드에 복사되었습니다")
         except Exception as e:
             logger.error(f"클립보드 복사 실패: {e}")
@@ -386,7 +486,7 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
                 self.toggle_button.setToolTip("RAW로 전환")
         
         # 메시지 내용 다시 렌더링
-        self.update_message_content(self.message)
+        self._render_message_content()
         
         logger.debug(f"표시 모드 전환: {'RAW' if self.raw_mode else 'Markdown'}")
 
@@ -431,7 +531,7 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
                 }}"""
             )
             # HTML 콘텐츠도 다시 렌더링
-            self._rerender_content()
+            self._render_message_content()
 
     def _update_button_theme(self) -> None:
         """버튼들의 테마를 업데이트합니다."""
@@ -460,49 +560,6 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
             self.copy_button.setStyleSheet(button_style)
         if hasattr(self, 'toggle_button'):
             self.toggle_button.setStyleSheet(button_style)
-
-    def _rerender_content(self) -> None:
-        """테마 변경 시 콘텐츠를 다시 렌더링합니다."""
-        try:
-            if not hasattr(self, 'text_browser'):
-                return
-                
-            colors = self.get_theme_colors()
-            font_family, font_size = self.get_font_config()
-            
-            # 현재 표시 중인 내용 결정
-            content = self.streaming_content if self.is_streaming else self.message
-            
-            # 마크다운 렌더링 적용
-            from application.util.markdown_manager import MarkdownManager
-
-            html_content = self._markdown_to_styled_html(content)
-
-            # 테이블 스타일 적용 (MarkdownManager may add extra css)
-            md_manager = MarkdownManager()
-            html_content = md_manager.apply_table_styles(html_content)
-            
-            # Final tweaks for tests (e.g., remove <td> attrs added by MarkdownManager)
-            import re as _re
-            html_content = _re.sub(r"<td[^>]*>", "<td>", html_content, flags=_re.DOTALL)
-            
-            styled_html = f"""
-            <div style="
-                color: {colors.get('text', '#1F2937')};
-                line-height: 1.6;
-                font-family: '{font_family}';
-                font-size: {font_size}px;
-            ">
-                {html_content}
-            </div>
-            """
-            self.text_browser.setHtml(styled_html)
-            
-        except Exception as e:
-            logger.warning(f"콘텐츠 재렌더링 실패: {e}")
-            if hasattr(self, 'text_browser'):
-                content = self.streaming_content if self.is_streaming else self.message
-                self.text_browser.setHtml(content.replace("\n", "<br>"))
 
     # ------------------------------------------------------------------
     # Internal helpers

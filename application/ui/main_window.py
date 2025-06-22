@@ -208,7 +208,8 @@ class MainWindow(QMainWindow):
 
     def on_profile_changed(self, index: int) -> None:
         """모델 프로필 변경 시 호출되는 슬롯"""
-        if not hasattr(self, "model_selector") or index < 0:
+        if not hasattr(self, "model_selector") or self.model_selector is None or index < 0:
+            logger.debug("model_selector가 초기화되지 않았거나 인덱스가 유효하지 않습니다.")
             return
 
         try:
@@ -245,24 +246,27 @@ class MainWindow(QMainWindow):
                 self.update_model_label()
 
                 # 5. 새로운 대화 시작 (중요: 컨텍스트 유지를 위해)
-                self.start_new_conversation()
-                # 새 대화 시작 후 환영 메시지에 추가 설명
-                QTimer.singleShot(
-                    150,
-                    lambda: self.add_system_message(
-                        f"✅ **시스템**: 모델이 **{self.model_selector.currentText()}** (으)로 변경되었습니다. 새로운 대화를 시작합니다."
-                    ),
-                )
+                if hasattr(self, "message_manager") and self.message_manager is not None:
+                    self.start_new_conversation()
+                    # 새 대화 시작 후 환영 메시지에 추가 설명
+                    current_text = self.model_selector.currentText() if self.model_selector else "알 수 없음"
+                    QTimer.singleShot(
+                        150,
+                        lambda: self.add_system_message(
+                            f"✅ **시스템**: 모델이 **{current_text}** (으)로 변경되었습니다. 새로운 대화를 시작합니다."
+                        ),
+                    )
 
         except Exception as e:
             logger.error(f"프로필 변경 처리 중 오류 발생: {e}")
             import traceback
 
             logger.error(f"프로필 변경 오류 상세: {traceback.format_exc()}")
-            # 사용자에게 오류 알림
-            self.add_system_message(
-                f"❌ **오류**: 프로필 변경 중 문제가 발생했습니다: {str(e)}"
-            )
+            # 사용자에게 오류 알림 (add_system_message가 초기화되었을 때만)
+            if hasattr(self, "message_manager") and self.message_manager is not None:
+                self.add_system_message(
+                    f"❌ **오류**: 프로필 변경 중 문제가 발생했습니다: {str(e)}"
+                )
 
     def on_settings_changed(self) -> None:
         """설정이 변경되었을 때 호출"""
@@ -462,15 +466,18 @@ class MainWindow(QMainWindow):
 
     def update_model_label(self) -> None:
         """모델명 라벨 업데이트"""
-        if hasattr(self, "model_label"):
-            try:
-                llm_config = self.config_manager.get_llm_config()
-                model = llm_config.get("model", "설정 필요")
-                self.model_label.setText(f"📋 {model}")
-                logger.debug(f"모델명 업데이트: {model}")
-            except Exception as e:
-                self.model_label.setText("📋 설정 필요")
-                logger.warning(f"모델명 업데이트 실패: {e}")
+        if not hasattr(self, "model_label") or self.model_label is None:
+            logger.debug("model_label이 아직 초기화되지 않았습니다. 건너뜁니다.")
+            return
+            
+        try:
+            llm_config = self.config_manager.get_llm_config()
+            model = llm_config.get("model", "설정 필요")
+            self.model_label.setText(f"📋 {model}")
+            logger.debug(f"모델명 업데이트: {model}")
+        except Exception as e:
+            self.model_label.setText("📋 설정 필요")
+            logger.warning(f"모델명 업데이트 실패: {e}")
 
     def input_key_press_event(self, event: QKeyEvent) -> None:
         """입력창 키 이벤트 처리"""
@@ -960,25 +967,28 @@ class MainWindow(QMainWindow):
 
     def refresh_model_selector(self) -> None:
         """모델 선택 드롭다운 새로고침"""
-        if hasattr(self, "model_selector"):
-            try:
-                profiles = self.config_manager.get_llm_profiles()
-                current_profile = self.config_manager.get_current_profile_name()
+        if not hasattr(self, "model_selector") or self.model_selector is None:
+            logger.debug("model_selector가 아직 초기화되지 않았습니다. 건너뜁니다.")
+            return
+            
+        try:
+            profiles = self.config_manager.get_llm_profiles()
+            current_profile = self.config_manager.get_current_profile_name()
 
-                # 드롭다운 업데이트
-                self.model_selector.clear()
+            # 드롭다운 업데이트
+            self.model_selector.clear()
 
-                for profile_id, profile_data in profiles.items():
-                    display_name = f"{profile_data['name']} ({profile_data['model']})"
-                    self.model_selector.addItem(display_name, profile_id)
+            for profile_id, profile_data in profiles.items():
+                display_name = f"{profile_data['name']} ({profile_data['model']})"
+                self.model_selector.addItem(display_name, profile_id)
 
-                # 현재 프로필 다시 선택
-                for i in range(self.model_selector.count()):
-                    if self.model_selector.itemData(i) == current_profile:
-                        self.model_selector.setCurrentIndex(i)
-                        break
-            except Exception as e:
-                logger.error(f"모델 선택 드롭다운 새로고침 실패: {e}")
+            # 현재 프로필 다시 선택
+            for i in range(self.model_selector.count()):
+                if self.model_selector.itemData(i) == current_profile:
+                    self.model_selector.setCurrentIndex(i)
+                    break
+        except Exception as e:
+            logger.error(f"모델 선택 드롭다운 새로고침 실패: {e}")
 
     def toggle_theme(self) -> None:
         """테마를 토글합니다."""

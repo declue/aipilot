@@ -6,7 +6,6 @@ This module provides a command-line interface to test the LLM module's functiona
 
 import argparse
 import asyncio
-import sys
 from typing import Optional
 
 from application.config.config_manager import ConfigManager

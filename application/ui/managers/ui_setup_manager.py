@@ -253,16 +253,6 @@ class UISetupManager:
                     if hasattr(self.main_window, "llm_agent"):
                         self.main_window.llm_agent._client = None  # 클라이언트 초기화
 
-                    # 상태 메시지 추가
-                    profiles = self.main_window.config_manager.get_llm_profiles()
-                    selected_profile = profiles.get(profile_id, {})
-                    model_name = selected_profile.get("model", "Unknown")
-                    profile_name = selected_profile.get("name", "Unknown")
-
-                    status_message = (
-                        f"🔄 **모델 변경됨**: {profile_name} ({model_name})"
-                    )
-                    self.main_window.add_system_message(status_message)
 
                 except Exception as e:
                     print(f"모델 변경 실패: {e}")

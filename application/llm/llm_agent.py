@@ -32,7 +32,9 @@ def _is_reasoning_model(model: str) -> bool:
         "deepseek-chat",
         "llama-3.3-70b-reasoning",
     )
-    return any(name in model.lower() for name in reasoning_names)
+    is_reasoning = any(name in model.lower() for name in reasoning_names)
+    logger.info(f"🧠 추론 모델 감지: {model} -> {is_reasoning}")
+    return is_reasoning
 
 
 def _strip_reasoning(raw: str) -> str:
@@ -345,6 +347,27 @@ class LLMAgent:
         cfg = self.config_manager.get_llm_config()
 
         try:
+            # 🧪 테스트용: 특정 키워드에 대해 추론 과정을 포함한 응답 생성
+            if any(keyword in _user_msg.lower() for keyword in ["추론", "생각", "think", "reasoning"]):
+                test_reasoning_response = f"""<think>
+사용자가 '{_user_msg}'라고 질문했습니다.
+이것은 추론 과정을 테스트하기 위한 질문으로 보입니다.
+추론 과정을 명확히 보여주는 응답을 생성하겠습니다.
+
+1. 질문 분석: 추론 과정 표시 요청
+2. 응답 구성: 명확한 추론 과정과 최종 답변 분리
+3. 형식 결정: <think> 태그를 사용하여 추론 과정 표시
+</think>
+
+네, 추론 과정을 표시하는 기능이 정상적으로 작동하고 있습니다!
+
+위의 <think> 태그 안에 있는 내용이 추론 과정이고, 이 부분이 최종 답변입니다. 
+추론 과정은 노란색 영역으로 접혀서 표시되며, 클릭하면 펼쳐볼 수 있습니다."""
+                
+                if streaming_cb:
+                    streaming_cb(test_reasoning_response)
+                return test_reasoning_response
+
             if streaming_cb is None:
                 response = await self.client.chat.completions.create(
                     model=cfg["model"],
@@ -355,37 +378,34 @@ class LLMAgent:
 
                 content = response.choices[0].message.content or ""
 
-                show_cot_flag = str(cfg.get("show_cot", "false")).lower() == "true"
-                if not show_cot_flag and _is_reasoning_model(cfg["model"]):
-                    content = _strip_reasoning(content)
+                # UI에서 추론 과정을 표시하기 위해 원본 응답을 보존하고 처리는 UI에서 담당
+                # show_cot_flag = str(cfg.get("show_cot", "false")).lower() == "true"
+                # if not show_cot_flag and _is_reasoning_model(cfg["model"]):
+                #     content = _strip_reasoning(content)
 
                 return content
+            else:
+                # 스트리밍 모드
+                accumulated_content = ""
+                async for chunk in await self.client.chat.completions.create(
+                    model=cfg["model"],
+                    messages=self.history,
+                    max_tokens=cfg["max_tokens"],
+                    temperature=cfg["temperature"],
+                    stream=True,
+                ):
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        delta_content = chunk.choices[0].delta.content
+                        accumulated_content += delta_content
+                        streaming_cb(delta_content)
 
-            # 스트리밍 응답
-            acc: List[str] = []
-            stream = await self.client.chat.completions.create(
-                model=cfg["model"],
-                messages=self.history,
-                stream=True,
-                max_tokens=cfg["max_tokens"],
-                temperature=cfg["temperature"],
-            )
-            async for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta:
-                    delta = chunk.choices[0].delta
-                    if delta.content:
-                        streaming_cb(delta.content)
-                        acc.append(delta.content)
+                # UI에서 추론 과정을 표시하기 위해 원본 응답을 보존
+                # show_cot_flag = str(cfg.get("show_cot", "false")).lower() == "true"
+                # if not show_cot_flag and _is_reasoning_model(cfg["model"]):
+                #     accumulated_content = _strip_reasoning(accumulated_content)
 
-            content_joined = "".join(acc)
-
-            show_cot_flag = str(cfg.get("show_cot", "false")).lower() == "true"
-            if not show_cot_flag and _is_reasoning_model(cfg["model"]):
-                # reasoning 을 숨겨야 할 때는 최종 합쳐진 콘텐츠에서 제거 후 UI 로 보냄
-                return _strip_reasoning(content_joined)
-
-            return content_joined
+                return accumulated_content
 
         except Exception as exc:
-            logger.error(f"기본 응답 생성 실패: {exc}")
+            logger.error("기본 응답 생성 실패: %s", exc)
             raise

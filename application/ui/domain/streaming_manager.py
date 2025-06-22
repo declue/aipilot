@@ -119,6 +119,10 @@ class StreamingManager:
         self.state.is_streaming = False
         self.update_timer.stop()
 
+        # 디버깅을 위해 전체 응답 내용 로그 출력
+        logger.info(f"🔍 스트리밍 완료 - 전체 응답 내용 ({len(final_content)}자):")
+        logger.info(f"📝 응답 내용: {final_content}")
+
         # 최종 내용 파싱 (기존 추론 모델 상태 유지)
         prev_is_reasoning = self.state.is_reasoning_model
         prev_reasoning_content = self.state.reasoning_content
@@ -130,6 +134,8 @@ class StreamingManager:
             reasoning_content,
             final_answer,
         ) = self.reasoning_parser.parse_reasoning_content(final_content)
+
+        logger.info(f"🧠 파싱 결과 - 추론모델: {is_reasoning}, 추론내용: {len(reasoning_content)}자, 답변: {len(final_answer)}자")
 
         self.state.is_reasoning_model = is_reasoning
         self.state.reasoning_content = reasoning_content

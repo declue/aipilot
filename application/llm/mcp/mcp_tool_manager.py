@@ -235,18 +235,6 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
                 if assistant_msg.content:
                     reasoning_parts.append(assistant_msg.content)
 
-                if not show_cot_flag_global:
-                    try:
-                        from application.llm.llm_agent import (
-                            _is_reasoning_model as _irm,  # pylint: disable=import-outside-toplevel; type: ignore
-                        )
-                        from application.llm.llm_agent import _strip_reasoning as _sr
-
-                        if _irm(cfg.get("model", "")):
-                            final_answer = _sr(final_answer)
-                    except Exception as exc:  # pylint: disable=broad-except
-                        logger.debug("reasoning 처리 실패: %s", exc)
-
                 reasoning_text = "\n".join(reasoning_parts) if show_cot_flag_global else ""
 
                 return {
