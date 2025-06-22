@@ -171,11 +171,6 @@ class MarkdownManager:
                 import html
                 return html.escape(code_content)
             raise
-        except Exception as e:
-            self.logger.warning("문법 하이라이트 적용 실패: %s", e)
-            import html
-
-            return html.escape(code_content)
 
     def create_code_block_html(
         self, highlighted_code: str, language: str, code_index: int
