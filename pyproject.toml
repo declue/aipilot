@@ -31,7 +31,6 @@ dependencies = [
     "types-Markdown",
     "types-psutil",
     "PySide6-stubs",
-    "types-pytest",
     "authlib",
     "httpx",
     "aiohttp",
