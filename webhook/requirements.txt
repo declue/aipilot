@@ -2,3 +2,4 @@ fastapi
 uvicorn
 sqlalchemy
 loguru
+werkzeug==3.1.3
