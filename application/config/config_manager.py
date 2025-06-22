@@ -18,41 +18,41 @@ logger: logging.Logger = setup_logger("config_manager") or logging.getLogger(
 
 class ConfigManager:
     """통합 설정 관리 클래스
-    
+
     AppConfigManager와 LLMProfileManager를 조합하여 
     기존 인터페이스를 유지하면서 책임을 분리합니다.
-    
+
     추가 기능:
     - 실시간 파일 변경 감지
     - 자동 리로드
     - 변경 사항 콜백 시스템
     """
-    
+
     DEFAULT_APP_CONFIG_FILE_NAME = "app.config"
     DEFAULT_LLM_PROFILES_JSON = "llm_profiles.json"
     DEFAULT_LLM_PROFILE = "default"
 
     def __init__(self, config_file: Optional[str] = None) -> None:
         """ConfigManager 생성자
-        
+
         Args:
             config_file: 설정 파일 경로. None인 경우 기본값 사용
         """
         self._lock = threading.RLock()
         self._change_callbacks: List[ConfigChangeCallback] = []
         self._file_change_notifier = get_config_change_notifier()
-        
+
         # 컴포지션을 통한 책임 분리
         self.app_config_manager = AppConfigManager(config_file)
         self.llm_profile_manager = LLMProfileManager()
-        
+
         # 기존 인터페이스 호환성을 위한 속성들
         self.config_file = self.app_config_manager.config_file
         self.config = self.app_config_manager.config
         self.llm_profiles_file = self.llm_profile_manager.llm_profiles_file
         self._llm_profiles = self.llm_profile_manager._llm_profiles
         self._current_profile_name = self.llm_profile_manager._current_profile_name
-        
+
         # 파일 변경 감지 설정
         self._setup_file_watching()
 
@@ -65,7 +65,7 @@ class ConfigManager:
                     self.config_file, self._on_app_config_changed
                 )
                 logger.debug(f"app.config 파일 감시 시작: {self.config_file}")
-            
+
             # llm_profiles.json 파일 감시
             if self.llm_profiles_file:
                 self._file_change_notifier.register_callback(
@@ -78,52 +78,50 @@ class ConfigManager:
     def _on_app_config_changed(self, file_path: str, change_type: str) -> None:
         """app.config 파일 변경 시 콜백"""
         logger.info(f"app.config 파일 변경 감지: {change_type}")
-        
+
         try:
             with self._lock:
                 if change_type in ["modified", "created"]:
-                    # 설정 리로드
-                    old_config = dict(self.config.items()) if hasattr(self.config, 'items') else {}
                     self.app_config_manager.load_config()
                     self.config = self.app_config_manager.config  # 참조 동기화
-                    
+
                     # 등록된 콜백들에게 알림
                     self._notify_config_changed(file_path, change_type)
                     logger.debug("app.config 리로드 완료")
-                    
+
                 elif change_type == "deleted":
                     logger.warning("app.config 파일이 삭제됨, 기본 설정으로 복원")
                     self.app_config_manager.create_default_config()
                     self.config = self.app_config_manager.config
                     self._notify_config_changed(file_path, change_type)
-                    
+
         except Exception as e:
             logger.error(f"app.config 리로드 중 오류: {e}")
 
     def _on_llm_profiles_changed(self, file_path: str, change_type: str) -> None:
         """llm_profiles.json 파일 변경 시 콜백"""
         logger.info(f"LLM 프로필 파일 변경 감지: {change_type}")
-        
+
         try:
             with self._lock:
                 if change_type in ["modified", "created"]:
                     # 프로필 리로드
                     self.llm_profile_manager.load_llm_profiles()
                     # 참조 동기화
-                    self._llm_profiles = self.llm_profile_manager._llm_profiles
-                    self._current_profile_name = self.llm_profile_manager._current_profile_name
-                    
+                    self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
+                    self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+
                     # 등록된 콜백들에게 알림
                     self._notify_config_changed(file_path, change_type)
                     logger.debug("LLM 프로필 리로드 완료")
-                    
+
                 elif change_type == "deleted":
                     logger.warning("LLM 프로필 파일이 삭제됨, 기본 프로필로 복원")
                     self.llm_profile_manager.create_default_llm_profiles()
-                    self._llm_profiles = self.llm_profile_manager._llm_profiles
-                    self._current_profile_name = self.llm_profile_manager._current_profile_name
+                    self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
+                    self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
                     self._notify_config_changed(file_path, change_type)
-                    
+
         except Exception as e:
             logger.error(f"LLM 프로필 리로드 중 오류: {e}")
 
@@ -137,7 +135,7 @@ class ConfigManager:
 
     def register_change_callback(self, callback: ConfigChangeCallback) -> None:
         """설정 변경 콜백 등록
-        
+
         Args:
             callback: 설정 변경 시 호출할 콜백 함수
                      함수 시그니처: callback(file_path: str, change_type: str) -> None
@@ -149,7 +147,7 @@ class ConfigManager:
 
     def unregister_change_callback(self, callback: ConfigChangeCallback) -> None:
         """설정 변경 콜백 해제
-        
+
         Args:
             callback: 해제할 콜백 함수
         """
@@ -163,22 +161,22 @@ class ConfigManager:
     def force_reload(self) -> None:
         """강제로 모든 설정 파일 리로드"""
         logger.info("설정 파일 강제 리로드 시작")
-        
+
         try:
             with self._lock:
                 # app.config 리로드
                 self.app_config_manager.load_config()
                 self.config = self.app_config_manager.config
-                
+
                 # llm_profiles.json 리로드
                 self.llm_profile_manager.load_llm_profiles()
-                self._llm_profiles = self.llm_profile_manager._llm_profiles
-                self._current_profile_name = self.llm_profile_manager._current_profile_name
-                
+                self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
+                self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+
                 # 콜백 알림
                 self._notify_config_changed("manual_reload", "forced")
                 logger.info("설정 파일 강제 리로드 완료")
-                
+
         except Exception as e:
             logger.error(f"강제 리로드 중 오류: {e}")
             raise
@@ -202,15 +200,15 @@ class ConfigManager:
         with self._lock:
             self.llm_profile_manager.load_llm_profiles()
             # 참조 동기화
-            self._llm_profiles = self.llm_profile_manager._llm_profiles
-            self._current_profile_name = self.llm_profile_manager._current_profile_name
+            self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
+            self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
 
     def create_default_llm_profiles(self) -> None:
         """기본 LLM 프로필 생성 - LLMProfileManager에 위임"""
         self.llm_profile_manager.create_default_llm_profiles()
         # 참조 동기화
-        self._llm_profiles = self.llm_profile_manager._llm_profiles
-        self._current_profile_name = self.llm_profile_manager._current_profile_name
+        self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
+        self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
 
     def save_llm_profiles(self) -> None:
         """LLM 프로필 저장 - LLMProfileManager에 위임"""
@@ -231,15 +229,15 @@ class ConfigManager:
         """현재 프로필 설정 - LLMProfileManager에 위임하고 app.config에도 저장"""
         with self._lock:
             self.llm_profile_manager.set_current_profile(profile_name)
-            
+
             # 기본 설정 파일에도 저장 (기존 동작 유지)
             if "LLM" not in self.config:
                 self.config.add_section("LLM")
             self.config["LLM"]["current_profile"] = profile_name
             self.save_config()
-            
+
             # 참조 동기화
-            self._current_profile_name = self.llm_profile_manager._current_profile_name
+            self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
 
     def get_llm_config(self) -> Dict[str, Any]:
         """LLM 설정 반환 - 프로필 우선, 하위 호환성 유지"""
@@ -280,10 +278,12 @@ class ConfigManager:
                         ),
                         "model": self.config.get("LLM", "model", fallback="llama3.2"),
                         "temperature": float(
-                            self.config.get("LLM", "temperature", fallback="0.7")
+                            self.config.get(
+                                "LLM", "temperature", fallback="0.7")
                         ),
                         "max_tokens": int(
-                            self.config.get("LLM", "max_tokens", fallback="100000")
+                            self.config.get("LLM", "max_tokens",
+                                            fallback="100000")
                         ),
                         "top_k": int(self.config.get("LLM", "top_k", fallback="50")),
                         "instruction_file": self.config.get(
@@ -317,22 +317,22 @@ class ConfigManager:
         with self._lock:
             self.llm_profile_manager.create_llm_profile(profile_name, config)
             # 참조 동기화
-            self._llm_profiles = self.llm_profile_manager._llm_profiles
+            self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
 
     def update_llm_profile(self, profile_name: str, config: Dict[str, Any]) -> None:
         """LLM 프로필 업데이트 - LLMProfileManager에 위임"""
         with self._lock:
             self.llm_profile_manager.update_llm_profile(profile_name, config)
             # 참조 동기화
-            self._llm_profiles = self.llm_profile_manager._llm_profiles
+            self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
 
     def delete_llm_profile(self, profile_name: str) -> None:
         """LLM 프로필 삭제 - LLMProfileManager에 위임"""
         with self._lock:
             self.llm_profile_manager.delete_llm_profile(profile_name)
             # 참조 동기화
-            self._llm_profiles = self.llm_profile_manager._llm_profiles
-            self._current_profile_name = self.llm_profile_manager._current_profile_name
+            self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
+            self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
 
     def set_llm_config(self, api_key: str, base_url: str, model: str) -> None:
         """LLM 설정 저장 - AppConfigManager에 위임"""
@@ -455,26 +455,22 @@ GitHub 관련 키워드("이슈", "issue", "PR", "pull request", "커밋", "comm
 
     def load_ui_config(self) -> None:
         """UI 설정 로드 - 기존 호환성 유지"""
-        pass
-
-    def get_mcp_config(self) -> Dict[str, Any]:
-        """MCP 설정 반환 - AppConfigManager에 위임"""
-        with self._lock:
-            return self.app_config_manager.get_mcp_config()
 
     def cleanup(self) -> None:
         """리소스 정리"""
         try:
             # 파일 감시 해제
             if self.config_file:
-                self._file_change_notifier.unregister_all_callbacks(self.config_file)
+                self._file_change_notifier.unregister_all_callbacks(
+                    self.config_file)
             if self.llm_profiles_file:
-                self._file_change_notifier.unregister_all_callbacks(self.llm_profiles_file)
-            
+                self._file_change_notifier.unregister_all_callbacks(
+                    self.llm_profiles_file)
+
             # 콜백 리스트 클리어
             with self._lock:
                 self._change_callbacks.clear()
-                
+
             logger.debug("ConfigManager 리소스 정리 완료")
         except Exception as e:
             logger.error(f"ConfigManager 리소스 정리 중 오류: {e}")
@@ -483,5 +479,5 @@ GitHub 관련 키워드("이슈", "issue", "PR", "pull request", "커밋", "comm
         """소멸자"""
         try:
             self.cleanup()
-        except:
+        except Exception:
             pass

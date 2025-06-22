@@ -307,7 +307,7 @@ font_size = 14
         
         def test_callback(file_path, change_type):
             if self.app_config_file in file_path and change_type in ["modified", "created"]:
-                callback_called.set()
+                callback_called.set()\
         
         self.config_manager.register_change_callback(test_callback)
         

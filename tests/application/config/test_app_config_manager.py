@@ -143,34 +143,32 @@ class TestAppConfigManager:
         assert retrieved_config["font_family"] == "Helvetica"
         assert retrieved_config["font_size"] == 18  # 자동 형변환 확인
 
-    def test_get_mcp_config_file_exists(self, mock_app_config_manager: AppConfigManager):
-        """MCP 설정 파일이 존재할 때 테스트"""
-        test_mcp_data = {
-            "mcpServers": {
-                "test_server": {
-                    "command": "test_command",
-                    "args": ["arg1", "arg2"]
-                }
-            },
-            "defaultServer": "test_server",
-            "enabled": True
+    def test_get_github_config_default(self, mock_app_config_manager: AppConfigManager):
+        """GitHub 설정 기본값 테스트"""
+        github_config = mock_app_config_manager.get_github_config()
+        
+        assert "repositories" in github_config
+        assert "webhook_enabled" in github_config
+        assert "webhook_port" in github_config
+        assert github_config["repositories"] == []
+        assert github_config["webhook_enabled"] is False
+        assert github_config["webhook_port"] == 8000
+
+    def test_set_github_config_success(self, mock_app_config_manager: AppConfigManager):
+        """GitHub 설정 저장 성공 테스트"""
+        github_config = {
+            "repositories": ["user/repo1", "user/repo2"],
+            "webhook_enabled": True,
+            "webhook_port": 9000
         }
         
-        with patch("os.path.exists", return_value=True), \
-             patch("builtins.open", mock_open(read_data='{"mcpServers": {}}')), \
-             patch("json.load", return_value=test_mcp_data):
-            
-            mcp_config = mock_app_config_manager.get_mcp_config()
-            assert "mcpServers" in mcp_config
-
-    def test_get_mcp_config_file_not_exists(self, mock_app_config_manager: AppConfigManager):
-        """MCP 설정 파일이 없을 때 기본값 반환 테스트"""
-        with patch("os.path.exists", return_value=False):
-            mcp_config = mock_app_config_manager.get_mcp_config()
-            
-            assert mcp_config["mcpServers"] == {}
-            assert mcp_config["defaultServer"] is None
-            assert mcp_config["enabled"] is True
+        mock_app_config_manager.set_github_config(github_config)
+        
+        # 설정이 올바르게 저장되었는지 확인
+        saved_config = mock_app_config_manager.get_github_config()
+        assert saved_config["repositories"] == ["user/repo1", "user/repo2"]
+        assert saved_config["webhook_enabled"] is True
+        assert saved_config["webhook_port"] == 9000
 
     @patch("builtins.open", new_callable=mock_open)
     def test_save_config_called(self, mock_file: Mock, mock_app_config_manager: AppConfigManager):

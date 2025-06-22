@@ -1,10 +1,3 @@
-"""
-기본 LLM 프로필 설정값 정의
-
-이 모듈은 LLM 프로필 관리에서 사용되는 기본값들을 중앙 집중적으로 관리합니다.
-DRY(Don't Repeat Yourself) 원칙에 따라 기본 프로필과 설정값을 한 곳에서 정의하고 재사용합니다.
-"""
-
 from typing import Any, Dict, List
 
 # LLM 프로필 관련 상수
@@ -14,7 +7,7 @@ DEFAULT_LLM_PROFILE = "default"
 # LLM 프로필 필수 필드 목록
 REQUIRED_LLM_PROFILE_FIELDS: List[str] = [
     "name",
-    "api_key", 
+    "api_key",
     "base_url",
     "model",
     "temperature",

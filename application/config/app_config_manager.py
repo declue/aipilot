@@ -1,5 +1,4 @@
 import configparser
-import json
 import logging
 import os
 import shutil
@@ -10,7 +9,6 @@ from application.config.default_app_config import (
     DEFAULT_APP_CONFIG_TEMPLATE_SUFFIX,
     DEFAULT_APP_CONFIG_SECTIONS,
     DEFAULT_UI_VALUES,
-    DEFAULT_MCP_CONFIG,
     SUPPORTED_THEMES,
 )
 from application.util.logger import setup_logger
@@ -22,14 +20,14 @@ logger: logging.Logger = setup_logger("app_config_manager") or logging.getLogger
 
 class AppConfigManager:
     """애플리케이션 설정 관리 클래스
-    
+
     app.config 파일을 통해 애플리케이션의 기본 설정들을 관리합니다.
     단일 책임 원칙에 따라 app.config 파일 관리만을 담당합니다.
     """
 
     def __init__(self, config_file: Optional[str] = None) -> None:
         """AppConfigManager 생성자
-        
+
         Args:
             config_file: 설정 파일 경로. None인 경우 기본값 사용
         """
@@ -121,13 +119,14 @@ class AppConfigManager:
         """UI 설정 반환"""
         try:
             self.load_config()
-            
+
             # 기본값을 사용하여 설정값 가져오기
-            font_size_str = self.config.get("UI", "font_size", fallback=str(DEFAULT_UI_VALUES["font_size"]))
+            font_size_str = self.config.get(
+                "UI", "font_size", fallback=str(DEFAULT_UI_VALUES["font_size"]))
             chat_bubble_max_width_str = self.config.get(
                 "UI", "chat_bubble_max_width", fallback=str(DEFAULT_UI_VALUES["chat_bubble_max_width"])
             )
-            
+
             # 폰트 크기 파싱 및 검증
             try:
                 font_size = int(font_size_str)
@@ -193,8 +192,8 @@ class AppConfigManager:
 
             if window_theme not in SUPPORTED_THEMES:
                 logger.warning(
-                    "알 수 없는 테마: %s, 기본값 '%s' 사용", 
-                    window_theme, 
+                    "알 수 없는 테마: %s, 기본값 '%s' 사용",
+                    window_theme,
                     DEFAULT_UI_VALUES["window_theme"]
                 )
                 window_theme = DEFAULT_UI_VALUES["window_theme"]
@@ -204,7 +203,8 @@ class AppConfigManager:
 
             self.config["UI"]["font_family"] = font_family
             self.config["UI"]["font_size"] = str(font_size)
-            self.config["UI"]["chat_bubble_max_width"] = str(chat_bubble_max_width)
+            self.config["UI"]["chat_bubble_max_width"] = str(
+                chat_bubble_max_width)
             self.config["UI"]["window_theme"] = window_theme
             self.save_config()
             logger.info("UI 설정 저장 완료")
@@ -213,6 +213,33 @@ class AppConfigManager:
             raise
         except Exception as exception:
             logger.error("UI 설정 저장 실패: %s", exception)
+            raise
+
+    def save_ui_config(self, ui_config: Dict[str, Any]) -> None:
+        """UI 설정 저장 (딕셔너리 형태)
+
+        Args:
+            ui_config: UI 설정 딕셔너리
+        """
+        try:
+            # 필수 필드 검증 및 기본값 적용
+            font_family = ui_config.get(
+                "font_family", DEFAULT_UI_VALUES["font_family"])
+            font_size = int(ui_config.get(
+                "font_size", DEFAULT_UI_VALUES["font_size"]))
+            chat_bubble_max_width = int(ui_config.get(
+                "chat_bubble_max_width", DEFAULT_UI_VALUES["chat_bubble_max_width"]))
+            window_theme = ui_config.get(
+                "window_theme", DEFAULT_UI_VALUES["window_theme"])
+
+            # 기존 메서드 활용
+            self.set_ui_config(font_family, font_size,
+                               chat_bubble_max_width, window_theme)
+        except (ValueError, TypeError) as exception:
+            logger.error(f"UI 설정 딕셔너리 변환 실패: {exception}")
+            raise
+        except Exception as exception:
+            logger.error(f"UI 설정 저장 실패: {exception}")
             raise
 
     def get_config_value(
@@ -258,7 +285,8 @@ class AppConfigManager:
     def get_github_repositories(self) -> List[str]:
         """GitHub 저장소 목록 반환"""
         try:
-            repositories_str = self.config.get("GITHUB", "repositories", fallback="")
+            repositories_str = self.config.get(
+                "GITHUB", "repositories", fallback="")
             if repositories_str:
                 # 콤마로 구분된 문자열을 리스트로 변환
                 repositories = [
@@ -285,31 +313,67 @@ class AppConfigManager:
             logger.error(f"GitHub 저장소 목록 설정 실패: {exception}")
             raise
 
-    def save_ui_config(self, ui_config: Dict[str, Any]) -> None:
-        """UI 설정 저장 (딕셔너리 형태)"""
+    def get_github_config(self) -> Dict[str, Any]:
+        """GitHub 설정 반환"""
         try:
-            if "UI" not in self.config:
-                self.config.add_section("UI")
-                
-            for key, value in ui_config.items():
-                self.config["UI"][key] = str(value)
-            self.save_config()
-        except Exception as exception:
-            logger.error(f"UI 설정 저장 실패: {exception}")
-            raise
+            webhook_enabled_str = self.config.get(
+                "GITHUB", "webhook_enabled", fallback="false")
+            webhook_port_str = self.config.get(
+                "GITHUB", "webhook_port", fallback="8000")
 
-    def get_mcp_config(self) -> Dict[str, Any]:
-        """MCP 설정 반환"""
-        try:
-            # MCP 설정 파일에서 서버 정보 로드
-            mcp_config_file = "mcp.json"
-            if os.path.exists(mcp_config_file):
-                with open(mcp_config_file, "r", encoding="utf-8") as f:
-                    mcp_data: Dict[str, Any] = json.load(f)
-                    return mcp_data
-            else:
-                # 기본 MCP 설정 반환
-                return DEFAULT_MCP_CONFIG.copy()
+            # Boolean 변환
+            webhook_enabled = webhook_enabled_str.lower() in ("true", "1", "yes", "on")
+
+            # Port 변환 및 검증
+            try:
+                webhook_port = int(webhook_port_str)
+                if webhook_port <= 0 or webhook_port > 65535:
+                    logger.warning(
+                        f"잘못된 포트 번호: {webhook_port_str}, 기본값 8000 사용")
+                    webhook_port = 8000
+            except (ValueError, TypeError):
+                logger.warning(f"포트 번호 변환 실패: {webhook_port_str}, 기본값 8000 사용")
+                webhook_port = 8000
+
+            return {
+                "repositories": self.get_github_repositories(),
+                "webhook_enabled": webhook_enabled,
+                "webhook_port": webhook_port,
+            }
         except Exception as exception:
-            logger.error(f"MCP 설정 로드 실패: {exception}")
-            return DEFAULT_MCP_CONFIG.copy() 
+            logger.error(f"GitHub 설정 가져오기 실패: {exception}")
+            return {
+                "repositories": [],
+                "webhook_enabled": False,
+                "webhook_port": 8000,
+            }
+
+    def set_github_config(self, github_config: Dict[str, Any]) -> None:
+        """GitHub 설정 저장"""
+        try:
+            if "GITHUB" not in self.config:
+                self.config.add_section("GITHUB")
+
+            # 저장소 목록 설정
+            if "repositories" in github_config:
+                self.set_github_repositories(github_config["repositories"])
+
+            # 웹훅 설정
+            if "webhook_enabled" in github_config:
+                self.config["GITHUB"]["webhook_enabled"] = str(
+                    github_config["webhook_enabled"]).lower()
+
+            if "webhook_port" in github_config:
+                port = int(github_config["webhook_port"])
+                if port <= 0 or port > 65535:
+                    raise ValueError(f"잘못된 포트 번호: {port}")
+                self.config["GITHUB"]["webhook_port"] = str(port)
+
+            self.save_config()
+            logger.info("GitHub 설정 저장 완료")
+        except ValueError as exception:
+            logger.error(f"GitHub 설정 값 오류: {exception}")
+            raise
+        except Exception as exception:
+            logger.error(f"GitHub 설정 저장 실패: {exception}")
+            raise

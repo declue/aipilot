@@ -1,16 +1,8 @@
-"""
-설정 변경 감지 및 알림 시스템
-
-이 모듈은 설정 파일의 변경을 감지하고 등록된 콜백 함수들에게 알림을 제공합니다.
-Observer 패턴과 watchdog 라이브러리를 활용하여 실시간 파일 변경 감지를 수행합니다.
-"""
-
 import logging
 import os
 import threading
 import time
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -58,7 +50,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
             if current_time - last_time > 0.1:  # 100ms 쿨다운
                 self.last_modified_times[file_path] = current_time
                 logger.debug(f"파일 변경 감지: {file_path}")
-                self.notifier._notify_change(file_path, "modified")
+                self.notifier._notify_change(file_path, "modified") # pylint: disable=protected-access
 
     def on_created(self, event: FileSystemEvent) -> None:
         """파일 생성 이벤트 처리"""
@@ -69,7 +61,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
         
         if file_path in self.watched_files:
             logger.debug(f"파일 생성 감지: {file_path}")
-            self.notifier._notify_change(file_path, "created")
+            self.notifier._notify_change(file_path, "created") # pylint: disable=protected-access
 
     def on_deleted(self, event: FileSystemEvent) -> None:
         """파일 삭제 이벤트 처리"""
@@ -80,7 +72,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
         
         if file_path in self.watched_files:
             logger.debug(f"파일 삭제 감지: {file_path}")
-            self.notifier._notify_change(file_path, "deleted")
+            self.notifier._notify_change(file_path, "deleted") # pylint: disable=protected-access
 
 
 class ConfigChangeNotifier:
@@ -88,7 +80,7 @@ class ConfigChangeNotifier:
     
     def __init__(self):
         self._callbacks: Dict[str, List[ConfigChangeCallback]] = {}
-        self._observer: Optional[Observer] = None
+        self._observer: Optional[Observer] = None # type: ignore
         self._watched_files: Set[str] = set()
         self._watched_directories: Set[str] = set()
         self._lock = threading.RLock()
@@ -245,7 +237,7 @@ class ConfigChangeNotifier:
         """소멸자"""
         try:
             self.stop_all()
-        except:
+        except Exception:
             pass
 
 
@@ -255,7 +247,7 @@ _global_notifier: Optional[ConfigChangeNotifier] = None
 
 def get_config_change_notifier() -> ConfigChangeNotifier:
     """글로벌 ConfigChangeNotifier 인스턴스 반환"""
-    global _global_notifier
+    global _global_notifier # pylint: disable=global-statement
     if _global_notifier is None:
         _global_notifier = ConfigChangeNotifier()
     return _global_notifier 
