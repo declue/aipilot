@@ -347,27 +347,7 @@ class LLMAgent:
         cfg = self.config_manager.get_llm_config()
 
         try:
-            # 🧪 테스트용: 특정 키워드에 대해 추론 과정을 포함한 응답 생성
-            if any(keyword in _user_msg.lower() for keyword in ["추론", "생각", "think", "reasoning"]):
-                test_reasoning_response = f"""<think>
-사용자가 '{_user_msg}'라고 질문했습니다.
-이것은 추론 과정을 테스트하기 위한 질문으로 보입니다.
-추론 과정을 명확히 보여주는 응답을 생성하겠습니다.
-
-1. 질문 분석: 추론 과정 표시 요청
-2. 응답 구성: 명확한 추론 과정과 최종 답변 분리
-3. 형식 결정: <think> 태그를 사용하여 추론 과정 표시
-</think>
-
-네, 추론 과정을 표시하는 기능이 정상적으로 작동하고 있습니다!
-
-위의 <think> 태그 안에 있는 내용이 추론 과정이고, 이 부분이 최종 답변입니다. 
-추론 과정은 노란색 영역으로 접혀서 표시되며, 클릭하면 펼쳐볼 수 있습니다."""
-                
-                if streaming_cb:
-                    streaming_cb(test_reasoning_response)
-                return test_reasoning_response
-
+            # 더 이상 하드코딩된 데모 응답을 생성하지 않는다 – 실제 모델 응답 사용
             if streaming_cb is None:
                 # OpenAI API 는 8192 토큰까지 허용하므로, 설정값이 초과할 경우 자동으로
                 # 클램핑(clamping) 하여 오류를 방지한다.

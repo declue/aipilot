@@ -5,6 +5,7 @@ LLMAgent를 QThreadPool에서 실행하기 위한 QRunnable 래퍼
 
 import asyncio
 import logging
+from typing import Any, Callable
 
 from PySide6.QtCore import QRunnable
 
@@ -21,11 +22,11 @@ class LLMAgentWorker(QRunnable):
     """LLMAgent를 QThreadPool에서 실행하기 위한 워커"""
 
     def __init__(
-        self,
+        self: "LLMAgentWorker",
         user_message: str,
         llm_agent: LLMAgent,
-        callback,
-    ):
+        callback: Callable[[Any], None],
+    ) -> None:
         super().__init__()
         self.user_message = user_message
         self.llm_agent = llm_agent
@@ -42,7 +43,7 @@ class LLMAgentWorker(QRunnable):
         self._has_streamed: bool = False
         self.is_running = True
 
-    def run(self):
+    def run(self) -> None:
         """백그라운드에서 LLM Agent 실행"""
         if not self.is_running:
             return
@@ -117,24 +118,24 @@ class LLMAgentWorker(QRunnable):
             # 안전한 정리
             self.is_running = False
 
-    def _streaming_callback(self, chunk: str):
+    def _streaming_callback(self, chunk: str) -> None:
         """스트리밍 콜백"""
         if self.is_running:
             # 최소 한 번이라도 스트리밍 데이터가 전달되었음을 표시
             self._has_streamed = True
             self.signals.streaming_chunk.emit(chunk)
 
-    def stop(self):
+    def stop(self) -> None:
         """워커 중지"""
         logger.debug("LLM Agent 워커 중지 요청")
         self.is_running = False
 
-    def on_streaming_started(self):
+    def on_streaming_started(self) -> None:
         """스트리밍 시작 처리"""
         if self.is_running:
             logger.info("LLM Agent 스트리밍 응답 시작")
 
-    def on_streaming_chunk(self, chunk):
+    def on_streaming_chunk(self, chunk: str) -> None:
         """스트리밍 청크 처리"""
         if self.is_running:
             logger.debug(
@@ -142,11 +143,11 @@ class LLMAgentWorker(QRunnable):
                 chunk[:50] if len(chunk) > 50 else chunk,
             )
 
-    def on_streaming_finished(self):
+    def on_streaming_finished(self) -> None:
         """스트리밍 완료 처리"""
         if self.is_running:
             logger.info("LLM Agent 스트리밍 응답 완료")
 
-    def handle_error(self, error_msg):
+    def handle_error(self, error_msg: str) -> None:
         """에러 처리"""
         logger.error(f"LLM Agent 워커 에러: {error_msg}")
