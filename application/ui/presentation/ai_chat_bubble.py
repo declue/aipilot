@@ -273,9 +273,10 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
 
     def _render_reasoning_content(self) -> None:
         """추론 과정과 함께 내용을 렌더링합니다."""
-        from application.util.markdown_manager import MarkdownManager
         import markdown
-        
+
+        from application.util.markdown_manager import MarkdownManager
+
         # 추론 과정을 마크다운으로 변환
         reasoning_html = self._markdown_to_styled_html(self.reasoning_content)
         
@@ -310,7 +311,6 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
                 background-color: #FFFBEB;
             ">
                 <summary style="
-                    cursor: pointer;
                     font-size: {max(font_size - 2, 10)}px;
                     color: #F59E0B;
                     font-weight: 500;
@@ -556,9 +556,9 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
             }}
         """
         
-        if hasattr(self, 'copy_button'):
+        if hasattr(self, 'copy_button') and self.copy_button is not None:
             self.copy_button.setStyleSheet(button_style)
-        if hasattr(self, 'toggle_button'):
+        if hasattr(self, 'toggle_button') and self.toggle_button is not None:
             self.toggle_button.setStyleSheet(button_style)
 
     # ------------------------------------------------------------------

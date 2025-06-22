@@ -144,9 +144,21 @@ class UISetupManager:
                 font-size: 14px;
                 padding: 4px;
             }
+            QLabel:hover {
+                background-color: #E5E7EB;
+            }
             """
         )
-        webhook_status_label.setToolTip("Webhook 서버 연결 상태: 확인 중...")
+        webhook_status_label.setToolTip("Webhook 서버 연결 상태: 확인 중... (클릭하여 새로고침)")
+        
+        # 클릭 이벤트 추가 - 마우스 이벤트로 처리
+        def on_webhook_status_click(event: Any) -> None:
+            if hasattr(self.main_window, 'force_webhook_status_refresh'):
+                print("[DEBUG] Webhook 상태 라벨 클릭됨 - 강제 상태 체크 실행")
+                self.main_window.force_webhook_status_refresh()
+        
+        webhook_status_label.mousePressEvent = on_webhook_status_click  # type: ignore
+        
         header_layout.addWidget(webhook_status_label)
         
         # 메인 윈도우에 webhook 상태 라벨 참조 저장

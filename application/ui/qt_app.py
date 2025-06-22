@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from typing import Any
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon
@@ -35,10 +36,12 @@ class QtApp:
         mcp_manager: MCPManager,
         mcp_tool_manager: MCPToolManager,
         api_app_instance: APIServer,
+        main_app_instance: Any = None,  # 메인 App 클래스 인스턴스
     ):
         self.mcp_manager = mcp_manager
         self.mcp_tool_manager = mcp_tool_manager
         self.api_app_instance = api_app_instance
+        self.main_app_instance = main_app_instance  # 메인 App 인스턴스 저장
         self.qt_app: QApplication | None = None
         self.tray_app: TrayApp | None = None
 
@@ -155,7 +158,7 @@ class QtApp:
     def create_tray_app(self) -> None:
         """트레이 애플리케이션 생성"""
         self.tray_app = TrayApp(
-            self.qt_app, self.mcp_manager, self.mcp_tool_manager, self.api_app_instance
+            self.qt_app, self.mcp_manager, self.mcp_tool_manager, self.main_app_instance
         )
 
     def run(self) -> int:

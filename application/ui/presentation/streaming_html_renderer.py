@@ -43,7 +43,6 @@ class StreamingHtmlRenderer:
         ">
             <details style="margin-bottom: 16px; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px; background-color: #FFFBEB;">
                 <summary style="
-                    cursor: pointer;
                     font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
                     color: #F59E0B;
                     font-weight: 500;
@@ -142,7 +141,6 @@ class StreamingHtmlRenderer:
             ">
                 <details open style="margin-bottom: 16px; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px; background-color: #FFFBEB;">
                     <summary style="
-                        cursor: pointer;
                         font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
                         color: #F59E0B;
                         font-weight: 500;

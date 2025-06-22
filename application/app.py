@@ -63,8 +63,8 @@ class App:
         mcp_tool_manager: MCPToolManager,
         api_app: APIServer,
     ) -> QtApp:
-        # QT 앱 초기화
-        return QtApp(mcp_manager, mcp_tool_manager, api_app)
+        # QT 앱 초기화 - 메인 App 인스턴스(self)를 전달
+        return QtApp(mcp_manager, mcp_tool_manager, api_app, self)
 
     def _init_webhook_client(self) -> WebhookClient | None:
         """Webhook 클라이언트 초기화"""
@@ -117,7 +117,7 @@ class App:
         logger.info("Webhook 클라이언트 초기화 완료")
         return webhook_client
 
-    def __init__(self):
+    def __init__(self) -> None:
         # 설정 관리자 초기화
         self.config_manager = self._init_config()
 
@@ -167,8 +167,12 @@ class App:
             logger.info("Webhook 클라이언트가 비활성화되어 있습니다.")
             return
 
-        def start_webhook_async():
+        def start_webhook_async() -> None:
             try:
+                # webhook_client가 None이 아님을 확인
+                if not self.webhook_client:
+                    return
+                    
                 # 설정 초기화
                 if not self.webhook_client.initialize_config(): 
                     logger.error("Webhook 클라이언트 설정 초기화 실패")

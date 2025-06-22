@@ -304,7 +304,7 @@ class MainWindow(QMainWindow):
     def refresh_ui_elements(self) -> None:
         """UI 요소들의 스타일을 새로운 설정으로 업데이트"""
         # 모델 라벨 업데이트
-        if hasattr(self, "model_label"):
+        if hasattr(self, "model_label") and self.model_label is not None:
             self.model_label.setStyleSheet(
                 f"""
                 QLabel {{
@@ -335,7 +335,7 @@ class MainWindow(QMainWindow):
             )
 
         # 입력창 업데이트
-        if hasattr(self, "input_text"):
+        if hasattr(self, "input_text") and self.input_text is not None:
             self.input_text.setStyleSheet(
                 f"""
                 QTextEdit {{
@@ -354,7 +354,7 @@ class MainWindow(QMainWindow):
             )
 
         # 전송 버튼 업데이트
-        if hasattr(self, "send_button"):
+        if hasattr(self, "send_button") and self.send_button is not None:
             self.send_button.setStyleSheet(
                 f"""
                 QPushButton {{
@@ -380,7 +380,7 @@ class MainWindow(QMainWindow):
             )
 
         # 중단 버튼 업데이트
-        if hasattr(self, "stop_button"):
+        if hasattr(self, "stop_button") and self.stop_button is not None:
             self.stop_button.setStyleSheet(
                 f"""
                 QPushButton {{
@@ -464,7 +464,7 @@ class MainWindow(QMainWindow):
                 )
 
         # 기존 채팅 메시지들의 스타일도 업데이트하기 위해 메시지 매니저에 알림
-        if hasattr(self, "message_manager"):
+        if hasattr(self, "message_manager") and self.message_manager is not None:
             self.message_manager.update_all_message_styles()
 
     def update_model_label(self) -> None:
@@ -863,35 +863,59 @@ class MainWindow(QMainWindow):
     def check_webhook_status(self) -> None:
         """Webhook 서버 연결 상태 체크"""
         try:
+            logger.info("=== Webhook 상태 체크 시작 ===")
+            logger.info(f"self._app 존재 여부: {hasattr(self, '_app')}")
+            logger.info(f"self._app이 None이 아님: {hasattr(self, '_app') and self._app is not None}")
+            
             # App 인스턴스에서 webhook_client 가져오기
             if hasattr(self, '_app') and self._app and hasattr(self._app, 'webhook_client'):
                 webhook_client = self._app.webhook_client
+                logger.info(f"App 인스턴스에서 webhook_client 확인: {webhook_client is not None}")
+                
                 if webhook_client:
+                    client_id = getattr(webhook_client, 'client_id', 'None')
+                    logger.info(f"✅ Webhook client 발견! client_id={client_id}")
                     self.update_webhook_status_connected(webhook_client)
                 else:
+                    logger.info("❌ Webhook client가 None이므로 비활성화 상태로 설정")
                     self.update_webhook_status_disabled()
             else:
+                logger.info(f"❌ App 인스턴스 체크 실패:")
+                logger.info(f"  - hasattr(self, '_app'): {hasattr(self, '_app')}")
+                logger.info(f"  - self._app: {getattr(self, '_app', 'NOT_SET')}")
+                logger.info(f"  - hasattr(self._app, 'webhook_client'): {hasattr(getattr(self, '_app', None), 'webhook_client') if hasattr(self, '_app') else 'N/A'}")
+                
                 # App 인스턴스가 없는 경우 설정에서 직접 확인
                 webhook_enabled_str = self.config_manager.get_config_value("WEBHOOK", "enabled", "false")
                 webhook_enabled = webhook_enabled_str.lower() == "true" if webhook_enabled_str else False
+                logger.info(f"설정에서 Webhook 활성화 상태: {webhook_enabled}")
                 
                 if webhook_enabled:
+                    logger.info("⚠️ Webhook이 활성화되어 있지만 연결되지 않음")
                     self.update_webhook_status_disconnected()
                 else:
+                    logger.info("⚫ Webhook이 비활성화됨")
                     self.update_webhook_status_disabled()
                     
+            logger.info("=== Webhook 상태 체크 완료 ===")
         except Exception as e:
-            logger.error(f"Webhook 상태 체크 실패: {e}")
+            logger.error(f"❌ Webhook 상태 체크 실패: {e}")
+            import traceback
+            logger.error(f"상세 오류: {traceback.format_exc()}")
             self.update_webhook_status_error()
 
     def update_webhook_status_connected(self, webhook_client: Any) -> None:
         """Webhook 연결됨 상태로 UI 업데이트"""
         if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+            logger.debug("webhook_status_label이 없어서 상태 업데이트 건너뜀")
             return
             
         try:
+            logger.debug(f"Webhook 연결 상태 업데이트 시도: client_id={getattr(webhook_client, 'client_id', 'None')}")
+            
             # 클라이언트 ID가 있으면 연결된 것으로 간주
-            if webhook_client.client_id:
+            if hasattr(webhook_client, 'client_id') and webhook_client.client_id:
+                logger.info(f"Webhook 연결됨 - UI를 초록색으로 업데이트: client_id={webhook_client.client_id}")
                 self.webhook_status_label.setText("🟢")
                 self.webhook_status_label.setStyleSheet(
                     """
@@ -905,15 +929,19 @@ class MainWindow(QMainWindow):
                     }
                     """
                 )
+                webhook_server_url = getattr(webhook_client, 'webhook_server_url', '알 수 없음')
                 self.webhook_status_label.setToolTip(
                     f"Webhook 서버 연결됨\n"
                     f"클라이언트 ID: {webhook_client.client_id}\n"
-                    f"서버: {webhook_client.webhook_server_url}"
+                    f"서버: {webhook_server_url}"
                 )
             else:
+                logger.debug("client_id가 없어서 연결 안됨 상태로 설정")
                 self.update_webhook_status_disconnected()
         except Exception as e:
-            logger.debug(f"Webhook 연결 상태 업데이트 실패: {e}")
+            logger.error(f"Webhook 연결 상태 업데이트 실패: {e}")
+            import traceback
+            logger.error(f"상세 오류: {traceback.format_exc()}")
             self.update_webhook_status_error()
 
     def update_webhook_status_disconnected(self) -> None:
@@ -986,6 +1014,20 @@ class MainWindow(QMainWindow):
             "Webhook 상태 확인 중 오류 발생\n"
             "연결 상태를 확인할 수 없습니다"
         )
+
+    def set_app_reference(self, app_instance: Any) -> None:
+        """App 인스턴스 참조 설정 (런타임에 설정용)"""
+        logger.debug(f"App 인스턴스 참조 설정: {app_instance is not None}")
+        self._app = app_instance
+        # App 참조가 설정되면 즉시 webhook 상태 체크
+        if app_instance:
+            logger.debug("App 참조 설정 후 즉시 webhook 상태 체크 실행")
+            QTimer.singleShot(1000, self.check_webhook_status)  # 1초 후 체크
+
+    def force_webhook_status_refresh(self) -> None:
+        """Webhook 상태를 강제로 새로고침"""
+        logger.info("Webhook 상태 강제 새로고침 요청됨")
+        self.check_webhook_status()
 
     def open_settings(self) -> None:
         """설정창 열기"""
