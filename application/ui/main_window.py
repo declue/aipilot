@@ -245,15 +245,13 @@ class MainWindow(QMainWindow):
                 # 4. UI의 모델 라벨 업데이트
                 self.update_model_label()
 
-                # 5. 새로운 대화 시작 (중요: 컨텍스트 유지를 위해)
+                # 5. 모델 변경 알림만 표시 (대화 맥락은 유지)
                 if hasattr(self, "message_manager") and self.message_manager is not None:
-                    self.start_new_conversation()
-                    # 새 대화 시작 후 환영 메시지에 추가 설명
                     current_text = self.model_selector.currentText() if self.model_selector else "알 수 없음"
                     QTimer.singleShot(
-                        150,
+                        100,
                         lambda: self.add_system_message(
-                            f"✅ **시스템**: 모델이 **{current_text}** (으)로 변경되었습니다. 새로운 대화를 시작합니다."
+                            f"✅ **시스템**: 언어 모델이 **{current_text}** (으)로 변경되었습니다. 기존 대화를 이어가실 수 있습니다."
                         ),
                     )
 
