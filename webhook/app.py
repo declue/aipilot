@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import os
+from werkzeug.utils import secure_filename
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -118,8 +119,13 @@ def save_webhook_data(
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # 밀리초까지
 
     # 파일명 생성 (이벤트 타입과 타임스탬프 포함)
-    filename = f"{event_type}_{timestamp}.json"
-    filepath = DATA_DIR / filename
+    sanitized_event_type = secure_filename(event_type)
+    filename = f"{sanitized_event_type}_{timestamp}.json"
+    filepath = os.path.normpath(DATA_DIR / filename)
+
+    # Ensure the filepath is within the DATA_DIR
+    if not str(filepath).startswith(str(DATA_DIR)):
+        raise ValueError("Invalid file path: potential directory traversal detected")
 
     # org/repo 정보 추출
     org_name, repo_name = extract_org_repo_info(payload)
