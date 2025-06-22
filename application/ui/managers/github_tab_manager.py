@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -38,7 +38,7 @@ class GitHubTabManager:
     config_manager: ConfigManager
     parent: Any  # SettingsWindow 또는 MainWindow
 
-    def __init__(self, parent: Any):
+    def __init__(self, parent: Any) -> None:
         self.parent = parent
         self.config_manager: ConfigManager = parent.config_manager
         # UI 위젯 속성들
@@ -50,13 +50,13 @@ class GitHubTabManager:
         self.rate_limit_interval: QSpinBox
         self.event_widgets: Dict[str, QWidget]
         self.event_configs: Dict[str, Dict[str, Any]]
-        
+
         # 테마 적용을 위한 위젯 참조 저장
-        self.scroll_area = None
+        self.scroll_area: QScrollArea | None = None
         self.group_boxes: list[QGroupBox] = []
         self.buttons: list[QPushButton] = []
 
-    def create_github_tab(self):
+    def create_github_tab(self) -> QWidget:
         """GitHub 설정 탭 생성"""
         tab = QWidget()
 
@@ -90,7 +90,7 @@ class GitHubTabManager:
 
         return tab
 
-    def setup_repository_group(self, layout):
+    def setup_repository_group(self, layout: QVBoxLayout) -> None:
         """Repository/Organization 설정 그룹"""
         group = QGroupBox("📁 Repository/Organization 설정")
         self.group_boxes.append(group)  # 참조 저장
@@ -100,9 +100,7 @@ class GitHubTabManager:
         group_layout.setSpacing(12)
 
         # 설명 라벨
-        desc_label = QLabel(
-            "메시지를 수신할 GitHub Repository 또는 Organization을 설정하세요."
-        )
+        desc_label = QLabel("메시지를 수신할 GitHub Repository 또는 Organization을 설정하세요.")
         desc_label.setStyleSheet(
             """
             QLabel {
@@ -173,7 +171,7 @@ class GitHubTabManager:
         group_layout.addLayout(button_layout)
         layout.addWidget(group)
 
-    def get_button_style(self, color):
+    def get_button_style(self, color: str) -> str:
         """버튼 스타일 반환"""
         return f"""
             QPushButton {{
@@ -194,7 +192,7 @@ class GitHubTabManager:
             }}
         """
 
-    def add_repository(self):
+    def add_repository(self) -> None:
         """Repository/Organization 추가"""
         text, ok = QInputDialog.getText(
             self.parent,
@@ -221,7 +219,7 @@ class GitHubTabManager:
             # 설정 저장
             self.save_repositories()
 
-    def remove_repository(self):
+    def remove_repository(self) -> None:
         """Repository/Organization 제거"""
         current_item = self.repo_list.currentItem()
         if current_item:
@@ -240,7 +238,7 @@ class GitHubTabManager:
                 self.parent, "선택 없음", "제거할 Repository/Organization을 선택하세요."
             )
 
-    def edit_repository(self):
+    def edit_repository(self) -> None:
         """Repository/Organization 편집"""
         current_item = self.repo_list.currentItem()
         if current_item:
@@ -271,7 +269,7 @@ class GitHubTabManager:
                 self.parent, "선택 없음", "편집할 Repository/Organization을 선택하세요."
             )
 
-    def save_repositories(self):
+    def save_repositories(self) -> None:
         """Repository 목록 저장"""
         repositories = []
         for i in range(self.repo_list.count()):
@@ -280,7 +278,7 @@ class GitHubTabManager:
         # 설정에 저장
         self.config_manager.set_github_repositories(repositories)
 
-    def load_repositories(self):
+    def load_repositories(self) -> None:
         """Repository 목록 로드"""
         self.config_manager.load_config()
         repositories = self.config_manager.get_github_repositories()
@@ -289,7 +287,7 @@ class GitHubTabManager:
             item = QListWidgetItem(repo)
             self.repo_list.addItem(item)
 
-    def setup_notification_group(self, layout):
+    def setup_notification_group(self, layout: QVBoxLayout) -> None:
         """GitHub 알림 설정 그룹"""
         group = QGroupBox("🔔 GitHub 알림 설정")
         group.setStyleSheet(
@@ -325,7 +323,7 @@ class GitHubTabManager:
 
         layout.addWidget(group)
 
-    def setup_global_notification_settings(self, layout):
+    def setup_global_notification_settings(self, layout: QVBoxLayout) -> None:
         """전역 알림 설정"""
         global_frame = QFrame()
         global_frame.setStyleSheet(
@@ -408,7 +406,7 @@ class GitHubTabManager:
 
         layout.addWidget(global_frame)
 
-    def setup_event_notification_settings(self, layout):
+    def setup_event_notification_settings(self, layout: QVBoxLayout) -> None:
         """이벤트별 알림 설정"""
         # 이벤트 타입 정의
         self.event_configs = {
@@ -503,9 +501,7 @@ class GitHubTabManager:
             self.event_widgets[event_type] = event_widget
             layout.addWidget(event_widget)
 
-    def create_event_config_widget(
-        self, event_type: str, config: Dict[str, Any]
-    ) -> QWidget:
+    def create_event_config_widget(self, event_type: str, config: Dict[str, Any]) -> QWidget:
         """이벤트 설정 위젯 생성"""
         # 메인 프레임
         main_frame = QFrame()
@@ -585,9 +581,7 @@ class GitHubTabManager:
             actions_layout.setSpacing(4)
 
             actions_label = QLabel("세부 액션:")
-            actions_label.setStyleSheet(
-                "font-weight: 600; font-size: 10px; color: #374151;"
-            )
+            actions_label.setStyleSheet("font-weight: 600; font-size: 10px; color: #374151;")
             actions_layout.addWidget(actions_label, 0, 0, 1, -1)
 
             row, col = 1, 0
@@ -663,9 +657,9 @@ class GitHubTabManager:
         main_frame.setProperty("widget_data", widget_data)
         return main_frame
 
-    def save_notification_settings(self):
+    def save_notification_settings(self) -> None:
         """알림 설정 저장"""
-        settings = {
+        settings: Dict[str, Any] = {
             "enabled": self.github_notifications_enabled.isChecked(),
             "summary_enabled": self.summary_enabled.isChecked(),
             "summary_threshold": self.summary_threshold.value(),
@@ -680,17 +674,14 @@ class GitHubTabManager:
             if widget_data:
                 event_settings = {
                     "enabled": widget_data["enabled"].isChecked(),
-                    "show_system_notification": widget_data[
-                        "system_notification"
-                    ].isChecked(),
+                    "show_system_notification": widget_data["system_notification"].isChecked(),
                     "show_chat_bubble": widget_data["chat_bubble"].isChecked(),
                 }
 
                 # 액션 설정
                 if widget_data["actions"]:
                     event_settings["actions"] = {
-                        action: cb.isChecked()
-                        for action, cb in widget_data["actions"].items()
+                        action: cb.isChecked() for action, cb in widget_data["actions"].items()
                     }
 
                 # 커스텀 필드
@@ -715,12 +706,10 @@ class GitHubTabManager:
 
         # JSON으로 저장
         settings_json = json.dumps(settings, ensure_ascii=False, indent=2)
-        self.config_manager.set_config_value(
-            "GITHUB", "notification_settings", settings_json
-        )
+        self.config_manager.set_config_value("GITHUB", "notification_settings", settings_json)
         self.config_manager.save_config()
 
-    def load_notification_settings(self):
+    def load_notification_settings(self) -> None:
         """알림 설정 로드"""
         settings_json = self.config_manager.get_config_value(
             "GITHUB", "notification_settings", "{}"
@@ -746,9 +735,7 @@ class GitHubTabManager:
                 if widget_data and event_type in events_settings:
                     event_settings = events_settings[event_type]
 
-                    widget_data["enabled"].setChecked(
-                        event_settings.get("enabled", True)
-                    )
+                    widget_data["enabled"].setChecked(event_settings.get("enabled", True))
                     widget_data["system_notification"].setChecked(
                         event_settings.get("show_system_notification", True)
                     )
@@ -771,9 +758,7 @@ class GitHubTabManager:
                                 elif isinstance(widget, QSpinBox):
                                     widget.setValue(int(value))
                                 elif isinstance(widget, QLineEdit):
-                                    if field_key.endswith("_branches") and isinstance(
-                                        value, list
-                                    ):
+                                    if field_key.endswith("_branches") and isinstance(value, list):
                                         widget.setText(", ".join(value))
                                     else:
                                         widget.setText(str(value))
@@ -788,34 +773,31 @@ class GitHubTabManager:
         except json.JSONDecodeError:
             return {}
 
-    def update_theme(self):
+    def update_theme(self) -> None:
         """테마 업데이트"""
         try:
-            if hasattr(self.parent, 'theme_manager'):
+            if hasattr(self.parent, "theme_manager"):
                 colors = self.parent.theme_manager.get_theme_colors()
-                
+
                 # 모든 위젯 테마 업데이트
                 self._update_scroll_area_theme(colors)
                 self._update_group_boxes_theme(colors)
                 self._update_repo_list_theme(colors)
                 self._update_buttons_theme(colors)
-                
+
         except Exception as e:
             print(f"GitHub 탭 테마 업데이트 실패: {e}")
 
-    def _apply_scroll_area_theme(self, scroll_area):
+    def _apply_scroll_area_theme(self, scroll_area: QScrollArea) -> None:
         """스크롤 영역 테마 적용"""
-        if hasattr(self.parent, 'theme_manager'):
+        if hasattr(self.parent, "theme_manager"):
             colors = self.parent.theme_manager.get_theme_colors()
         else:
             # 기본 라이트 테마 색상
-            colors = {
-                'surface': '#F3F4F6',
-                'scrollbar': '#D1D5DB',
-                'scrollbar_hover': '#9CA3AF'
-            }
-            
-        scroll_area.setStyleSheet(f"""
+            colors = {"surface": "#F3F4F6", "scrollbar": "#D1D5DB", "scrollbar_hover": "#9CA3AF"}
+
+        scroll_area.setStyleSheet(
+            f"""
             QScrollArea {{
                 border: none;
                 background-color: transparent;
@@ -834,21 +816,19 @@ class GitHubTabManager:
             QScrollBar::handle:vertical:hover {{
                 background-color: {colors['scrollbar_hover']};
             }}
-        """)
+        """
+        )
 
-    def _apply_group_box_theme(self, group_box):
+    def _apply_group_box_theme(self, group_box: QGroupBox) -> None:
         """그룹박스 테마 적용"""
-        if hasattr(self.parent, 'theme_manager'):
+        if hasattr(self.parent, "theme_manager"):
             colors = self.parent.theme_manager.get_theme_colors()
         else:
             # 기본 라이트 테마 색상
-            colors = {
-                'text': '#374151',
-                'border': '#E5E7EB',
-                'background': '#FFFFFF'
-            }
-            
-        group_box.setStyleSheet(f"""
+            colors = {"text": "#374151", "border": "#E5E7EB", "background": "#FFFFFF"}
+
+        group_box.setStyleSheet(
+            f"""
             QGroupBox {{
                 font-weight: 600;
                 font-size: 12px;
@@ -866,11 +846,13 @@ class GitHubTabManager:
                 color: {colors['text']};
                 background-color: {colors['background']};
             }}
-        """)
+        """
+        )
 
-    def _apply_button_theme(self, button, color):
+    def _apply_button_theme(self, button: QPushButton, color: str) -> None:
         """버튼 테마 적용"""
-        button.setStyleSheet(f"""
+        button.setStyleSheet(
+            f"""
             QPushButton {{
                 background-color: {color};
                 color: white;
@@ -887,29 +869,31 @@ class GitHubTabManager:
             QPushButton:pressed {{
                 background-color: {color}BB;
             }}
-        """)
+        """
+        )
 
-    def _update_scroll_area_theme(self, colors):
+    def _update_scroll_area_theme(self, colors: Dict[str, str]) -> None:
         """스크롤 영역 테마 업데이트"""
         if self.scroll_area:
             self._apply_scroll_area_theme(self.scroll_area)
 
-    def _update_group_boxes_theme(self, colors):
+    def _update_group_boxes_theme(self, colors: Dict[str, str]) -> None:
         """그룹박스들 테마 업데이트"""
         for group_box in self.group_boxes:
             self._apply_group_box_theme(group_box)
 
-    def _update_buttons_theme(self, colors):
+    def _update_buttons_theme(self, colors: Dict[str, str]) -> None:
         """버튼들 테마 업데이트"""
         button_colors = ["#10B981", "#EF4444", "#F59E0B"]
         for i, button in enumerate(self.buttons):
             if i < len(button_colors):
                 self._apply_button_theme(button, button_colors[i])
 
-    def _update_repo_list_theme(self, colors):
+    def _update_repo_list_theme(self, colors: Dict[str, str]) -> None:
         """저장소 리스트 테마 업데이트"""
-        if hasattr(self, 'repo_list') and self.repo_list:
-            self.repo_list.setStyleSheet(f"""
+        if hasattr(self, "repo_list") and self.repo_list:
+            self.repo_list.setStyleSheet(
+                f"""
                 QListWidget {{
                     border: 1px solid {colors['border']};
                     border-radius: 6px;
@@ -931,4 +915,5 @@ class GitHubTabManager:
                 QListWidget::item:hover {{
                     background-color: {colors['surface']};
                 }}
-            """)
+            """
+            )

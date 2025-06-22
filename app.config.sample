@@ -1,0 +1,104 @@
+[LLM]
+api_key = your-api-key-here
+base_url = http://localhost:11434/v1
+model = llama3.2
+temperature = 0.7
+max_tokens = 100000
+top_k = 50
+current_profile = default
+
+[UI]
+font_family = Segoe UI
+font_size = 14
+chat_bubble_max_width = 600
+window_theme = light
+
+[llm]
+current_profile = openai
+
+[GITHUB]
+repositories = declue/dspilot
+notification_settings = {
+	"enabled": true,
+	"summary_enabled": true,
+	"summary_threshold": 3,
+	"rate_limit_enabled": true,
+	"rate_limit_count": 20,
+	"rate_limit_interval": 300,
+	"events": {
+	"push": {
+	"enabled": true,
+	"show_system_notification": true,
+	"show_chat_bubble": true,
+	"exclude_branches": [],
+	"include_branches": [],
+	"max_commits": 50,
+	"min_commits": 1
+	},
+	"pull_request": {
+	"enabled": true,
+	"show_system_notification": true,
+	"show_chat_bubble": true,
+	"actions": {
+	"assigned": false,
+	"closed": true,
+	"edited": false,
+	"opened": true,
+	"ready_for_review": true,
+	"reopened": false,
+	"review_requested": true,
+	"synchronize": false
+	}
+	},
+	"issues": {
+	"enabled": true,
+	"show_system_notification": true,
+	"show_chat_bubble": true,
+	"actions": {
+	"assigned": true,
+	"closed": true,
+	"opened": true,
+	"reopened": false,
+	"transferred": true
+	}
+	},
+	"release": {
+	"enabled": true,
+	"show_system_notification": true,
+	"show_chat_bubble": true,
+	"actions": {
+	"created": false,
+	"deleted": false,
+	"prereleased": true,
+	"published": true,
+	"released": true
+	},
+	"include_draft": false,
+	"include_prerelease": true
+	},
+	"workflow": {
+	"enabled": true,
+	"show_system_notification": true,
+	"show_chat_bubble": true,
+	"actions": {
+	"cancelled": true,
+	"failure": true,
+	"in_progress": false,
+	"success": true,
+	"timed_out": true
+	}
+	},
+	"repository": {
+	"enabled": true,
+	"show_system_notification": true,
+	"show_chat_bubble": true,
+	"actions": {
+	"create": true,
+	"delete": true,
+	"fork": true,
+	"star": true
+	}
+	}
+	}
+	}
+

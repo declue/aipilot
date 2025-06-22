@@ -1,0 +1,29 @@
+[LLM]
+api_key = api_key
+base_url = https://openai.comm/v1
+model = gpt-4o
+temperature = 0.7
+max_tokens = 4096
+top_k = 50
+current_profile = default
+
+[UI]
+font_family = Segoe UI
+font_size = 14
+chat_bubble_max_width = 600
+window_theme = light
+
+[API]
+host = 127.0.0.1
+port = 8000
+
+[WEBHOOK]
+enabled = false
+server_url = http://localhost:8005
+client_name = DSPilot Client
+client_description = DSPilot 애플리케이션 클라이언트
+poll_interval = 10
+
+[GITHUB]
+repositories = 
+

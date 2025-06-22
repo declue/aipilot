@@ -1,0 +1,29 @@
+{
+    "mcpServers": {
+      "github": {
+        "command": "tools/github-mcp-server.exe",
+        "args": [
+          "stdio"
+        ],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+        },
+        "description": "GitHub repository and issue management",
+        "enabled": true,
+        "name": "github"
+      },
+      "local_mcp_stdio": {
+        "command": "fastmcp",
+        "args": [
+          "run",
+          "tools/local_mcp_stdio.py"
+        ],
+        "env": {},
+        "description": "Time and timezone management",
+        "enabled": true,
+        "name": "local_mcp_stdio"
+      }
+    },
+    "defaultServer": null,
+    "enabled": true
+  }

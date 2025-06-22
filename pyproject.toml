@@ -26,6 +26,7 @@ dependencies = [
     "markdown",
     "google-generativeai",
     "pygments",
+    "types-PyYAML",
     "types-requests",
     "types-Markdown",
     "types-psutil",
@@ -58,8 +59,10 @@ dependencies = [
     "bs4",
     "pytz",
     "watchdog",
+    "tomli",
     "tomli-w",
-    "pyyaml"
+    "pyyaml",
+    "jsonschema"
 ]
 
 [project.optional-dependencies]
@@ -73,6 +76,7 @@ test = [
     "coverage",
     "anyio",
     "pytest-qt",
+    "isort",
 ]
 dev = [
     "pyinstaller",
@@ -136,3 +140,7 @@ omit = [
     "tests/*",
     "*/__init__.py",
 ]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B601"]

@@ -29,6 +29,6 @@ class NotificationSignals(QObject):
     # 대화 관련 시그널
     new_conversation = Signal()  # 새 대화 시작
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.main_window = None  # 메인 윈도우 참조용

@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from application.ui.managers.style_manager import StyleManager
+from application.ui.common.style_manager import StyleManager
 
 
 class UITabManager:

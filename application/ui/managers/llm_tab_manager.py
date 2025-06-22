@@ -1,12 +1,10 @@
 """LLM 탭 관리 모듈"""
 
 import asyncio
-from typing import Dict, List, Optional
+from typing import Any, Dict
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
-    QDialog,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -25,16 +23,16 @@ from PySide6.QtWidgets import (
 )
 
 from application.llm.llm_agent import LLMAgent
-from application.ui.managers.style_manager import StyleManager
+from application.ui.common.style_manager import StyleManager
 
 
 class LLMTabManager:
     """LLM 탭 관리 클래스"""
 
-    def __init__(self, parent):
+    def __init__(self, parent: Any) -> None:
         self.parent = parent
 
-    def create_llm_tab(self):
+    def create_llm_tab(self) -> QWidget:
         """LLM 설정 탭 생성"""
         tab = QWidget()
 
@@ -90,7 +88,7 @@ class LLMTabManager:
 
         return tab
 
-    def create_profile_group(self, layout):
+    def create_profile_group(self, layout: QVBoxLayout) -> None:
         """프로필 관리 그룹 생성"""
         group_box = QGroupBox("프로필 관리")
         group_box.setStyleSheet(StyleManager.get_group_box_style())
@@ -153,7 +151,7 @@ class LLMTabManager:
 
         layout.addWidget(group_box)
 
-    def create_connection_group(self, layout):
+    def create_connection_group(self, layout: QVBoxLayout) -> None:
         """연결 설정 그룹 생성"""
         group_box = QGroupBox("API 연결 설정")
         group_box.setStyleSheet(StyleManager.get_group_box_style())
@@ -213,7 +211,7 @@ class LLMTabManager:
 
         layout.addWidget(group_box)
 
-    def create_parameters_group(self, layout):
+    def create_parameters_group(self, layout: QVBoxLayout) -> None:
         """모델 파라미터 그룹 생성"""
         group_box = QGroupBox("모델 파라미터")
         group_box.setStyleSheet(StyleManager.get_group_box_style())
@@ -294,7 +292,7 @@ class LLMTabManager:
 
         layout.addWidget(group_box)
 
-    def load_profiles(self):
+    def load_profiles(self) -> None:
         """프로필 목록 로드"""
         profiles = self.parent.config_manager.get_llm_profiles()
         current_profile = self.parent.config_manager.get_current_profile_name()
@@ -310,7 +308,7 @@ class LLMTabManager:
                 self.parent.profile_combo.setCurrentIndex(i)
                 break
 
-    def on_profile_changed(self):
+    def on_profile_changed(self) -> None:
         """프로필 변경 시 호출"""
         current_index = self.parent.profile_combo.currentIndex()
         if current_index >= 0:
@@ -326,7 +324,7 @@ class LLMTabManager:
                         f"프로필 변경에 실패했습니다: {str(e)}",
                     )
 
-    def load_current_profile_settings(self):
+    def load_current_profile_settings(self) -> None:
         """현재 프로필의 설정을 UI에 로드"""
         try:
             profiles = self.parent.config_manager.get_llm_profiles()
@@ -361,7 +359,7 @@ class LLMTabManager:
                 f"프로필 설정 로드에 실패했습니다: {str(e)}",
             )
 
-    def add_profile(self):
+    def add_profile(self) -> None:
         """새 프로필 추가"""
         profile_id, ok = QInputDialog.getText(
             self.parent, "새 프로필 추가", "프로필 ID를 입력하세요:"
@@ -423,7 +421,7 @@ class LLMTabManager:
                 self.parent, "프로필 추가 실패", f"프로필 추가에 실패했습니다: {str(e)}"
             )
 
-    def edit_profile(self):
+    def edit_profile(self) -> None:
         """현재 프로필 편집"""
         current_index = self.parent.profile_combo.currentIndex()
         if current_index < 0:
@@ -465,7 +463,7 @@ class LLMTabManager:
                 f"프로필 업데이트에 실패했습니다: {str(e)}",
             )
 
-    def delete_profile(self):
+    def delete_profile(self) -> None:
         """현재 프로필 삭제"""
         current_index = self.parent.profile_combo.currentIndex()
         if current_index < 0:
@@ -504,7 +502,7 @@ class LLMTabManager:
                 self.parent, "프로필 삭제 실패", f"프로필 삭제에 실패했습니다: {str(e)}"
             )
 
-    def test_connection(self):
+    def test_connection(self) -> None:
         """연결 테스트"""
         api_key = self.parent.api_key_input.text().strip()
         base_url = self.parent.base_url_input.text().strip()
@@ -517,7 +515,7 @@ class LLMTabManager:
 
         self.test_llm_connection(api_key, base_url, model)
 
-    def test_llm_connection(self, api_key, base_url, model):
+    def test_llm_connection(self, api_key: str, base_url: str, model: str) -> None:
         """LLM 연결 테스트"""
         try:
             result = asyncio.run(LLMAgent.test_connection(api_key, base_url, model))
@@ -548,7 +546,7 @@ class LLMTabManager:
                 f"• 서버가 실행 중인지 확인하세요",
             )
 
-    def refresh_models(self):
+    def refresh_models(self) -> None:
         """사용 가능한 모델 목록 새로고침"""
         api_key = self.parent.api_key_input.text().strip()
         base_url = self.parent.base_url_input.text().strip()
@@ -617,7 +615,7 @@ class LLMTabManager:
                 f"• 서버가 실행 중이고 /v1/models 엔드포인트를 지원하는지 확인하세요",
             )
 
-    def browse_instruction_file(self):
+    def browse_instruction_file(self) -> None:
         """instruction 파일 선택"""
         file_path, _ = QFileDialog.getOpenFileName(
             self.parent,
@@ -628,7 +626,7 @@ class LLMTabManager:
         if file_path:
             self.parent.instruction_file_input.setText(file_path)
 
-    def edit_instruction_file(self):
+    def edit_instruction_file(self) -> None:
         """instruction 파일 편집"""
         file_path = self.parent.instruction_file_input.text().strip()
         if not file_path:
@@ -719,7 +717,7 @@ class LLMTabManager:
                 self.parent, "파일 편집 실패", f"파일 편집에 실패했습니다: {str(e)}"
             )
 
-    def update_theme(self):
+    def update_theme(self) -> None:
         """테마 업데이트"""
         try:
             if hasattr(self.parent, 'theme_manager'):
@@ -734,7 +732,7 @@ class LLMTabManager:
         except Exception as e:
             print(f"LLM 탭 테마 업데이트 실패: {e}")
 
-    def _update_scroll_area_theme(self, colors):
+    def _update_scroll_area_theme(self, colors: Dict[str, Any]) -> None:
         """스크롤 영역 테마 업데이트"""
         # 스크롤 영역 스타일 업데이트 (실제 구현에서는 위젯 참조 필요)
         pass
