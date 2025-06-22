@@ -4,55 +4,71 @@ on:
   push:
     branches: [ main ]
     tags:
-      - 'v*'  # Push events to matching v*, i.e. v1.0, v20.15.10
-  workflow_dispatch:  # Allow manual triggering
+      - 'v*'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+env:
+  PYTHON_VERSION: '3.11'
 
 jobs:
   build:
-    runs-on: windows-latest
-    
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
         
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements_app.txt
-        pip install pyinstaller
+        pip install -e ".[dev]"
         
-    - name: Build application
+    - name: Create standalone executable (Windows)
+      if: matrix.os == 'windows-latest'
       run: |
-        python build.py
+        pyinstaller --onefile --noconsole --name DSPilot app.py
         
-    - name: Create Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
+    - name: Create standalone executable (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        pyinstaller --onefile --name DSPilot app.py
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
       with:
-        files: output/DSPilot.exe
+        name: DSPilot-${{ matrix.os }}
+        path: |
+          dist/DSPilot*
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ./artifacts/**/*
         draft: false
         prerelease: false
-        
-    - name: Upload artifact for non-tag builds
-      uses: actions/upload-artifact@v4
-      if: "!startsWith(github.ref, 'refs/tags/')"
-      with:
-        name: DSPilot
-        path: output/DSPilot.exe
-        
-    - name: Create Release for non-tag builds
-      uses: softprops/action-gh-release@v1
-      if: "!startsWith(github.ref, 'refs/tags/') && github.ref == 'refs/heads/main'"
-      with:
-        files: output/DSPilot.exe
-        tag_name: nightly-${{ github.sha }}
-        name: Nightly Build
-        draft: false
-        prerelease: true
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

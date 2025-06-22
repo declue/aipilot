@@ -1,0 +1,66 @@
+name: 🐛 Bug Report
+description: 문제를 신고해주세요
+title: "[BUG] "
+labels: ["bug", "triage"]
+assignees:
+  - qmoix
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DSPilot에서 발견된 버그를 신고해주셔서 감사합니다.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 버그 설명
+      description: 발생한 버그에 대한 명확하고 간결한 설명을 작성해주세요.
+      placeholder: 버그가 무엇인지 설명해주세요...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 단계
+      description: 버그를 재현하는 단계를 작성해주세요.
+      placeholder: |
+        1. '...'로 이동
+        2. '....'를 클릭
+        3. '....'까지 스크롤
+        4. 오류 확인
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대되는 동작
+      description: 어떤 동작이 일어나기를 기대했는지 명확하고 간결하게 설명해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 스크린샷
+      description: 가능하다면 문제를 설명하는 스크린샷을 추가해주세요.
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 환경 정보
+      description: 실행 환경에 대한 정보를 제공해주세요.
+      placeholder: |
+        - OS: [예: Windows 10, macOS, Ubuntu 20.04]
+        - Python 버전: [예: 3.11.0]
+        - DSPilot 버전: [예: 0.1.0]
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 추가 정보
+      description: 문제에 대한 다른 맥락이나 정보를 추가해주세요. 

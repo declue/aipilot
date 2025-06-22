@@ -1,0 +1,49 @@
+# 자동 라벨링 규칙 설정
+documentation:
+  - '**/*.md'
+  - 'docs/**/*'
+  - 'instructions/**/*'
+
+ci/cd:
+  - '.github/**/*'
+  - 'pyproject.toml'
+  - 'pytest.ini'
+
+backend:
+  - 'application/api/**/*'
+  - 'application/llm/**/*'
+  - 'application/tasks/**/*'
+
+frontend:
+  - 'application/ui/**/*'
+
+configuration:
+  - 'application/config/**/*'
+  - '**/*.json'
+  - '**/*.yml'
+  - '**/*.yaml'
+  - '**/*.toml'
+
+testing:
+  - 'tests/**/*'
+  - '**/*test*.py'
+
+dependencies:
+  - 'pyproject.toml'
+  - 'requirements*.txt'
+
+security:
+  - 'SECURITY.md'
+
+bug:
+  - any: ['**/bug_report.md', '**/*bug*']
+
+enhancement:
+  - any: ['**/feature_request.md', '**/*enhancement*']
+
+mcp:
+  - 'mcp/**/*'
+  - 'application/llm/mcp/**/*'
+
+webhook:
+  - 'webhook/**/*' 

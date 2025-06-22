@@ -1,0 +1,62 @@
+name: 🚀 Feature Request
+description: 새로운 기능이나 개선사항을 제안해주세요
+title: "[FEATURE] "
+labels: ["enhancement"]
+assignees:
+  - qmoix
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DSPilot을 위한 새로운 기능을 제안해주셔서 감사합니다!
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제 설명
+      description: 이 기능 요청과 관련된 문제가 있다면 설명해주세요.
+      placeholder: 나는 [...] 할 때 항상 좌절감을 느낀다
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 원하는 해결책
+      description: 어떤 일이 일어나기를 원하는지 명확하고 간결한 설명을 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 고려한 대안
+      description: 고려했던 다른 해결책이나 기능에 대한 명확하고 간결한 설명을 작성해주세요.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 우선순위
+      multiple: false
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: 기여 의사
+      options:
+        - label: 이 기능을 구현하는데 도움을 줄 의향이 있습니다
+        - label: 이 기능을 테스트하는데 도움을 줄 의향이 있습니다
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 추가 정보
+      description: 기능 요청에 대한 다른 맥락이나 스크린샷을 추가해주세요. 
