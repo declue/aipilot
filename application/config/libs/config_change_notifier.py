@@ -1,3 +1,4 @@
+import atexit  # 추가: 전역 종료 시 정리용
 import logging
 import os
 import threading
@@ -89,6 +90,16 @@ class ConfigChangeNotifier:
         self._watched_directories: Set[str] = set()
         self._lock = threading.RLock()
         self._running = False
+
+        # 프로세스 종료 시 남은 Observer 스레드를 안전하게 정리한다
+        atexit.register(self._atexit_cleanup)
+
+    def _atexit_cleanup(self) -> None:
+        """프로세스 종료 직전에 호출되어 모든 감시를 중지한다."""
+        try:
+            self.stop_all()
+        except Exception:  # pragma: no cover – 종료 시점 예외 무시
+            pass
 
     def register_callback(self, file_path: str, callback: ConfigChangeCallback) -> None:
         """설정 변경 콜백 등록
@@ -193,6 +204,8 @@ class ConfigChangeNotifier:
 
         try:
             self._observer = Observer()
+            # watchdog 3.x 기준, 내부 Thread 는 기본 daemon 이지만 안전을 위해 명시적으로 설정
+            self._observer.daemon = True  # type: ignore[attr-defined]
             self._observer.start()
             self._running = True
             logger.debug("파일 감시 시작")

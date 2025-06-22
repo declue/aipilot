@@ -8,7 +8,7 @@ import logging
 import re
 from typing import Any, Dict, List
 
-from .interfaces import IConfigValidator, ConfigDict, ValidationResult
+from application.config.libs.interfaces import ConfigDict, IConfigValidator, ValidationResult
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,8 @@ class SchemaValidator(IConfigValidator):
                     field_result = self._validate_field(config_data[field], field_schema, field)
                     if not field_result.is_valid:
                         result.errors.extend(field_result.errors)
+                        # 필드 검증 실패 시 전체 결과를 실패로 표시
+                        result.is_valid = False
         
         return result
     

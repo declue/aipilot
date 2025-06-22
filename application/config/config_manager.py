@@ -4,11 +4,11 @@ import threading
 from typing import Any, Dict, List, Optional
 
 from application.config.apps.managers.app_config_manager import AppConfigManager
+from application.config.apps.managers.llm_profile_manager import LLMProfileManager
 from application.config.libs.config_change_notifier import (
     ConfigChangeCallback,
     get_config_change_notifier,
 )
-from application.config.apps.managers.llm_profile_manager import LLMProfileManager
 from application.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("config_manager") or logging.getLogger(
@@ -471,11 +471,15 @@ GitHub 관련 키워드("이슈", "issue", "PR", "pull request", "커밋", "comm
             with self._lock:
                 self._change_callbacks.clear()
 
+            # 추가: 남은 콜백이 없다면 전역 Observer 까지 정리
+            if not self._file_change_notifier._callbacks:  # pylint: disable=protected-access
+                self._file_change_notifier.stop_all()
+
             logger.debug("ConfigManager 리소스 정리 완료")
         except Exception as e:
             logger.error(f"ConfigManager 리소스 정리 중 오류: {e}")
 
-    def __del__(self):
+    def __del__(self) -> None:
         """소멸자"""
         try:
             self.cleanup()
