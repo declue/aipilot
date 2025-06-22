@@ -369,10 +369,20 @@ class LLMAgent:
                 return test_reasoning_response
 
             if streaming_cb is None:
+                # OpenAI API 는 8192 토큰까지 허용하므로, 설정값이 초과할 경우 자동으로
+                # 클램핑(clamping) 하여 오류를 방지한다.
+                max_tokens_cfg = int(cfg.get("max_tokens", 2048))
+                if max_tokens_cfg > 8192:
+                    logger.warning(
+                        "max_tokens 값 %s 이(가) 허용 범위를 초과하여 8192로 조정됩니다.",
+                        max_tokens_cfg,
+                    )
+                    max_tokens_cfg = 8192
+
                 response = await self.client.chat.completions.create(
                     model=cfg["model"],
                     messages=self.history,
-                    max_tokens=cfg["max_tokens"],
+                    max_tokens=max_tokens_cfg,
                     temperature=cfg["temperature"],
                 )
 
@@ -387,10 +397,18 @@ class LLMAgent:
             else:
                 # 스트리밍 모드
                 accumulated_content = ""
+                max_tokens_cfg = int(cfg.get("max_tokens", 2048))
+                if max_tokens_cfg > 8192:
+                    logger.warning(
+                        "max_tokens 값 %s 이(가) 허용 범위를 초과하여 8192로 조정됩니다.",
+                        max_tokens_cfg,
+                    )
+                    max_tokens_cfg = 8192
+
                 async for chunk in await self.client.chat.completions.create(
                     model=cfg["model"],
                     messages=self.history,
-                    max_tokens=cfg["max_tokens"],
+                    max_tokens=max_tokens_cfg,
                     temperature=cfg["temperature"],
                     stream=True,
                 ):

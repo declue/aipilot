@@ -113,7 +113,9 @@ class StreamingBubbleManager:
         if used_tools:
             bubble.set_used_tools(used_tools)
 
+        # 최종 내용을 버블에 반영 (렌더링 전에 message 값 갱신)
         bubble.original_message = final_content
+        bubble.message = final_content  # 이후 set_reasoning_info 에서 렌더링
         bubble.is_streaming = False
         
         logger.info(f"🔄 버블 최종화: 추론모델={is_reasoning_model}, 추론내용={len(reasoning_content)}자, 답변={len(final_answer)}자")

@@ -37,6 +37,9 @@ class LLMAgentWorker(QRunnable):
         self.signals.streaming_started.connect(self.on_streaming_started)
         self.signals.streaming_chunk.connect(self.on_streaming_chunk)
         self.signals.streaming_finished.connect(self.on_streaming_finished)
+        # 실제 스트리밍 데이터 전송 여부를 추적하여, 단일 응답(비-스트리밍)도
+        # UI 버블에 표시되도록 한다.
+        self._has_streamed: bool = False
         self.is_running = True
 
     def run(self):
@@ -71,19 +74,26 @@ class LLMAgentWorker(QRunnable):
 
                 if self.is_running:
                     logger.info("LLM Agent 응답 생성 완료")
-                    self.signals.streaming_finished.emit()
 
                     # 응답과 도구 정보 분리
                     if isinstance(result, dict):
                         response = result.get("response", "")
                         used_tools = result.get("used_tools", [])
-
-                        # 도구 정보도 함께 전달
-                        self.signals.result.emit(
-                            {"response": response, "used_tools": used_tools}
-                        )
                     else:
-                        self.signals.result.emit({"response": result, "used_tools": []})
+                        response = result
+                        used_tools = []
+
+                    # 스트리밍 단계에서 단 한 글자도 전달되지 않은 경우(예: 비-스트리밍
+                    # 워크플로우/도구 응답), 최종 응답 전체를 한 번에 스트리밍 청크로 전송해
+                    # UI 버블이 내용을 갖도록 한다.
+                    if not self._has_streamed and response:
+                        self.signals.streaming_chunk.emit(response)
+
+                    # result(최종 응답) 신호를 먼저 전달
+                    self.signals.result.emit({"response": response, "used_tools": used_tools})
+
+                    # 모든 데이터가 UI 측에 전달된 뒤에 스트리밍 종료 신호 전송
+                    self.signals.streaming_finished.emit()
 
             except Exception as inner_exception:
                 if self.is_running:
@@ -110,6 +120,8 @@ class LLMAgentWorker(QRunnable):
     def _streaming_callback(self, chunk: str):
         """스트리밍 콜백"""
         if self.is_running:
+            # 최소 한 번이라도 스트리밍 데이터가 전달되었음을 표시
+            self._has_streamed = True
             self.signals.streaming_chunk.emit(chunk)
 
     def stop(self):

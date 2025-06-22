@@ -7,27 +7,22 @@
 import logging
 from typing import Optional
 
-from .base_config_manager import BaseConfigManager
-from .interfaces import ConfigDict
+from application.config.libs.base_config_manager import BaseConfigManager
+from application.config.libs.interfaces import ConfigDict
 
 logger = logging.getLogger(__name__)
 
 
 class GenericConfigManager(BaseConfigManager):
     """범용 설정 관리자
-    
+
     특별한 비즈니스 로직 없이 일반적인 설정 파일을 관리합니다.
     기본 설정은 빈 딕셔너리로 시작합니다.
     """
-    
-    def __init__(
-        self,
-        config_file: str,
-        default_config: Optional[ConfigDict] = None,
-        **kwargs
-    ):
+
+    def __init__(self, config_file: str, default_config: Optional[ConfigDict] = None, **kwargs):
         """GenericConfigManager 생성자
-        
+
         Args:
             config_file: 설정 파일 경로
             default_config: 기본 설정 데이터
@@ -35,7 +30,7 @@ class GenericConfigManager(BaseConfigManager):
         """
         self._default_config = default_config or {}
         super().__init__(config_file, **kwargs)
-    
+
     def create_default_config(self) -> None:
         """기본 설정 생성"""
         try:
@@ -45,16 +40,16 @@ class GenericConfigManager(BaseConfigManager):
         except Exception as e:
             logger.error("기본 설정 생성 실패: %s", e)
             raise
-    
+
     def get_default_config_data(self) -> ConfigDict:
         """기본 설정 데이터 반환"""
         return self._default_config.copy()
-    
+
     def set_default_config(self, default_config: ConfigDict) -> None:
         """기본 설정 데이터 설정
-        
+
         Args:
             default_config: 새로운 기본 설정 데이터
         """
         self._default_config = default_config.copy()
-        logger.debug("기본 설정 데이터 업데이트됨") 
+        logger.debug("기본 설정 데이터 업데이트됨")

@@ -3,7 +3,7 @@ import logging
 import os
 import threading
 import time
-from typing import Callable, Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set, cast
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -42,7 +42,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        file_path = os.path.abspath(event.src_path)
+        file_path = cast(str, os.path.abspath(event.src_path))
 
         if file_path in self.watched_files:
             # 중복 이벤트 방지를 위한 시간 체크
@@ -60,7 +60,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        file_path = os.path.abspath(event.src_path)
+        file_path = cast(str, os.path.abspath(event.src_path))
 
         if file_path in self.watched_files:
             logger.debug(f"파일 생성 감지: {file_path}")
@@ -72,7 +72,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        file_path = os.path.abspath(event.src_path)
+        file_path = cast(str, os.path.abspath(event.src_path))
 
         if file_path in self.watched_files:
             logger.debug(f"파일 삭제 감지: {file_path}")
@@ -109,7 +109,7 @@ class ConfigChangeNotifier:
             callback: 변경 시 호출할 콜백 함수
         """
         with self._lock:
-            abs_path = os.path.abspath(file_path)
+            abs_path = cast(str, os.path.abspath(file_path))
 
             if abs_path not in self._callbacks:
                 self._callbacks[abs_path] = []
@@ -129,7 +129,7 @@ class ConfigChangeNotifier:
             callback: 해제할 콜백 함수
         """
         with self._lock:
-            abs_path = os.path.abspath(file_path)
+            abs_path = cast(str, os.path.abspath(file_path))
 
             if abs_path in self._callbacks:
                 try:
@@ -150,7 +150,7 @@ class ConfigChangeNotifier:
             file_path: 파일 경로
         """
         with self._lock:
-            abs_path = os.path.abspath(file_path)
+            abs_path = cast(str, os.path.abspath(file_path))
 
             if abs_path in self._callbacks:
                 del self._callbacks[abs_path]
