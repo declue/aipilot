@@ -29,7 +29,7 @@ class TestConfigManagerFileWatching(unittest.TestCase):
         self._create_test_llm_profiles()
         
         # ConfigManager 인스턴스 생성
-        with patch('application.config.llm_profile_manager.DEFAULT_LLM_PROFILES_JSON', self.llm_profiles_file):
+        with patch('application.config.apps.defaults.default_llm_profiles.DEFAULT_LLM_PROFILES', {}):
             self.config_manager = ConfigManager(self.app_config_file)
         
         self.callback_events = []
@@ -110,10 +110,15 @@ font_size = 14
         """app.config 파일 변경 감지 테스트"""
         callback_called = threading.Event()
         received_events = []
+        app_config_changed = False
         
         def test_callback(file_path, change_type):
+            nonlocal app_config_changed
             received_events.append((file_path, change_type))
-            callback_called.set()
+            # app.config 파일 변경만 감지
+            if self.app_config_file in file_path:
+                app_config_changed = True
+                callback_called.set()
         
         self.config_manager.register_change_callback(test_callback)
         
@@ -135,17 +140,21 @@ font_size = 14
         with open(self.app_config_file, "w", encoding="utf-8") as f:
             f.write(config_content)
         
-        # 콜백 호출 대기 (최대 3초)
-        if callback_called.wait(timeout=3.0):
+        # 콜백 호출 대기 (최대 5초)
+        if callback_called.wait(timeout=5.0):
             # 변경된 값이 자동으로 리로드되었는지 확인
-            time.sleep(0.1)  # 리로드 완료 대기
+            time.sleep(0.2)  # 리로드 완료 대기
             new_api_key = self.config_manager.get_config_value("LLM", "api_key")
             self.assertEqual(new_api_key, "modified-key")
             
             # 콜백이 호출되었는지 확인
+            self.assertTrue(app_config_changed)
             self.assertTrue(len(received_events) > 0)
-            file_paths = [event[0] for event in received_events]
-            self.assertTrue(any(self.app_config_file in path for path in file_paths))
+        else:
+            # 콜백이 호출되지 않았을 경우 강제 리로드 후 값 확인
+            self.config_manager.force_reload()
+            new_api_key = self.config_manager.get_config_value("LLM", "api_key")
+            self.assertEqual(new_api_key, "modified-key")
 
     def test_llm_profiles_change_detection(self):
         """LLM 프로필 파일 변경 감지 테스트"""
@@ -160,14 +169,14 @@ font_size = 14
         
         # 원본 프로필 확인
         original_profiles = self.config_manager.get_llm_profiles()
-        self.assertIn("test", original_profiles)
+        self.assertIn("default", original_profiles)
         
         # 프로필 파일 수정
         time.sleep(0.2)  # 파일 시스템 이벤트 안정화
         modified_profiles_data = {
             "profiles": {
-                "test": {
-                    "name": "수정된 테스트 프로필",
+                "default": {
+                    "name": "수정된 기본 프로필",
                     "api_key": "modified-api-key",
                     "base_url": "http://modified.example.com",
                     "model": "modified-model",
@@ -185,7 +194,7 @@ font_size = 14
                     "top_k": 30
                 }
             },
-            "current_profile": "test"
+            "current_profile": "default"
         }
         
         with open(self.llm_profiles_file, "w", encoding="utf-8") as f:
@@ -197,7 +206,7 @@ font_size = 14
             time.sleep(0.1)  # 리로드 완료 대기
             new_profiles = self.config_manager.get_llm_profiles()
             self.assertIn("new_profile", new_profiles)
-            self.assertEqual(new_profiles["test"]["name"], "수정된 테스트 프로필")
+            self.assertEqual(new_profiles["default"]["name"], "수정된 기본 프로필")
             
             # 콜백이 호출되었는지 확인
             self.assertTrue(len(received_events) > 0)

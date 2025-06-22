@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 from typing import Dict, List, Optional, Type
 
 from .interfaces import (
@@ -12,7 +13,8 @@ from .interfaces import (
     IConfigRegistry, 
     IConfigFactory, 
     IConfigValidator,
-    ConfigType
+    ConfigType,
+    ConfigDict
 )
 from .base_config_manager import BaseConfigManager
 from .generic_config_manager import GenericConfigManager
@@ -242,4 +244,61 @@ def reload_all_configs() -> None:
 def cleanup_all_configs() -> None:
     """모든 설정 리소스 정리 (편의 함수)"""
     registry = get_config_registry()
-    registry.cleanup_all() 
+    registry.cleanup_all()
+
+
+def initialize_config_system() -> None:
+    """설정 시스템 초기화 (편의 함수)"""
+    # 전역 레지스트리와 팩토리 초기화
+    get_config_registry()
+    get_config_factory()
+    logger.info("설정 시스템 초기화 완료")
+
+
+def quick_setup(config_files: Dict[str, str]) -> Dict[str, IConfigManager]:
+    """빠른 설정 (편의 함수)
+    
+    Args:
+        config_files: 관리자 이름과 설정 파일 경로 매핑
+        
+    Returns:
+        생성된 관리자들의 딕셔너리
+    """
+    managers = {}
+    registry = get_config_registry()
+    
+    for name, config_file in config_files.items():
+        try:
+            manager = create_config_manager(config_file)
+            registry.register_manager(name, manager)
+            managers[name] = manager
+            logger.info("빠른 설정 완료: %s -> %s", name, config_file)
+        except Exception as e:
+            logger.error("빠른 설정 실패 [%s]: %s", name, e)
+    
+    return managers
+
+
+def create_minimal_manager(
+    config_file: str,
+    default_config: Optional[ConfigDict] = None
+) -> IConfigManager:
+    """최소 설정 관리자 생성 (편의 함수)
+    
+    Args:
+        config_file: 설정 파일 경로
+        default_config: 기본 설정 데이터
+        
+    Returns:
+        설정 관리자 인스턴스
+    """
+    from .generic_config_manager import GenericConfigManager
+    
+    manager = GenericConfigManager(config_file)
+    
+    if default_config:
+        manager.set_config_data(default_config)
+        if not os.path.exists(config_file):
+            manager.save_config()
+    
+    return manager 

@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 import pytest
 
-from application.config.app_config_manager import AppConfigManager
+from application.config.apps.managers.app_config_manager import AppConfigManager
 
 
 @pytest.fixture

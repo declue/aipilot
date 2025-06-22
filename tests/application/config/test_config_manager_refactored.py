@@ -4,8 +4,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from application.config.config_manager import ConfigManager
-from application.config.app_config_manager import AppConfigManager
-from application.config.llm_profile_manager import LLMProfileManager
+from application.config.apps.managers.app_config_manager import AppConfigManager
+from application.config.apps.managers.llm_profile_manager import LLMProfileManager
 
 
 @pytest.fixture
@@ -206,15 +206,18 @@ class TestConfigManagerRefactored:
         with pytest.raises(ValueError):
             mock_config_manager.set_config_value("", "key", "value")  # 빈 섹션
 
-    def test_mcp_config_delegation(self, mock_config_manager: ConfigManager):
-        """MCP 설정이 올바르게 위임되는지 테스트"""
-        with patch.object(mock_config_manager.app_config_manager, 'get_mcp_config') as mock_get_mcp:
-            mock_get_mcp.return_value = {"mcpServers": {}, "enabled": True}
-            
-            mcp_config = mock_config_manager.get_mcp_config()
-            
-            mock_get_mcp.assert_called_once()
-            assert "mcpServers" in mcp_config
+    def test_config_value_delegation(self, mock_config_manager: ConfigManager):
+        """설정값 조회/저장이 올바르게 위임되는지 테스트"""
+        # 설정값 저장
+        mock_config_manager.set_config_value("TEST", "key", "value")
+        
+        # 설정값 조회
+        retrieved_value = mock_config_manager.get_config_value("TEST", "key")
+        assert retrieved_value == "value"
+        
+        # 존재하지 않는 키에 대한 fallback 테스트
+        fallback_value = mock_config_manager.get_config_value("TEST", "nonexistent", "default")
+        assert fallback_value == "default"
 
     @patch('application.config.config_manager.AppConfigManager')
     @patch('application.config.config_manager.LLMProfileManager')

@@ -14,92 +14,88 @@ logger = logging.getLogger(__name__)
 
 
 class SchemaValidator(IConfigValidator):
-    """스키마 기반 설정 검증기
+    """JSON Schema 호환 설정 검증기
     
-    미리 정의된 스키마에 따라 설정을 검증합니다.
+    JSON Schema 형식의 스키마를 사용하여 설정을 검증합니다.
     """
     
     def __init__(self, schema: Dict[str, Any]):
         """SchemaValidator 생성자
         
         Args:
-            schema: 검증 스키마
-                {
-                    "required": ["field1", "field2"],
-                    "optional": ["field3", "field4"],
-                    "types": {
-                        "field1": str,
-                        "field2": int,
-                        "field3": [str, int]  # 여러 타입 허용
-                    },
-                    "ranges": {
-                        "field2": {"min": 0, "max": 100}
-                    },
-                    "patterns": {
-                        "field1": r"^[a-zA-Z]+$"
-                    }
-                }
+            schema: JSON Schema 형식의 검증 스키마
         """
         self.schema = schema
-        self.required_fields = set(schema.get("required", []))
-        self.optional_fields = set(schema.get("optional", []))
-        self.field_types = schema.get("types", {})
-        self.field_ranges = schema.get("ranges", {})
-        self.field_patterns = schema.get("patterns", {})
     
     def validate(self, config_data: ConfigDict) -> ValidationResult:
         """설정 데이터 검증"""
         result = ValidationResult()
         
-        # 평면화된 설정으로 검증
-        from .utils import flatten_config
-        flat_data = flatten_config(config_data)
+        try:
+            # JSON Schema 검증 시도
+            import jsonschema
+            jsonschema.validate(config_data, self.schema)
+        except ImportError:
+            # jsonschema 라이브러리가 없으면 기본 검증 수행
+            result = self._basic_validate(config_data)
+        except Exception as e:
+            result.add_error(f"스키마 검증 실패: {str(e)}")
         
-        # 필수 필드 확인
-        for field in self.required_fields:
-            if field not in flat_data:
-                result.add_error(f"필수 필드가 없습니다: {field}")
+        return result
+    
+    def _basic_validate(self, config_data: ConfigDict) -> ValidationResult:
+        """기본 검증 (jsonschema 없을 때)"""
+        result = ValidationResult()
         
-        # 타입 검증
-        for field, value in flat_data.items():
-            if field in self.field_types:
-                expected_types = self.field_types[field]
-                if not isinstance(expected_types, (list, tuple)):
-                    expected_types = [expected_types]
-                
-                if not any(isinstance(value, t) for t in expected_types):
-                    type_names = [t.__name__ for t in expected_types]
-                    result.add_error(f"잘못된 타입 [{field}]: 예상={type_names}, 실제={type(value).__name__}")
+        # 기본적인 타입과 필수 필드 검증
+        if self.schema.get("type") == "object":
+            if not isinstance(config_data, dict):
+                result.add_error("설정 데이터는 객체여야 합니다")
+                return result
+            
+            # 필수 필드 확인
+            required = self.schema.get("required", [])
+            for field in required:
+                if field not in config_data:
+                    result.add_error(f"필수 필드가 없습니다: {field}")
+            
+            # 속성 타입 검증
+            properties = self.schema.get("properties", {})
+            for field, field_schema in properties.items():
+                if field in config_data:
+                    field_result = self._validate_field(config_data[field], field_schema, field)
+                    if not field_result.is_valid:
+                        result.errors.extend(field_result.errors)
+        
+        return result
+    
+    def _validate_field(self, value: Any, field_schema: Dict[str, Any], field_name: str) -> ValidationResult:
+        """개별 필드 검증"""
+        result = ValidationResult()
+        
+        expected_type = field_schema.get("type")
+        if expected_type:
+            if expected_type == "string" and not isinstance(value, str):
+                result.add_error(f"필드 '{field_name}'는 문자열이어야 합니다")
+            elif expected_type == "number" and not isinstance(value, (int, float)):
+                result.add_error(f"필드 '{field_name}'는 숫자여야 합니다")
+            elif expected_type == "integer" and not isinstance(value, int):
+                result.add_error(f"필드 '{field_name}'는 정수여야 합니다")
+            elif expected_type == "boolean" and not isinstance(value, bool):
+                result.add_error(f"필드 '{field_name}'는 불린값이어야 합니다")
+            elif expected_type == "array" and not isinstance(value, list):
+                result.add_error(f"필드 '{field_name}'는 배열이어야 합니다")
+            elif expected_type == "object" and not isinstance(value, dict):
+                result.add_error(f"필드 '{field_name}'는 객체여야 합니다")
         
         # 범위 검증
-        for field, range_config in self.field_ranges.items():
-            if field in flat_data:
-                value = flat_data[field]
-                if isinstance(value, (int, float)):
-                    if "min" in range_config and value < range_config["min"]:
-                        result.add_error(f"값이 너무 작습니다 [{field}]: {value} < {range_config['min']}")
-                    if "max" in range_config and value > range_config["max"]:
-                        result.add_error(f"값이 너무 큽니다 [{field}]: {value} > {range_config['max']}")
-        
-        # 패턴 검증
-        for field, pattern in self.field_patterns.items():
-            if field in flat_data:
-                value = str(flat_data[field])
-                if not re.match(pattern, value):
-                    result.add_error(f"패턴 불일치 [{field}]: '{value}'가 '{pattern}'과 맞지 않습니다")
-        
-        # 허용되지 않은 필드 확인
-        all_allowed_fields = self.required_fields | self.optional_fields
-        if all_allowed_fields:  # 스키마에 필드가 정의된 경우만
-            for field in flat_data.keys():
-                if field not in all_allowed_fields:
-                    # 부분 매칭 확인 (중첩 구조)
-                    is_allowed = any(
-                        field.startswith(allowed + '.') or allowed.startswith(field + '.')
-                        for allowed in all_allowed_fields
-                    )
-                    if not is_allowed:
-                        result.add_error(f"허용되지 않은 필드: {field}")
+        if isinstance(value, (int, float)):
+            minimum = field_schema.get("minimum")
+            maximum = field_schema.get("maximum")
+            if minimum is not None and value < minimum:
+                result.add_error(f"필드 '{field_name}'의 값이 최솟값보다 작습니다: {value} < {minimum}")
+            if maximum is not None and value > maximum:
+                result.add_error(f"필드 '{field_name}'의 값이 최댓값보다 큽니다: {value} > {maximum}")
         
         return result
 

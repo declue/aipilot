@@ -34,26 +34,26 @@ DSPilot의 새로운 설정 관리 시스템은 확장성과 재사용성을 중
 ┌─────────────────────┴───────────────────────────────────────┐
 │                 공개 API (Public API)                      │
 ├─────────────────────────────────────────────────────────────┤
-│  initialize_config_system()                                │
-│  create_config_manager()                                    │
-│  register_config_manager()                                  │
-│  get_config_manager()                                       │
+│  from application.config import (...)                      │
+│  - 재사용 가능한 컴포넌트들 (libs)                           │
+│  - 애플리케이션별 구현체들 (apps)                            │
 └─────────────────────┬───────────────────────────────────────┘
                      │
 ┌─────────────────────┴───────────────────────────────────────┐
-│                레지스트리 & 팩토리 계층                       │
+│                    모듈 구조                                │
 ├─────────────────────────────────────────────────────────────┤
-│  ConfigRegistry     │  ConfigFactory                        │
-│  - 관리자 등록/조회  │  - 관리자 생성                         │
-│  - 중앙화된 관리     │  - 타입별 처리                         │
-└─────────────────────┬───────────────────────────────────────┘
-                     │
-┌─────────────────────┴───────────────────────────────────────┐
-│                   설정 관리자 계층                           │
-├─────────────────────────────────────────────────────────────┤
-│  BaseConfigManager  │  GenericConfigManager                 │
-│  ModernAppConfigManager  │  ModernLLMProfileManager          │
-│  ModernMCPConfigManager  │  [Your Custom Manager]           │
+│  application.config.libs/     │  application.config.apps/   │
+│  ├── interfaces.py            │  ├── managers/              │
+│  ├── base_config_manager.py   │  │   ├── migrated_managers.py│
+│  ├── generic_config_manager.py│  │   ├── app_config_manager.py│
+│  ├── serializers.py           │  │   ├── llm_profile_manager.py│
+│  ├── validators.py            │  │   └── mcp_config_manager.py│
+│  ├── utils.py                 │  └── defaults/             │
+│  ├── registry.py              │      ├── default_app_config.py│
+│  └── config_change_notifier.py│      └── default_llm_profiles.py│
+│                               │                             │
+│  재사용 가능한 라이브러리        │  DSPilot 애플리케이션별 구현  │
+│  (독립적으로 사용 가능)         │  (애플리케이션에 특화)        │
 └─────────────────────┬───────────────────────────────────────┘
                      │
 ┌─────────────────────┴───────────────────────────────────────┐
@@ -67,9 +67,38 @@ DSPilot의 새로운 설정 관리 시스템은 확장성과 재사용성을 중
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## 모듈 구조
+
+### 1. `application.config.libs` - 재사용 가능한 라이브러리
+
+독립적으로 사용 가능한 설정 관리 컴포넌트들:
+
+- **`interfaces.py`**: 핵심 인터페이스 정의
+- **`base_config_manager.py`**: 기본 설정 관리자 추상 클래스
+- **`generic_config_manager.py`**: 범용 설정 관리자
+- **`serializers.py`**: 다양한 형식의 직렬화기
+- **`validators.py`**: 설정 검증기들
+- **`utils.py`**: 유틸리티 함수들
+- **`registry.py`**: 레지스트리 및 팩토리
+- **`config_change_notifier.py`**: 파일 변경 감지
+
+### 2. `application.config.apps` - 애플리케이션별 구현
+
+DSPilot에 특화된 설정 관리자들:
+
+- **`managers/`**: 애플리케이션별 관리자들
+  - `migrated_managers.py`: 현대적인 관리자들 (Modern*)
+  - `app_config_manager.py`: 기존 앱 설정 관리자
+  - `llm_profile_manager.py`: 기존 LLM 프로필 관리자
+  - `mcp_config_manager.py`: 기존 MCP 설정 관리자
+
+- **`defaults/`**: 기본 설정값들
+  - `default_app_config.py`: 앱 기본 설정
+  - `default_llm_profiles.py`: LLM 기본 프로필
+
 ## 핵심 컴포넌트
 
-### 1. 인터페이스 (interfaces.py)
+### 1. 인터페이스 (libs/interfaces.py)
 
 시스템의 모든 컴포넌트는 명확한 인터페이스로 정의됩니다:
 
@@ -84,7 +113,7 @@ class IConfigManager(ABC):
     # ... 기타 메소드들
 ```
 
-### 2. 직렬화기 (serializers.py)
+### 2. 직렬화기 (libs/serializers.py)
 
 다양한 설정 파일 형식을 지원하는 직렬화기들:
 
@@ -97,7 +126,7 @@ json_serializer = factory.create_serializer(ConfigType.JSON)
 yaml_serializer = factory.create_serializer(ConfigType.YAML)
 ```
 
-### 3. 검증기 (validators.py)
+### 3. 검증기 (libs/validators.py)
 
 설정 데이터의 유효성을 검증하는 검증기들:
 
@@ -118,7 +147,7 @@ validator = create_schema_validator(schema)
 result = validator.validate(config_data)
 ```
 
-### 4. 레지스트리 & 팩토리 (registry.py)
+### 4. 레지스트리 & 팩토리 (libs/registry.py)
 
 설정 관리자들을 중앙에서 관리하고 동적으로 생성:
 
@@ -134,7 +163,7 @@ app_manager = get_config_manager("app")
 
 ## 사용 예시
 
-### 기본 사용법
+### 재사용 가능한 라이브러리 사용
 
 ```python
 from application.config import create_config_manager, ConfigType
@@ -153,6 +182,20 @@ db_config = manager.get_section("database")
 
 # 4. 설정 저장
 manager.save_config()
+```
+
+### 애플리케이션별 관리자 사용
+
+```python
+from application.config import ModernAppConfigManager, ModernLLMProfileManager
+
+# DSPilot 앱 설정 관리자
+app_manager = ModernAppConfigManager("app.config")
+ui_config = app_manager.get_ui_config()
+
+# LLM 프로필 관리자
+llm_manager = ModernLLMProfileManager("llm_profiles.json")
+current_profile = llm_manager.get_current_profile()
 ```
 
 ### 스키마 검증 사용
@@ -190,45 +233,6 @@ manager = GenericConfigManager(
 result = manager.validate_config()
 if not result.is_valid:
     print("설정 오류:", result.errors)
-```
-
-### 레지스트리 활용
-
-```python
-from application.config import initialize_config_system, register_config_manager
-
-# 1. 시스템 초기화
-initialize_config_system()
-
-# 2. 여러 설정 관리자 등록
-register_config_manager("app", app_manager)
-register_config_manager("llm", llm_manager)
-register_config_manager("mcp", mcp_manager)
-
-# 3. 전역에서 접근
-from application.config import get_config_manager
-
-app_config = get_config_manager("app")
-llm_config = get_config_manager("llm")
-```
-
-### 빠른 설정 (Quick Setup)
-
-```python
-from application.config import quick_setup
-
-# 여러 설정 파일을 한번에 설정
-config_files = {
-    "app": "app.json",
-    "llm": "llm_profiles.json", 
-    "mcp": "mcp_config.json"
-}
-
-managers = quick_setup(config_files)
-
-# 이제 각 관리자에 접근 가능
-app_manager = managers["app"]
-llm_manager = managers["llm"]
 ```
 
 ## 고급 기능

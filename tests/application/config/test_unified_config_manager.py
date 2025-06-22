@@ -1,14 +1,10 @@
-import json
-import os
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-from application.config.unified_config_manager import UnifiedConfigManager
+from application.config.libs.unified_config_manager import UnifiedConfigManager
 from application.config.github_notification_config import GitHubNotificationConfig
-
 
 @pytest.fixture
 def temp_config_files(tmp_path: Path) -> dict[str, str]:

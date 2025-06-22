@@ -59,7 +59,7 @@ from application.config import (
     get_config_manager,
     create_config_manager,
     
-    # 마이그레이션된 관리자들
+    # 애플리케이션별 관리자들
     ModernAppConfigManager,
     ModernLLMProfileManager,
     ModernMCPConfigManager,

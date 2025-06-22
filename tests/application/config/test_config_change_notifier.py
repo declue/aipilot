@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from application.config.config_change_notifier import (
+from application.config.libs.config_change_notifier import (
     ConfigChangeNotifier,
     ConfigFileWatcher,
     get_config_change_notifier,

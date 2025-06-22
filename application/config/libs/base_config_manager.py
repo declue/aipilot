@@ -82,6 +82,9 @@ class BaseConfigManager(IConfigManager, ABC):
         if auto_create_dir:
             ensure_config_dir(config_file)
 
+        # 설정 파일 로드
+        self.load_config()
+
         if enable_file_watching:
             self._setup_change_detection()
 

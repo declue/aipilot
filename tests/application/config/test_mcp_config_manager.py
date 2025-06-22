@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch, mock_open
 
 import pytest
 
-from application.config.mcp_config_manager import MCPConfigManager
+from application.config.apps.managers.mcp_config_manager import MCPConfigManager
 
 
 @pytest.fixture
@@ -233,8 +233,13 @@ class TestMCPConfigManager:
     def test_create_default_config_error(self, temp_mcp_config_file: str):
         """기본 설정 생성 시 오류 테스트"""
         with patch.object(MCPConfigManager, 'save_config', side_effect=Exception("Save failed")):
-            with pytest.raises(Exception, match="Save failed"):
-                MCPConfigManager(temp_mcp_config_file)
+            # MCPConfigManager는 save_config 실패 시에도 예외를 발생시키지 않고 메모리에서 기본 설정을 사용
+            manager = MCPConfigManager(temp_mcp_config_file)
+            # 기본 설정이 메모리에 로드되었는지 확인
+            config = manager.get_config()
+            assert config["mcpServers"] == {}
+            assert config["defaultServer"] is None
+            assert config["enabled"] is True
 
     def test_config_persistence(self, temp_mcp_config_file: str, sample_server_config: dict):
         """설정 영속성 테스트"""

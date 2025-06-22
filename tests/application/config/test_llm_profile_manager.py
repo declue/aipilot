@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 import pytest
 
-from application.config.llm_profile_manager import LLMProfileManager
+from application.config.apps.managers.llm_profile_manager import LLMProfileManager
 
 
 @pytest.fixture
