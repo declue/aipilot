@@ -3,10 +3,11 @@ import os
 import signal
 import sys
 import webbrowser
+from typing import Any, Optional
 
 from notifypy import Notify  # type: ignore
 from PySide6.QtCore import QObject, QSize, Qt, QTimer
-from PySide6.QtGui import QAction, QFont, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QMenu, QStyle, QSystemTrayIcon
 
 from application.api.fastapi_thread import FastAPIThread
@@ -21,7 +22,7 @@ logger: logging.Logger = setup_logger("tray_app") or logging.getLogger("tray_app
 
 
 class TrayApp(QObject):
-    def __init__(self, app, mcp_manager=None, mcp_tool_manager=None, app_instance=None):
+    def __init__(self, app: Any, mcp_manager: Optional[Any] = None, mcp_tool_manager: Optional[Any] = None, app_instance: Optional[Any] = None) -> None:
         super().__init__()
 
         self.app = app
@@ -43,8 +44,8 @@ class TrayApp(QObject):
         self.is_blinking = False
         self.blink_state = False  # True: 깜박임 상태, False: 일반 상태
         self.has_unread_messages = False
-        self.normal_icon = None
-        self.blink_icon = None
+        self.normal_icon: Optional[QIcon] = None
+        self.blink_icon: Optional[QIcon] = None
 
         # 시스템 트레이 아이콘 지원 확인
         if not QSystemTrayIcon.isSystemTrayAvailable():
@@ -55,14 +56,14 @@ class TrayApp(QObject):
             "시스템 트레이 지원 여부: %s", QSystemTrayIcon.isSystemTrayAvailable()
         )
 
-        # 창 인스턴스 생성
-        self.main_window = MainWindow(self.mcp_manager, self.mcp_tool_manager)
+        # 창 인스턴스 생성 (App 인스턴스 전달)
+        self.main_window = MainWindow(self.mcp_manager, self.mcp_tool_manager, self.app_instance)  # type: ignore
 
         # 메인 윈도우에 트레이 앱 참조 설정
-        self.main_window.tray_app = self
+        self.main_window.tray_app = self  # type: ignore
 
         # 테스트 창 참조
-        self.test_window = None
+        self.test_window: Optional[Any] = None
 
         # MainWindow 참조를 app_instance의 notification_signals에 설정
         if self.app_instance:
@@ -134,7 +135,7 @@ class TrayApp(QObject):
         self.timer.timeout.connect(lambda: None)
         self.timer.start(100)
 
-    def on_message_received(self, *_args):
+    def on_message_received(self, *_args: Any) -> None:
         """메시지 수신 시 트레이 아이콘 깜박임 시작"""
         # 윈도우 상태 디버깅
         is_visible = self.main_window.isVisible()
@@ -163,7 +164,7 @@ class TrayApp(QObject):
             logger.debug("조건 불만족 - 깜박임 시작하지 않음")
             print("[DEBUG] 조건 불만족 - 깜박임 시작하지 않음")
 
-    def start_tray_blink(self):
+    def start_tray_blink(self) -> None:
         """트레이 아이콘 깜박임 시작"""
         if not self.is_blinking:
             self.is_blinking = True
@@ -179,7 +180,7 @@ class TrayApp(QObject):
 
             logger.debug("트레이 아이콘 깜박임 시작됨")
 
-    def _flash_taskbar_icon(self):
+    def _flash_taskbar_icon(self) -> None:
         """Windows 작업 표시줄 아이콘 깜박임"""
         try:
             # Qt의 윈도우 alert 기능 사용
@@ -235,7 +236,7 @@ class TrayApp(QObject):
         except Exception as e:
             logger.warning("작업 표시줄 깜박임 실패: %s", e)
 
-    def stop_tray_blink(self):
+    def stop_tray_blink(self) -> None:
         """트레이 아이콘 깜박임 중지"""
         if self.is_blinking:
             self.is_blinking = False
@@ -252,7 +253,7 @@ class TrayApp(QObject):
 
             logger.debug("트레이 아이콘 깜박임 중지됨")
 
-    def _stop_taskbar_flash(self):
+    def _stop_taskbar_flash(self) -> None:
         """Windows 작업 표시줄 깜박임 중지"""
         try:
             import sys
@@ -299,7 +300,7 @@ class TrayApp(QObject):
         except Exception as e:
             logger.warning("작업 표시줄 깜박임 중지 실패: %s", e)
 
-    def toggle_blink_icon(self):
+    def toggle_blink_icon(self) -> None:
         """트레이 아이콘 깜박임 토글"""
         if not hasattr(self, "tray_icon") or not self.tray_icon:
             return
@@ -315,13 +316,13 @@ class TrayApp(QObject):
             if self.normal_icon:
                 self.tray_icon.setIcon(self.normal_icon)
 
-    def on_window_activated(self):
+    def on_window_activated(self) -> None:
         """윈도우가 활성화되었을 때 호출 (메인 윈도우에서 호출)"""
         if self.has_unread_messages:
             logger.debug("윈도우 활성화 - 트레이 깜박임 중지")
             self.stop_tray_blink()
 
-    def handle_api_notification(self, notification_type, title):
+    def handle_api_notification(self, notification_type: str, title: str) -> None:
         """API로부터 받은 알림 처리"""
         logger.debug("API 알림 수신: %s - %s", notification_type, title)
 
@@ -330,11 +331,11 @@ class TrayApp(QObject):
             self.tray_icon.showMessage(
                 "AI 어시스턴트 알림",
                 f"{notification_type}: {title}",
-                QSystemTrayIcon.Information,
+                QSystemTrayIcon.MessageIcon.Information,
                 3000,  # 3초간 표시
             )
 
-    def handle_notification_signal(self, notification_type, title, message, duration):
+    def handle_notification_signal(self, notification_type: str, title: str, message: str, duration: int) -> None:
         """show_notification 시그널 처리 (크로스 플랫폼 알림 표시)"""
         logger.debug(
             "🔔 알림 시그널 수신: %s - %s - %s", notification_type, title, message
@@ -387,7 +388,7 @@ class TrayApp(QObject):
             self.tray_icon.showMessage(
                 title,
                 message,
-                QSystemTrayIcon.Information,
+                QSystemTrayIcon.MessageIcon.Information,
                 duration if duration > 0 else 3000,
             )
             logger.debug("✅ 트레이 알림 표시됨")
@@ -414,7 +415,7 @@ class TrayApp(QObject):
             except Exception as dialog_error:
                 print(f"[DEBUG] ❌ 커스텀 다이얼로그도 실패: {dialog_error}")
 
-    def handle_system_notification(self, title, message, icon_path):
+    def handle_system_notification(self, title: str, message: str, icon_path: Optional[str]) -> None:
         """시스템 알림 처리 (notifypy 사용)"""
         logger.debug("🖥️ 시스템 알림 요청: %s - %s", title, message)
         print(f"[DEBUG] 🖥️ 시스템 알림 요청: {title} - {message}")
@@ -468,12 +469,12 @@ class TrayApp(QObject):
                 self.tray_icon.showMessage(
                     title,
                     message,
-                    QSystemTrayIcon.Information,
+                    QSystemTrayIcon.MessageIcon.Information,
                     3000,
                 )
                 print(f"[DEBUG] 🔄 트레이 알림으로 대체됨: {title}")
 
-    def handle_dialog_notification(self, dialog_data):
+    def handle_dialog_notification(self, dialog_data: dict) -> None:
         """다이얼로그 알림 처리 (TrayNotificationDialog 사용)"""
         logger.debug("🗨️ 다이얼로그 알림 요청: %s", dialog_data.get("title", "Unknown"))
 
@@ -523,7 +524,7 @@ class TrayApp(QObject):
             logger.error("❌ 다이얼로그 알림 실패: %s", e)
             print(f"[DEBUG] ❌ 다이얼로그 알림 실패: {e}")
 
-    def handle_ui_settings_update(self, settings_dict):
+    def handle_ui_settings_update(self, settings_dict: dict) -> None:
         """UI 설정 업데이트 처리"""
         logger.debug("⚙️ UI 설정 업데이트: %s", settings_dict)
         print(f"[DEBUG] ⚙️ UI 설정 업데이트: {settings_dict}")
@@ -546,7 +547,7 @@ class TrayApp(QObject):
             logger.error("❌ UI 설정 업데이트 실패: %s", e)
             print(f"[DEBUG] ❌ UI 설정 업데이트 실패: {e}")
 
-    def handle_save_chat(self, file_path):
+    def handle_save_chat(self, file_path: str) -> None:
         """채팅 저장 처리"""
         logger.debug("💾 채팅 저장 요청: %s", file_path)
         print(f"[DEBUG] 💾 채팅 저장 요청: {file_path}")
@@ -560,7 +561,7 @@ class TrayApp(QObject):
             logger.error("❌ 채팅 저장 실패: %s", e)
             print(f"[DEBUG] ❌ 채팅 저장 실패: {e}")
 
-    def handle_load_chat(self, file_path):
+    def handle_load_chat(self, file_path: str) -> None:
         """채팅 불러오기 처리"""
         logger.debug("📂 채팅 불러오기 요청: %s", file_path)
         print(f"[DEBUG] 📂 채팅 불러오기 요청: {file_path}")
@@ -574,15 +575,15 @@ class TrayApp(QObject):
             logger.error("❌ 채팅 불러오기 실패: %s", e)
             print(f"[DEBUG] ❌ 채팅 불러오기 실패: {e}")
 
-    def start_fastapi_server(self):
+    def start_fastapi_server(self) -> None:
         """FastAPI 서버를 별도 스레드에서 시작"""
         if self.app_instance:
             self.config_manager.load_config()
             host = self.config_manager.get_config_value("API", "host", "127.0.0.1")
-            port = self.config_manager.get_config_value("API", "port", 8000)
+            port = self.config_manager.get_config_value("API", "port", "8000")
             logger.info("FastAPI 서버 시작(trayapp): http://%s:%s", host, port)
             self.fastapi_thread = FastAPIThread(
-                self.app_instance.api_app, host, int(port)
+                self.app_instance.api_app, host or "127.0.0.1", int(port or "8000")
             )
 
             # 서버가 알림 보낼 때 트레이 알림 시그널과 연결
@@ -592,10 +593,10 @@ class TrayApp(QObject):
         else:
             logger.warning("app_instance가 없어서 FastAPI 서버를 시작할 수 없습니다.")
 
-    def create_test_window_action(self):
+    def create_test_window_action(self) -> QAction:
         """테스트 윈도우 열기 액션 생성"""
 
-        def open_test_window():
+        def open_test_window() -> None:
             self.test_window = TestWindow()
             self.test_window.show()
             logger.debug("테스트 윈도우 열기")
@@ -604,13 +605,13 @@ class TrayApp(QObject):
         test_action.triggered.connect(open_test_window)
         return test_action
 
-    def create_docs_action(self):
+    def create_docs_action(self) -> QAction:
         """API 문서 열기 액션"""
 
-        def open_docs():
+        def open_docs() -> None:
             self.config_manager.load_config()
             host = self.config_manager.get_config_value("API", "host", "127.0.0.1")
-            port = self.config_manager.get_config_value("API", "port", 8000)
+            port = self.config_manager.get_config_value("API", "port", "8000")
             webbrowser.open(f"http://{host}:{port}/docs")
             logger.debug("FastAPI 서버가 별도 스레드에서 시작되었습니다")
             logger.info("API 테스트 URL: http://%s:%s/docs", host, port)
@@ -619,7 +620,7 @@ class TrayApp(QObject):
         docs_action.triggered.connect(open_docs)
         return docs_action
 
-    def create_icon_with_fallback(self):
+    def create_icon_with_fallback(self) -> QIcon:
         """아이콘 생성 (fallback 포함)"""
         icon = QIcon()
 
@@ -676,7 +677,7 @@ class TrayApp(QObject):
                     system_icon = self.app.style().standardIcon(icon_type)
                     if not system_icon.isNull():
                         logger.debug("시스템 아이콘 사용: %s", icon_type)
-                        return system_icon
+                        return QIcon(system_icon)  # type: ignore
                 except Exception:
                     continue
 
@@ -687,12 +688,12 @@ class TrayApp(QObject):
         try:
 
             pixmap = QPixmap(16, 16)
-            pixmap.fill(Qt.blue)
+            pixmap.fill(QColor("blue"))
 
             painter = QPainter(pixmap)
-            painter.setPen(Qt.white)
-            painter.setFont(QFont("Arial", 8, QFont.Bold))
-            painter.drawText(pixmap.rect(), Qt.AlignCenter, "D")
+            painter.setPen(QColor("white"))
+            painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+            painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "D")
             painter.end()
 
             icon = QIcon(pixmap)
@@ -703,33 +704,33 @@ class TrayApp(QObject):
             logger.error("모든 아이콘 생성 실패: %s", exception)
             return QIcon()  # 빈 아이콘 반환
 
-    def create_blink_icon(self):
+    def create_blink_icon(self) -> QIcon:
         """깜박임용 알림 아이콘 생성 (빨간색 표시)"""
         try:
             # 기본 아이콘 크기를 더 크게
             size = 24
             pixmap = QPixmap(size, size)
-            pixmap.fill(Qt.transparent)
+            pixmap.fill(QColor(0, 0, 0, 0))  # transparent
 
             painter = QPainter(pixmap)
-            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
             # 빨간색 원 그리기 (알림 표시) - 더 큰 크기
-            painter.setBrush(Qt.red)
-            painter.setPen(Qt.darkRed)
+            painter.setBrush(QColor("red"))
+            painter.setPen(QColor("darkred"))
             painter.drawEllipse(2, 2, size - 4, size - 4)
 
             # 가운데에 알림 표시 (느낌표) - 더 큰 폰트
-            painter.setPen(Qt.white)
-            painter.setFont(QFont("Arial", 12, QFont.Bold))
-            painter.drawText(pixmap.rect(), Qt.AlignCenter, "!")
+            painter.setPen(QColor("white"))
+            painter.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+            painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "!")
 
             painter.end()
 
             icon = QIcon(pixmap)
             # 다양한 크기 추가
-            icon.addPixmap(pixmap, QIcon.Normal)
-            icon.addPixmap(pixmap, QIcon.Selected)
+            icon.addPixmap(pixmap, QIcon.Mode.Normal)
+            icon.addPixmap(pixmap, QIcon.Mode.Selected)
 
             logger.debug("깜박임용 알림 아이콘 생성 성공 (개선된 크기)")
             return icon
@@ -739,7 +740,7 @@ class TrayApp(QObject):
             # 실패시 기본 아이콘 반환
             return self.normal_icon if self.normal_icon else QIcon()
 
-    def setup_tray_icon(self):
+    def setup_tray_icon(self) -> None:
         """시스템 트레이 아이콘 설정"""
         # 아이콘 생성
         icon = self.create_icon_with_fallback()
@@ -781,7 +782,7 @@ class TrayApp(QObject):
         # 트레이 아이콘 표시
         self.show_tray_icon()
 
-    def show_tray_icon(self):
+    def show_tray_icon(self) -> None:
         """트레이 아이콘 표시"""
         try:
             logger.debug("트레이 아이콘 표시 시도")
@@ -798,7 +799,7 @@ class TrayApp(QObject):
             # 대안: 윈도우를 바로 표시
             self.show_main_window()
 
-    def check_tray_visibility(self):
+    def check_tray_visibility(self) -> None:
         """트레이 아이콘 가시성 확인"""
         try:
             is_visible = self.tray_icon.isVisible()
@@ -812,7 +813,7 @@ class TrayApp(QObject):
             logger.error("트레이 아이콘 표시 실패: %s", exception)
             self.show_main_window()
 
-    def check_tray_icon_visibility(self):
+    def check_tray_icon_visibility(self) -> None:
         """트레이 아이콘 가시성 체크"""
         is_visible = self.tray_icon.isVisible()
         logger.debug("트레이 아이콘 가시성: %s", is_visible)
@@ -821,7 +822,7 @@ class TrayApp(QObject):
             # 트레이 아이콘이 표시되지 않았다면 메인 창을 표시
             self.show_main_window()
 
-    def retry_tray_icon(self):
+    def retry_tray_icon(self) -> None:
         """트레이 아이콘 재시도"""
         try:
             if not self.tray_icon.isVisible():
@@ -832,19 +833,19 @@ class TrayApp(QObject):
             # 트레이 아이콘 재시도 실패 시 메인 창 표시
             self.show_main_window()
 
-    def tray_icon_activated(self, reason):
+    def tray_icon_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         """트레이 아이콘 클릭 이벤트"""
         logger.debug("트레이 아이콘 클릭: %s", reason)
 
-        if reason == QSystemTrayIcon.DoubleClick:
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             logger.debug("더블클릭 -> 창 토글")
             self.toggle_main_window()
-        elif reason == QSystemTrayIcon.Trigger:
+        elif reason == QSystemTrayIcon.ActivationReason.Trigger:
             # 단일 클릭도 창 토글로 처리 (사용자 편의성)
             logger.debug("단일클릭 -> 창 토글")
             self.toggle_main_window()
 
-    def toggle_main_window(self):
+    def toggle_main_window(self) -> None:
         """메인 창 토글"""
         if self.main_window.isVisible():
             logger.debug("창 숨기기")
@@ -853,7 +854,7 @@ class TrayApp(QObject):
             logger.debug("창 보이기")
             self.show_main_window()
 
-    def show_main_window(self):
+    def show_main_window(self) -> None:
         """메인 창 표시"""
         self.main_window.show()
         self.main_window.raise_()
@@ -865,11 +866,11 @@ class TrayApp(QObject):
         # 윈도우가 완전히 표시된 후 최신 알림으로 스크롤
         QTimer.singleShot(200, self.main_window.force_scroll_to_bottom)
 
-    def handle_exit_signal(self, _signum, _frame):
+    def handle_exit_signal(self, _signum: int, _frame: Any) -> None:
         """시그널 핸들러"""
         self.app.quit()
 
-    def quit_application(self):
+    def quit_application(self) -> None:
         """애플리케이션 종료"""
         logger.debug("애플리케이션 종료")
 

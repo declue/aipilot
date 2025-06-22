@@ -1,3 +1,5 @@
+from typing import Any
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -14,11 +16,11 @@ from PySide6.QtWidgets import (
 class UISetupManager:
     """UI 구성 요소 설정 담당 클래스"""
 
-    def __init__(self, main_window):
+    def __init__(self, main_window: Any) -> None:
         self.main_window = main_window
         self.ui_config = main_window.ui_config
 
-    def setup_header(self, layout):
+    def setup_header(self, layout: QVBoxLayout) -> None:
         """헤더 설정 - 모델 선택 기능 추가"""
         header_frame = QFrame()
         header_frame.setObjectName("header_frame")  # 나중에 테마 적용을 위한 식별자
@@ -128,6 +130,28 @@ class UISetupManager:
         model_layout.addWidget(self.main_window.model_selector)
         header_layout.addWidget(model_container)
 
+        # Webhook 서버 연결 상태 인디케이터
+        webhook_status_label = QLabel("🔗")
+        webhook_status_label.setFixedSize(32, 32)
+        webhook_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        webhook_status_label.setStyleSheet(
+            """
+            QLabel {
+                color: #9CA3AF;
+                background-color: #F3F4F6;
+                border: 1px solid #E5E7EB;
+                border-radius: 16px;
+                font-size: 14px;
+                padding: 4px;
+            }
+            """
+        )
+        webhook_status_label.setToolTip("Webhook 서버 연결 상태: 확인 중...")
+        header_layout.addWidget(webhook_status_label)
+        
+        # 메인 윈도우에 webhook 상태 라벨 참조 저장
+        self.main_window.webhook_status_label = webhook_status_label
+
         # 테마 토글 버튼
         theme_toggle_button = QPushButton("🌙")
         theme_toggle_button.setFixedSize(40, 40)
@@ -218,7 +242,7 @@ class UISetupManager:
         # 모델 목록 로드
         self.load_model_profiles()
 
-    def load_model_profiles(self):
+    def load_model_profiles(self) -> None:
         """프로필 목록을 모델 선택 드롭다운에 로드"""
         try:
             profiles = self.main_window.config_manager.get_llm_profiles()
@@ -239,7 +263,7 @@ class UISetupManager:
         except Exception as e:
             print(f"모델 프로필 로드 실패: {e}")
 
-    def on_model_selection_changed(self):
+    def on_model_selection_changed(self) -> None:
         """모델 선택 변경 시 호출"""
         current_index = self.main_window.model_selector.currentIndex()
         if current_index >= 0:
@@ -257,7 +281,7 @@ class UISetupManager:
                 except Exception as e:
                     print(f"모델 변경 실패: {e}")
 
-    def setup_chat_area(self, layout):
+    def setup_chat_area(self, layout: QVBoxLayout) -> None:
         """채팅 영역 설정 (스크롤 지원)"""
         # 채팅 영역 컨테이너
         chat_frame = QFrame()
@@ -293,7 +317,7 @@ class UISetupManager:
         # 레이아웃에 스크롤 영역 추가
         layout.addWidget(self.main_window.scroll_area, 1)  # stretch factor를 1로 설정
 
-    def setup_input_area(self, layout):
+    def setup_input_area(self, layout: QVBoxLayout) -> None:
         """Material UI 스타일 입력 영역 (중단 버튼 추가)"""
         input_frame = QFrame()
         # 입력 프레임 참조 저장 (테마 적용을 위해)
@@ -339,10 +363,8 @@ class UISetupManager:
         """
         )
 
-        # 엔터키 이벤트 처리
-        self.main_window.input_text.keyPressEvent = (
-            self.main_window.input_key_press_event
-        )
+        # 엔터키 이벤트 처리 - 이벤트 필터 설치
+        self.main_window.input_text.installEventFilter(self.main_window)
 
         # 중단 버튼 (처음에는 숨김)
         self.main_window.stop_button = QPushButton("중단")
@@ -420,7 +442,7 @@ class UISetupManager:
 
         layout.addWidget(input_frame)
 
-    def _apply_header_theme(self, header_frame):
+    def _apply_header_theme(self, header_frame: QFrame) -> None:
         """헤더 프레임에 테마 적용"""
         if hasattr(self.main_window, 'theme_manager'):
             colors = self.main_window.theme_manager.get_theme_colors()
@@ -443,7 +465,7 @@ class UISetupManager:
                 }
             """)
 
-    def _apply_model_container_theme(self, model_container):
+    def _apply_model_container_theme(self, model_container: QFrame) -> None:
         """모델 컨테이너에 테마 적용"""
         if hasattr(self.main_window, 'theme_manager'):
             colors = self.main_window.theme_manager.get_theme_colors()
@@ -466,7 +488,7 @@ class UISetupManager:
                 }
             """)
 
-    def _apply_chat_frame_theme(self, chat_frame):
+    def _apply_chat_frame_theme(self, chat_frame: QFrame) -> None:
         """채팅 프레임에 테마 적용"""
         if hasattr(self.main_window, 'theme_manager'):
             colors = self.main_window.theme_manager.get_theme_colors()
@@ -489,7 +511,7 @@ class UISetupManager:
                 }
             """)
 
-    def _apply_scroll_area_theme(self, scroll_area):
+    def _apply_scroll_area_theme(self, scroll_area: QScrollArea) -> None:
         """스크롤 영역에 테마 적용"""
         if hasattr(self.main_window, 'theme_manager'):
             colors = self.main_window.theme_manager.get_theme_colors()
@@ -534,7 +556,7 @@ class UISetupManager:
                 }
             """)
 
-    def _apply_input_frame_theme(self, input_frame):
+    def _apply_input_frame_theme(self, input_frame: QFrame) -> None:
         """입력 프레임에 테마 적용"""
         if hasattr(self.main_window, 'theme_manager'):
             colors = self.main_window.theme_manager.get_theme_colors()
@@ -557,7 +579,7 @@ class UISetupManager:
                 }
             """)
 
-    def _apply_input_container_theme(self, input_container):
+    def _apply_input_container_theme(self, input_container: QFrame) -> None:
         """입력 컨테이너에 테마 적용"""
         if hasattr(self.main_window, 'theme_manager'):
             colors = self.main_window.theme_manager.get_theme_colors()
@@ -588,7 +610,7 @@ class UISetupManager:
                 }
             """)
 
-    def update_container_themes(self):
+    def update_container_themes(self) -> None:
         """모든 컨테이너의 테마를 업데이트합니다."""
         try:
             if hasattr(self.main_window, 'header_frame'):

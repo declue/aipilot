@@ -36,11 +36,12 @@ logger: logging.Logger = setup_logger("main_window") or logging.getLogger("main_
 class MainWindow(QMainWindow):
     """ChatGPT 스타일 메인 창"""
 
-    def __init__(self, mcp_manager: MCPManager, mcp_tool_manager: MCPToolManager):
+    def __init__(self, mcp_manager: MCPManager, mcp_tool_manager: MCPToolManager, app_instance: Optional[Any] = None):
         super().__init__()
         self.config_manager = ConfigManager()
         self.mcp_manager = mcp_manager
         self.mcp_tool_manager = mcp_tool_manager
+        self._app = app_instance  # App 인스턴스 참조 저장
         self.ui_config = self.config_manager.get_ui_config()
         self.tray_app = None  # TrayApp 참조
         self.settings_window: SettingsWindow | None = None
@@ -67,6 +68,7 @@ class MainWindow(QMainWindow):
         self.scroll_area: Any = None
         self.chat_layout: Any = None
         self.theme_toggle_button: Any = None
+        self.webhook_status_label: Any = None
 
         # 창 설정
         self.setWindowTitle("💬 DS Pilot")
@@ -134,6 +136,9 @@ class MainWindow(QMainWindow):
 
         # TaskThread 초기화 및 시작
         self.init_task_scheduler()
+
+        # Webhook 상태 체크 타이머 설정
+        self.init_webhook_status_checker()
 
     def set_window_icon(self) -> None:
         """윈도우 아이콘 설정"""
@@ -477,8 +482,24 @@ class MainWindow(QMainWindow):
             self.model_label.setText("📋 설정 필요")
             logger.warning(f"모델명 업데이트 실패: {e}")
 
+    def eventFilter(self, obj: Any, event: Any) -> bool:
+        """이벤트 필터 - 입력창 키 이벤트 처리"""
+        if obj == self.input_text and hasattr(event, 'type'):
+            from PySide6.QtCore import QEvent
+            if event.type() == QEvent.Type.KeyPress:
+                if event.key() == Qt.Key.Key_Return:
+                    if event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
+                        # Shift+Enter: 줄바꿈
+                        return False  # 기본 동작 수행
+                    else:
+                        # Enter: 메시지 전송
+                        self.send_message()
+                        return True  # 이벤트 처리됨
+        return super().eventFilter(obj, event)
+
     def input_key_press_event(self, event: QKeyEvent) -> None:
-        """입력창 키 이벤트 처리"""
+        """입력창 키 이벤트 처리 (deprecated - eventFilter 사용)"""
+        # 이 메서드는 더 이상 사용되지 않지만 호환성을 위해 유지
         if event.key() == Qt.Key.Key_Return:
             if event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
                 # Shift+Enter: 줄바꿈
@@ -824,6 +845,148 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"작업 스케줄러 초기화 실패: {e}")
 
+    def init_webhook_status_checker(self) -> None:
+        """Webhook 서버 상태 체크 타이머 초기화"""
+        try:
+            # 주기적으로 webhook 상태를 체크하는 타이머 설정
+            self.webhook_status_timer = QTimer()
+            self.webhook_status_timer.timeout.connect(self.check_webhook_status)
+            self.webhook_status_timer.start(30000)  # 30초마다 체크
+            
+            # 초기 상태 체크
+            QTimer.singleShot(2000, self.check_webhook_status)  # 2초 후 첫 체크
+            
+            logger.info("Webhook 상태 체크 타이머 초기화 완료")
+        except Exception as e:
+            logger.error(f"Webhook 상태 체크 타이머 초기화 실패: {e}")
+
+    def check_webhook_status(self) -> None:
+        """Webhook 서버 연결 상태 체크"""
+        try:
+            # App 인스턴스에서 webhook_client 가져오기
+            if hasattr(self, '_app') and self._app and hasattr(self._app, 'webhook_client'):
+                webhook_client = self._app.webhook_client
+                if webhook_client:
+                    self.update_webhook_status_connected(webhook_client)
+                else:
+                    self.update_webhook_status_disabled()
+            else:
+                # App 인스턴스가 없는 경우 설정에서 직접 확인
+                webhook_enabled_str = self.config_manager.get_config_value("WEBHOOK", "enabled", "false")
+                webhook_enabled = webhook_enabled_str.lower() == "true" if webhook_enabled_str else False
+                
+                if webhook_enabled:
+                    self.update_webhook_status_disconnected()
+                else:
+                    self.update_webhook_status_disabled()
+                    
+        except Exception as e:
+            logger.error(f"Webhook 상태 체크 실패: {e}")
+            self.update_webhook_status_error()
+
+    def update_webhook_status_connected(self, webhook_client: Any) -> None:
+        """Webhook 연결됨 상태로 UI 업데이트"""
+        if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+            return
+            
+        try:
+            # 클라이언트 ID가 있으면 연결된 것으로 간주
+            if webhook_client.client_id:
+                self.webhook_status_label.setText("🟢")
+                self.webhook_status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        color: #10B981;
+                        background-color: #ECFDF5;
+                        border: 1px solid #10B981;
+                        border-radius: 16px;
+                        font-size: 14px;
+                        padding: 4px;
+                    }
+                    """
+                )
+                self.webhook_status_label.setToolTip(
+                    f"Webhook 서버 연결됨\n"
+                    f"클라이언트 ID: {webhook_client.client_id}\n"
+                    f"서버: {webhook_client.webhook_server_url}"
+                )
+            else:
+                self.update_webhook_status_disconnected()
+        except Exception as e:
+            logger.debug(f"Webhook 연결 상태 업데이트 실패: {e}")
+            self.update_webhook_status_error()
+
+    def update_webhook_status_disconnected(self) -> None:
+        """Webhook 연결 안됨 상태로 UI 업데이트"""
+        if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+            return
+            
+        self.webhook_status_label.setText("🔴")
+        self.webhook_status_label.setStyleSheet(
+            """
+            QLabel {
+                color: #EF4444;
+                background-color: #FEF2F2;
+                border: 1px solid #EF4444;
+                border-radius: 16px;
+                font-size: 14px;
+                padding: 4px;
+            }
+            """
+        )
+        webhook_url = self.config_manager.get_config_value("WEBHOOK", "server_url", "설정되지 않음")
+        self.webhook_status_label.setToolTip(
+            f"Webhook 서버 연결 안됨\n"
+            f"서버: {webhook_url}\n"
+            f"서버가 실행 중인지 확인하세요"
+        )
+
+    def update_webhook_status_disabled(self) -> None:
+        """Webhook 비활성화 상태로 UI 업데이트"""
+        if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+            return
+            
+        self.webhook_status_label.setText("⚫")
+        self.webhook_status_label.setStyleSheet(
+            """
+            QLabel {
+                color: #6B7280;
+                background-color: #F9FAFB;
+                border: 1px solid #D1D5DB;
+                border-radius: 16px;
+                font-size: 14px;
+                padding: 4px;
+            }
+            """
+        )
+        self.webhook_status_label.setToolTip(
+            "Webhook 기능 비활성화됨\n"
+            "설정에서 Webhook을 활성화할 수 있습니다"
+        )
+
+    def update_webhook_status_error(self) -> None:
+        """Webhook 오류 상태로 UI 업데이트"""
+        if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+            return
+            
+        self.webhook_status_label.setText("⚠️")
+        self.webhook_status_label.setStyleSheet(
+            """
+            QLabel {
+                color: #F59E0B;
+                background-color: #FFFBEB;
+                border: 1px solid #F59E0B;
+                border-radius: 16px;
+                font-size: 14px;
+                padding: 4px;
+            }
+            """
+        )
+        self.webhook_status_label.setToolTip(
+            "Webhook 상태 확인 중 오류 발생\n"
+            "연결 상태를 확인할 수 없습니다"
+        )
+
     def open_settings(self) -> None:
         """설정창 열기"""
         if not hasattr(self, "settings_window") or self.settings_window is None:
@@ -1079,6 +1242,9 @@ class MainWindow(QMainWindow):
             
             # 설정창이 열려있으면 테마 업데이트
             self.update_settings_window_theme()
+            
+            # Webhook 상태 업데이트 (현재 상태 유지하면서 테마만 변경)
+            self.check_webhook_status()
             
             logger.info(f"테마 적용 완료: {self.theme_manager.get_current_theme().value}")
         except Exception as e:
