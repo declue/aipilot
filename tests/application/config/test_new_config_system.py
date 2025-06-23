@@ -4,12 +4,10 @@
 확장 가능한 설정 시스템의 핵심 기능들을 테스트합니다.
 """
 
-import pytest
-import tempfile
-import os
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch
+import os
+import tempfile
+from unittest.mock import Mock
 
 # Optional imports
 try:
@@ -22,52 +20,34 @@ try:
 except ImportError:
     tomli = None
 
-from application.config import (
-    # 핵심 인터페이스
-    ConfigType,
-    ValidationResult,
-    
-    # 기본 구현체
-    BaseConfigManager,
-    GenericConfigManager,
-    
-    # 직렬화기
-    JSONConfigSerializer,
-    YAMLConfigSerializer,
-    TOMLConfigSerializer,
-    SerializerFactory,
-    
-    # 검증기
-    SchemaValidator,
+from application.config import (  # 핵심 인터페이스; 기본 구현체; 직렬화기; 검증기; 유틸리티; 레지스트리 및 팩토리; 애플리케이션별 관리자들; 시스템 초기화
     CompositeValidator,
-    create_schema_validator,
-    
-    # 유틸리티
-    get_nested_value,
-    set_nested_value,
-    has_nested_key,
-    remove_nested_key,
-    merge_configs,
-    detect_config_type,
-    
-    # 레지스트리 및 팩토리
-    ConfigRegistry,
     ConfigFactory,
-    get_config_registry,
-    get_config_factory,
-    register_config_manager,
-    get_config_manager,
-    create_config_manager,
-    
-    # 애플리케이션별 관리자들
+    ConfigRegistry,
+    ConfigType,
+    GenericConfigManager,
+    JSONConfigSerializer,
     ModernAppConfigManager,
     ModernLLMProfileManager,
-    ModernMCPConfigManager,
-    
-    # 시스템 초기화
-    initialize_config_system,
-    quick_setup,
+    SchemaValidator,
+    SerializerFactory,
+    TOMLConfigSerializer,
+    ValidationResult,
+    YAMLConfigSerializer,
+    create_config_manager,
     create_minimal_manager,
+    detect_config_type,
+    get_config_factory,
+    get_config_manager,
+    get_config_registry,
+    get_nested_value,
+    has_nested_key,
+    initialize_config_system,
+    merge_configs,
+    quick_setup,
+    register_config_manager,
+    remove_nested_key,
+    set_nested_value,
 )
 
 
@@ -468,5 +448,4 @@ class TestSystemIntegration:
                 os.unlink(config_file)
 
 
-if __name__ == "__main__":
-    pytest.main([__file__]) 
+# 테스트 파일은 pytest를 통해 실행됩니다 

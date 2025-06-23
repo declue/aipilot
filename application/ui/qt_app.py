@@ -25,7 +25,7 @@ if sys.platform == "win32":
     except Exception:
         pass  # 실패해도 계속 진행
 
-logger: logging.Logger = setup_logger("qt_app") or logging.getLogger("qt_app")
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class QtApp:

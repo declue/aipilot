@@ -8,7 +8,6 @@ UI 측 스트리밍 버블 관리 로직을 기존 managers에서 이동.
 import logging
 from typing import Any, Dict, List
 
-import markdown
 from PySide6.QtCore import QTimer
 
 from application.ui.domain.streaming_state import StreamingState
@@ -16,9 +15,7 @@ from application.ui.presentation.ai_chat_bubble import AIChatBubble
 from application.ui.presentation.streaming_html_renderer import StreamingHtmlRenderer
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("streaming_bubble_manager") or logging.getLogger(
-    "streaming_bubble_manager"
-)
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class StreamingBubbleManager:

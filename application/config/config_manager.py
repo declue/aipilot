@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+import time
 from typing import Any, Dict, List, Optional
 
 from application.config.apps.managers.app_config_manager import AppConfigManager
@@ -12,33 +13,14 @@ from application.config.libs.config_change_notifier import (
 from application.llm.mcp.config.mcp_config_manager import MCPConfigManager
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("config_manager") or logging.getLogger(
-    "config_manager"
-)
+logger: logging.Logger = setup_logger("config") or logging.getLogger("config")
 
 
 class ConfigManager:
-    """통합 설정 관리 클래스
-
-    AppConfigManager와 LLMProfileManager를 조합하여 
-    기존 인터페이스를 유지하면서 책임을 분리합니다.
-
-    추가 기능:
-    - 실시간 파일 변경 감지
-    - 자동 리로드
-    - 변경 사항 콜백 시스템
-    """
-
-    DEFAULT_APP_CONFIG_FILE_NAME = "app.config"
-    DEFAULT_LLM_PROFILES_JSON = "llm_profiles.json"
-    DEFAULT_LLM_PROFILE = "default"
+    """통합 설정 관리 클래스"""
 
     def __init__(self, config_file: Optional[str] = None) -> None:
-        """ConfigManager 생성자
-
-        Args:
-            config_file: 설정 파일 경로. None인 경우 기본값 사용
-        """
+        """ConfigManager 생성자"""
         self._lock = threading.RLock()
         self._change_callbacks: List[ConfigChangeCallback] = []
         self._file_change_notifier = get_config_change_notifier()
@@ -137,23 +119,14 @@ class ConfigManager:
                 logger.error(f"설정 변경 콜백 실행 중 오류: {e}")
 
     def register_change_callback(self, callback: ConfigChangeCallback) -> None:
-        """설정 변경 콜백 등록
-
-        Args:
-            callback: 설정 변경 시 호출할 콜백 함수
-                     함수 시그니처: callback(file_path: str, change_type: str) -> None
-        """
+        """설정 변경 콜백 등록"""
         with self._lock:
             if callback not in self._change_callbacks:
                 self._change_callbacks.append(callback)
                 logger.debug("설정 변경 콜백 등록됨")
 
     def unregister_change_callback(self, callback: ConfigChangeCallback) -> None:
-        """설정 변경 콜백 해제
-
-        Args:
-            callback: 해제할 콜백 함수
-        """
+        """설정 변경 콜백 해제"""
         with self._lock:
             try:
                 self._change_callbacks.remove(callback)
@@ -296,8 +269,12 @@ class ConfigManager:
                         ),
                         "show_cot": self.config.get("LLM", "show_cot", fallback="false"),
                         "react_max_turns": self.config.get("LLM", "react_max_turns", fallback="5"),
-                        "llm_retry_attempts": self.config.get("LLM", "llm_retry_attempts", fallback="3"),
-                        "retry_backoff_sec": self.config.get("LLM", "retry_backoff_sec", fallback="1"),
+                        "llm_retry_attempts":
+                        self.config.get(
+                            "LLM", "llm_retry_attempts", fallback="3"),
+                        "retry_backoff_sec":
+                        self.config.get(
+                            "LLM", "retry_backoff_sec", fallback="1"),
                     }
             except Exception as exception:
                 logger.error("LLM 설정 가져오기 실패: %s", exception)
@@ -478,6 +455,9 @@ GitHub 관련 키워드("이슈", "issue", "PR", "pull request", "커밋", "comm
             if not self._file_change_notifier._callbacks:  # pylint: disable=protected-access
                 self._file_change_notifier.stop_all()
 
+            # 약간의 대기로 스레드 정리 보장
+            time.sleep(0.05)
+
             logger.debug("ConfigManager 리소스 정리 완료")
         except Exception as e:
             logger.error(f"ConfigManager 리소스 정리 중 오류: {e}")
@@ -488,10 +468,6 @@ GitHub 관련 키워드("이슈", "issue", "PR", "pull request", "커밋", "comm
             self.cleanup()
         except Exception:
             pass
-
-    # ------------------------------------------------------------------
-    # MCP 설정 관련 호환 API
-    # ------------------------------------------------------------------
 
     def get_mcp_config(self) -> Dict[str, Any]:
         """MCP 설정 반환 (하위 호환성을 위해 제공)"""

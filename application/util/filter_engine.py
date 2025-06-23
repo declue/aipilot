@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from application.config.config_manager import ConfigManager
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("filter_engine") or logging.getLogger("filter_engine")
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class FilterEngine:

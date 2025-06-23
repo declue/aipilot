@@ -11,7 +11,7 @@ from application.util.logger import setup_logger
 if TYPE_CHECKING:
     from application.ui.common.theme_manager import ThemeManager
 
-logger: logging.Logger = setup_logger("chat_bubble") or logging.getLogger("chat_bubble")
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 # QFrame과 ABC의 메타클래스 충돌을 해결하기 위한 커스텀 메타클래스

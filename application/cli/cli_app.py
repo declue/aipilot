@@ -16,7 +16,7 @@ from application.llm.mcp.mcp_tool_manager import MCPToolManager
 from application.util.logger import setup_logger
 
 # Set up logger
-logger: logging.Logger = setup_logger("cli_app") or logging.getLogger("cli_app")
+logger: logging.Logger = setup_logger("cli") or logging.getLogger("cli")
 
 
 def init_llm_agent() -> LLMAgent:

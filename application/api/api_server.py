@@ -16,7 +16,7 @@ from application.llm.mcp.mcp_tool_manager import MCPToolManager
 from application.ui.signals.notification_signals import NotificationSignals
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("api_app") or logging.getLogger("api_app")
+logger: logging.Logger = setup_logger("api") or logging.getLogger("api")
 
 
 class APIServer:

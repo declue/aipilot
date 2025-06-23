@@ -219,12 +219,17 @@ class ConfigChangeNotifier:
 
         try:
             self._observer.stop()
-            self._observer.join(timeout=1.0)
+            self._observer.join(timeout=2.0)  # 타임아웃 늘림
+            if self._observer.is_alive():
+                logger.warning("Observer 스레드가 정상적으로 종료되지 않았습니다")
             self._observer = None
             self._running = False
             logger.debug("파일 감시 중지")
         except Exception as e:
             logger.error(f"Observer 중지 실패: {e}")
+            # 강제로 상태 초기화
+            self._observer = None
+            self._running = False
 
     def _notify_change(self, file_path: str, change_type: str) -> None:
         """변경 사항을 등록된 콜백들에게 알림
@@ -260,11 +265,36 @@ class ConfigChangeNotifier:
 
 # 전역 인스턴스
 _global_notifier: Optional[ConfigChangeNotifier] = None
+_lock = threading.Lock()
 
 
 def get_config_change_notifier() -> ConfigChangeNotifier:
     """글로벌 ConfigChangeNotifier 인스턴스 반환"""
     global _global_notifier  # pylint: disable=global-statement
-    if _global_notifier is None:
-        _global_notifier = ConfigChangeNotifier()
-    return _global_notifier
+    with _lock:
+        if _global_notifier is None:
+            _global_notifier = ConfigChangeNotifier()
+        return _global_notifier
+
+
+def reset_global_notifier() -> None:
+    """전역 notifier 초기화 (테스트용)"""
+    global _global_notifier  # pylint: disable=global-statement
+    with _lock:
+        if _global_notifier is not None:
+            try:
+                _global_notifier.stop_all()
+            except Exception:
+                pass
+        _global_notifier = None
+
+
+def cleanup_global_notifier() -> None:
+    """전역 notifier 정리"""
+    global _global_notifier  # pylint: disable=global-statement
+    with _lock:
+        if _global_notifier is not None:
+            try:
+                _global_notifier.stop_all()
+            except Exception:
+                pass

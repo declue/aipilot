@@ -1,10 +1,9 @@
-"""LLM 탭 관리 모듈"""
-
 import asyncio
 from typing import Any, Dict
 
 from PySide6.QtWidgets import (
     QComboBox,
+    QDialog,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -657,7 +656,7 @@ class LLMTabManager:
                 content = f.read()
 
             # 편집 대화상자 생성
-            from PySide6.QtWidgets import QDialog, QHBoxLayout, QPushButton, QTextEdit, QVBoxLayout
+            
 
             dialog = QDialog(self.parent)
             dialog.setWindowTitle(
@@ -735,4 +734,4 @@ class LLMTabManager:
     def _update_scroll_area_theme(self, colors: Dict[str, Any]) -> None:
         """스크롤 영역 테마 업데이트"""
         # 스크롤 영역 스타일 업데이트 (실제 구현에서는 위젯 참조 필요)
-        pass
+        

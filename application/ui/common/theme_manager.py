@@ -1,9 +1,3 @@
-"""테마 매니저 - 다크/라이트 모드 관리
-
-PySide6 애플리케이션의 테마(다크/라이트 모드)를 관리하는 클래스입니다.
-SOLID 원칙을 준수하여 단일 책임 원칙에 따라 테마 관리만 담당합니다.
-"""
-
 from enum import Enum
 from typing import Dict
 
@@ -67,8 +61,7 @@ class ThemeManager(QObject):
             ui_config = self.config_manager.get_ui_config()
             ui_config['window_theme'] = self.current_theme.value
             self.config_manager.save_ui_config(ui_config)
-        except Exception as e:
-            # 로깅은 의존성을 최소화하기 위해 생략
+        except Exception:
             pass
     
     def get_theme_colors(self) -> dict[str, str]:

@@ -22,7 +22,7 @@ class MCPProcess:
         self.process: subprocess.Popen | None = None
         self.status: MCPServerStatus = MCPServerStatus(name=server.name, connected=False)
         # 개별 로거 ‒ 서버 이름을 서브 로거로 사용
-        self.logger: logging.Logger = setup_logger(f"mcp_process.{server.name}") or logging.getLogger(__name__)
+        self.logger: logging.Logger = setup_logger("llm") or logging.getLogger("llm")
 
     def start(self) -> bool:
         """서버 프로세스 시작.

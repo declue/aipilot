@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, Any, Optional
 if TYPE_CHECKING:
     from application.ui.presentation.ai_chat_bubble import AIChatBubble
 
-"""StreamingState – Domain Layer"""
-
 class StreamingState:
     """스트리밍 상태를 관리하는 클래스"""
 

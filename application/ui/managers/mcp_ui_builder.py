@@ -1,5 +1,3 @@
-"""MCP UI 빌더 모듈"""
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QGroupBox,

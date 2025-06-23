@@ -1,5 +1,5 @@
-import logging
 import json
+import logging
 import os
 from typing import Any, Dict, List, Optional
 
@@ -9,9 +9,7 @@ from application.config.apps.managers.mcp_config_manager import MCPConfigManager
 from application.config.github_notification_config import GitHubNotificationConfig
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("unified_config_manager") or logging.getLogger(
-    "unified_config_manager"
-)
+logger: logging.Logger = setup_logger("config") or logging.getLogger("config")
 
 
 class UnifiedConfigManager:

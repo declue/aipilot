@@ -14,6 +14,8 @@
         "**/.pytest_cache": true,
         "**/.coverage": true,
         "**/.coverage.*": true,
+        "**/__pycache__": true,
+        "**/**.egg-info": true,
     },
     "editor.codeActionsOnSave": {
         "source.convertImportFormat": "always",

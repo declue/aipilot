@@ -1,14 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional
-
-"""MessageManager – Domain Layer
-
-채팅 버블 생성 및 관리 담당. 기존 managers 구현을 도메인 레이어로 이동하고
-presentation 레이어의 버블 클래스를 사용하도록 경로를 수정했다.
-"""
-
 import logging
+from typing import Any, Optional
 
 from PySide6.QtCore import QTimer
 
@@ -18,8 +11,6 @@ from application.ui.presentation.user_chat_bubble import UserChatBubble
 
 logger: logging.Logger = logging.getLogger("message_manager")
 
-if TYPE_CHECKING:
-    from application.ui.presentation.ai_chat_bubble import AIChatBubble
 
 class MessageManager:
     """메시지 추가/관리 담당 클래스 (Domain)"""
@@ -41,7 +32,7 @@ class MessageManager:
         self._append_spacer()
         self.main_window.scroll_to_bottom()
 
-    def add_ai_message(self, message: str, used_tools: Optional[List[Any]] = None) -> None:
+    def add_ai_message(self, message: str, used_tools: Optional[list[Any]] = None) -> None:
         """AI 메시지 추가 (스트리밍이 아닌 일반 응답)"""
         self._remove_trailing_spacer()
         current_ui_config = self.main_window.ui_config

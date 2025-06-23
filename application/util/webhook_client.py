@@ -16,7 +16,7 @@ from application.util.logger import setup_logger
 from application.util.notification_service import NotificationService
 from application.util.polling_manager import PollingManager
 
-logger = setup_logger("webhook_client") or logging.getLogger("webhook_client")
+logger = setup_logger("util") or logging.getLogger("util")
 
 # 전역 설정 변수
 SESSION_SOCKET_TIMEOUT = 5  # 기본 타임아웃 5초

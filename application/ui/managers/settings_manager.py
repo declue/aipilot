@@ -1,5 +1,3 @@
-"""설정 관리 모듈"""
-
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QMessageBox
 

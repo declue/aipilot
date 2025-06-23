@@ -5,9 +5,7 @@ from typing import Any, Dict, Optional
 
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("mcp_config_manager") or logging.getLogger(
-    "mcp_config_manager"
-)
+logger: logging.Logger = setup_logger("config") or logging.getLogger("config")
 
 
 class MCPConfigManager:

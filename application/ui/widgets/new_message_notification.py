@@ -5,9 +5,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton
 
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("new_message_notification") or logging.getLogger(
-    "new_message_notification"
-)
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class NewMessageNotification(QFrame):

@@ -25,9 +25,7 @@ from application.ui.chat_bubble import ChatBubble
 from application.util.logger import setup_logger
 from application.util.markdown_manager import MarkdownManager
 
-logger: logging.Logger = setup_logger("user_chat_bubble") or logging.getLogger(
-    "user_chat_bubble"
-)
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class UserChatBubble(ChatBubble):

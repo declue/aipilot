@@ -4,17 +4,15 @@ import os
 from typing import Any, Dict
 
 from application.config.apps.defaults.default_llm_profiles import (
-    DEFAULT_LLM_PROFILES_JSON,
     DEFAULT_LLM_PROFILE,
     DEFAULT_LLM_PROFILES,
-    REQUIRED_LLM_PROFILE_FIELDS,
+    DEFAULT_LLM_PROFILES_JSON,
     PROTECTED_PROFILES,
+    REQUIRED_LLM_PROFILE_FIELDS,
 )
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("llm_profile_manager") or logging.getLogger(
-    "llm_profile_manager"
-)
+logger: logging.Logger = setup_logger("config") or logging.getLogger("config")
 
 
 class LLMProfileManager:

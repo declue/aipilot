@@ -13,7 +13,7 @@ import requests
 from application.util.logger import setup_logger
 
 # setup_logger 가 None 을 반환할 수 있으므로 안전하게 기본 로거로 대체
-logger: logging.Logger = setup_logger("notification_service") or logging.getLogger("notification_service")
+logger: logging.Logger = setup_logger("util") or logging.getLogger("util")
 
 
 class NotificationService:  # pylint: disable=too-few-public-methods

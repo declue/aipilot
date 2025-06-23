@@ -1,5 +1,3 @@
-"""MCP 탭 관리 모듈 - 리팩토링된 버전 (SOLID 원칙 준수)"""
-
 import os
 
 from PySide6.QtCore import QObject, QTimer, Signal
@@ -252,7 +250,7 @@ class MCPTabManager:
         except Exception as e:
             print(f"MCP 탭 테마 업데이트 실패: {e}")
 
-    def _update_status_labels_theme(self, colors):
+    def _update_status_labels_theme(self, _colors):
         """상태 라벨 테마 업데이트"""
         if self.ui_components and "status_label" in self.ui_components:
             # 기본 상태 라벨 스타일은 그대로 두고, 배경만 테마에 맞게 조정

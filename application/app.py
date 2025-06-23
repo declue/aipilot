@@ -1,5 +1,6 @@
 import logging
 import sys
+import threading
 
 from application.api.api_server import APIServer
 from application.config.config_manager import ConfigManager
@@ -12,7 +13,7 @@ from application.util.webhook_client import WebhookClient
 
 logger = setup_logger("app") or logging.getLogger("app")
 
-
+# pylint: disable=too-few-public-methods
 class App:
     """메인 애플리케이션 클래스 - QT와 FastAPI를 통합 관리"""
 
@@ -25,12 +26,14 @@ class App:
     webhook_client: WebhookClient | None
 
     def _init_config(self) -> ConfigManager:
+        """Config 관리자 초기화"""
         config_manager = ConfigManager()
         config_manager.load_config()
         logger.debug("Config 관리자 초기화 완료")
         return config_manager
 
     def _init_mcp(self) -> tuple[MCPManager, MCPToolManager]:
+        """MCP 관리자 초기화"""
         mcp_manager = MCPManager(self.config_manager)
         logger.debug("MCP 관리자 초기화 완료")
         mcp_tool_manager = MCPToolManager(mcp_manager, self.config_manager)
@@ -43,8 +46,9 @@ class App:
         mcp_tool_manager: MCPToolManager,
         notification_signals: NotificationSignals,
     ) -> APIServer:
-        # API 앱 초기화
-        api_app = APIServer(mcp_manager, mcp_tool_manager, notification_signals)
+        """API 앱 초기화"""
+        api_app = APIServer(mcp_manager, mcp_tool_manager,
+                            notification_signals)
 
         # API 포트와 호스트 설정
         port = self.config_manager.get_config_value("API", "port", "8000")
@@ -63,7 +67,7 @@ class App:
         mcp_tool_manager: MCPToolManager,
         api_app: APIServer,
     ) -> QtApp:
-        # QT 앱 초기화 - 메인 App 인스턴스(self)를 전달
+        """QT 앱 초기화 - 메인 App 인스턴스(self)를 전달"""
         return QtApp(mcp_manager, mcp_tool_manager, api_app, self)
 
     def _init_webhook_client(self) -> WebhookClient | None:
@@ -101,7 +105,8 @@ class App:
 
         # polling 간격 설정
         poll_interval_str = (
-            self.config_manager.get_config_value("WEBHOOK", "poll_interval", "10")
+            self.config_manager.get_config_value(
+                "WEBHOOK", "poll_interval", "10")
             or "10"
         )
         poll_interval = int(poll_interval_str)
@@ -118,6 +123,7 @@ class App:
         return webhook_client
 
     def __init__(self) -> None:
+        """애플리케이션 초기화"""
         # 설정 관리자 초기화
         self.config_manager = self._init_config()
 
@@ -140,6 +146,51 @@ class App:
         # Webhook 클라이언트 초기화
         self.webhook_client = self._init_webhook_client()
 
+    def _start_webhook_client(self) -> None:
+        """Webhook 클라이언트 시작 - 별도 스레드에서 실행"""
+        if not self.webhook_client:
+            logger.info("Webhook 클라이언트가 비활성화되어 있습니다.")
+            return
+
+        def start_webhook_async() -> None:
+            try:
+                # webhook_client가 None이 아님을 확인
+                if not self.webhook_client:
+                    return
+
+                # 설정 초기화
+                if not self.webhook_client.initialize_config():
+                    logger.error("Webhook 클라이언트 설정 초기화 실패")
+                    return
+
+                # webhook 서버에 클라이언트 등록
+                if self.webhook_client.register_client():
+                    # polling 시작
+                    if self.webhook_client.start_polling():
+                        logger.info("Webhook 클라이언트가 성공적으로 시작되었습니다.")
+                    else:
+                        logger.error("Webhook polling 시작에 실패했습니다.")
+                else:
+                    logger.error("Webhook 클라이언트 등록에 실패했습니다.")
+            except Exception as e:
+                logger.error(f"Webhook 클라이언트 시작 중 오류 발생: {e}")
+
+        # 별도 스레드에서 실행하여 메인 스레드 블로킹 방지
+
+        webhook_thread = threading.Thread(
+            target=start_webhook_async, daemon=True)
+        webhook_thread.start()
+        logger.info("Webhook 클라이언트 백그라운드 시작 중...")
+
+    def _stop_webhook_client(self) -> None:
+        """Webhook 클라이언트 정지"""
+        if self.webhook_client:
+            try:
+                self.webhook_client.stop_polling()
+                logger.info("Webhook 클라이언트가 정상적으로 종료되었습니다.")
+            except Exception as e:
+                logger.error(f"Webhook 클라이언트 종료 중 오류 발생: {e}")
+
     def run(self) -> None:
         """애플리케이션 실행"""
         # QT 환경 설정
@@ -160,48 +211,3 @@ class App:
         finally:
             # 애플리케이션 종료 시 webhook 클라이언트 정리
             self._stop_webhook_client()
-
-    def _start_webhook_client(self) -> None:
-        """Webhook 클라이언트 시작 - 별도 스레드에서 실행"""
-        if not self.webhook_client:
-            logger.info("Webhook 클라이언트가 비활성화되어 있습니다.")
-            return
-
-        def start_webhook_async() -> None:
-            try:
-                # webhook_client가 None이 아님을 확인
-                if not self.webhook_client:
-                    return
-                    
-                # 설정 초기화
-                if not self.webhook_client.initialize_config(): 
-                    logger.error("Webhook 클라이언트 설정 초기화 실패")
-                    return
-
-                # webhook 서버에 클라이언트 등록
-                if self.webhook_client.register_client():
-                    # polling 시작
-                    if self.webhook_client.start_polling():
-                        logger.info("Webhook 클라이언트가 성공적으로 시작되었습니다.")
-                    else:
-                        logger.error("Webhook polling 시작에 실패했습니다.")
-                else:
-                    logger.error("Webhook 클라이언트 등록에 실패했습니다.")
-            except Exception as e:
-                logger.error(f"Webhook 클라이언트 시작 중 오류 발생: {e}")
-
-        # 별도 스레드에서 실행하여 메인 스레드 블로킹 방지
-        import threading
-
-        webhook_thread = threading.Thread(target=start_webhook_async, daemon=True)
-        webhook_thread.start()
-        logger.info("Webhook 클라이언트 백그라운드 시작 중...")
-
-    def _stop_webhook_client(self) -> None:
-        """Webhook 클라이언트 정지"""
-        if self.webhook_client:
-            try:
-                self.webhook_client.stop_polling()
-                logger.info("Webhook 클라이언트가 정상적으로 종료되었습니다.")
-            except Exception as e:
-                logger.error(f"Webhook 클라이언트 종료 중 오류 발생: {e}")

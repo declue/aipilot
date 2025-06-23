@@ -20,7 +20,7 @@ from application.tasks.interfaces.task_scheduler import ITaskScheduler
 from application.tasks.models.task_config import TaskConfig, TaskSettings
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("task_scheduler") or logging.getLogger("task_scheduler")
+logger: logging.Logger = setup_logger("task") or logging.getLogger("task")
 
 
 class TaskScheduler(ITaskScheduler):

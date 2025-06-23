@@ -18,7 +18,6 @@ class IHttpClient(ABC):
         Returns:
             응답 데이터
         """
-        pass
 
     @abstractmethod
     async def post(
@@ -37,7 +36,6 @@ class IHttpClient(ABC):
         Returns:
             응답 데이터
         """
-        pass
 
     @abstractmethod
     async def put(
@@ -56,7 +54,6 @@ class IHttpClient(ABC):
         Returns:
             응답 데이터
         """
-        pass
 
     @abstractmethod
     async def delete(self, url: str, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
@@ -69,9 +66,7 @@ class IHttpClient(ABC):
         Returns:
             응답 데이터
         """
-        pass
 
     @abstractmethod
     async def close(self) -> None:
         """HTTP 클라이언트를 종료합니다."""
-        pass

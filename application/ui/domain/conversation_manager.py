@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-"""ConversationManager – Domain Layer"""
-
 import logging
 
 logger = logging.getLogger("conversation_manager")

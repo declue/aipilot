@@ -1,16 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List
-
-"""StreamingManager – Domain Layer
-
-채팅 응답 스트리밍 전체 흐름을 관리하는 핵심 클래스.
-기존 `application.ui.managers.streaming_manager.StreamingManager` 구현을
-도메인 레이어로 이동하고, presentation/common 레이어에 분리된 의존성을
-반영하도록 import 경로를 갱신했다.
-"""
-
 import logging
+from typing import TYPE_CHECKING, Any, List
 
 from PySide6.QtCore import QTimer
 
@@ -18,9 +9,7 @@ from application.ui.domain.reasoning_parser import ReasoningParser
 from application.ui.domain.streaming_state import StreamingState
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("streaming_manager") or logging.getLogger(
-    "streaming_manager"
-)
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 if TYPE_CHECKING:
     from application.ui.presentation.ai_chat_bubble import AIChatBubble

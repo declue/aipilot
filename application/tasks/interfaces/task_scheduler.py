@@ -12,12 +12,10 @@ class ITaskScheduler(ABC):
     @abstractmethod
     def start(self) -> None:
         """스케줄러를 시작합니다."""
-        pass
 
     @abstractmethod
     def stop(self) -> None:
         """스케줄러를 중지합니다."""
-        pass
 
     @abstractmethod
     def add_job(self, task: TaskConfig) -> bool:
@@ -29,7 +27,6 @@ class ITaskScheduler(ABC):
         Returns:
             성공 여부
         """
-        pass
 
     @abstractmethod
     def remove_job(self, task_id: str) -> bool:
@@ -41,7 +38,6 @@ class ITaskScheduler(ABC):
         Returns:
             성공 여부
         """
-        pass
 
     @abstractmethod
     def update_job(self, task: TaskConfig) -> bool:
@@ -53,7 +49,6 @@ class ITaskScheduler(ABC):
         Returns:
             성공 여부
         """
-        pass
 
     @abstractmethod
     def get_running_jobs(self) -> List[dict]:
@@ -62,7 +57,6 @@ class ITaskScheduler(ABC):
         Returns:
             실행 중인 작업 목록
         """
-        pass
 
     @abstractmethod
     def set_job_listener(
@@ -76,10 +70,9 @@ class ITaskScheduler(ABC):
             on_executed: 작업 실행 완료 콜백
             on_error: 작업 실행 오류 콜백
         """
-        pass
 
     @property
     @abstractmethod
     def is_running(self) -> bool:
         """스케줄러 실행 상태를 반환합니다."""
-        pass 
+ 

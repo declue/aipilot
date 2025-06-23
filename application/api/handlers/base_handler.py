@@ -10,7 +10,7 @@ from application.llm.mcp.mcp_tool_manager import MCPToolManager
 from application.ui.signals.notification_signals import NotificationSignals
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("base_handler") or logging.getLogger("base_handler")
+logger: logging.Logger = setup_logger("api") or logging.getLogger("api")
 
 
 class BaseHandler(ABC):

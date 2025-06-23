@@ -9,7 +9,7 @@ from application.tasks.interfaces.task_configuration import ITaskConfiguration
 from application.tasks.models.task_config import TaskConfig, TaskConfigFileManager, TaskSettings
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("task_configuration") or logging.getLogger("task_configuration")
+logger: logging.Logger = setup_logger("task") or logging.getLogger("task")
 
 
 class TaskConfiguration(ITaskConfiguration):

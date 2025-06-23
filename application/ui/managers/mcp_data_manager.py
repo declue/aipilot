@@ -1,5 +1,3 @@
-"""MCP 데이터 관리 모듈"""
-
 import asyncio
 from typing import Dict, List
 

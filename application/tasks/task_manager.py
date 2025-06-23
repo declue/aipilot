@@ -1,5 +1,3 @@
-"""작업 스케줄링 관리자 (리팩토링됨)"""
-
 import asyncio
 import logging
 from typing import Callable, Dict, List, Optional
@@ -9,7 +7,7 @@ from application.tasks.models.task_config import TaskConfig
 from application.tasks.services import HttpClient, TaskConfiguration, TaskExecutor, TaskScheduler
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("task_manager") or logging.getLogger("task_manager")
+logger: logging.Logger = setup_logger("task") or logging.getLogger("task")
 
 
 class TaskManager:

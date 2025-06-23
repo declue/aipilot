@@ -6,16 +6,14 @@ from typing import Any, Dict, List, Optional
 
 from application.config.apps.defaults.default_app_config import (
     DEFAULT_APP_CONFIG_FILE_NAME,
-    DEFAULT_APP_CONFIG_TEMPLATE_SUFFIX,
     DEFAULT_APP_CONFIG_SECTIONS,
+    DEFAULT_APP_CONFIG_TEMPLATE_SUFFIX,
     DEFAULT_UI_VALUES,
     SUPPORTED_THEMES,
 )
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("app_config_manager") or logging.getLogger(
-    "app_config_manager"
-)
+logger: logging.Logger = setup_logger("config") or logging.getLogger("config")
 
 
 class AppConfigManager:

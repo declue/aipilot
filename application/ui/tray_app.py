@@ -18,7 +18,7 @@ from application.ui.test_window import TestWindow
 from application.ui.tray_notification_dialog import TrayNotificationDialog
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("tray_app") or logging.getLogger("tray_app")
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class TrayApp(QObject):

@@ -1,5 +1,3 @@
-"""MCP 도구 관리 모듈"""
-
 import json
 
 from PySide6.QtCore import Qt

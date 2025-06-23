@@ -1,5 +1,3 @@
-"""설정창 UI 설정 관리 모듈"""
-
 from __future__ import annotations
 
 from typing import Any, cast
@@ -263,7 +261,6 @@ class UISetupManager:
         """헤더 영역 테마 업데이트"""
         # 헤더 라벨 스타일은 setup_header에서 직접 참조하는 위젯이 없으므로
         # 필요시 위젯 참조를 저장해서 업데이트
-        pass
 
     def _update_tab_widget_theme(self, colors: dict[str, str]) -> None:
         """탭 위젯 테마 업데이트"""

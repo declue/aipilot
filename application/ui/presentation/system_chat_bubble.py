@@ -26,9 +26,7 @@ from PySide6.QtWidgets import (
 from application.ui.chat_bubble import ChatBubble
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("system_chat_bubble") or logging.getLogger(
-    "system_chat_bubble"
-)
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class SystemChatBubble(ChatBubble):

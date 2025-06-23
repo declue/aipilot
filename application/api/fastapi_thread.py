@@ -10,7 +10,7 @@ from PySide6.QtCore import QThread, Signal
 
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("fastapi_thread") or logging.getLogger("fastapi_thread")
+logger: logging.Logger = setup_logger("api") or logging.getLogger("api")
 
 
 class FastAPIThread(QThread):
@@ -145,6 +145,13 @@ class FastAPIThread(QThread):
             except Exception as exception:
                 logger.error("서버 종료 중 오류: %s", exception)
                 self.terminate()
+                self.wait(1000)  # 강제 종료 후 대기
+
+        # 스레드 정리 확인
+        if self.isRunning():
+            logger.warning("스레드가 여전히 실행 중입니다. 강제 종료를 시도합니다.")
+            self.terminate()
+            self.wait(2000)  # 2초 대기
 
         logger.info("FastAPI 스레드 종료 완료")
 
@@ -167,5 +174,12 @@ class FastAPIThread(QThread):
 
     def __del__(self) -> None:
         """소멸자 - 리소스 정리"""
-        if self.isRunning():
-            self.stop_server()
+        try:
+            if self.isRunning():
+                logger.debug("FastAPIThread 소멸자에서 서버 종료 실행")
+                self.stop_server()
+        except Exception as e:
+            logger.error(f"FastAPIThread 소멸자에서 오류 발생: {e}")
+        finally:
+            # 부모 클래스의 소멸자 호출
+            super().__del__() if hasattr(super(), '__del__') else None

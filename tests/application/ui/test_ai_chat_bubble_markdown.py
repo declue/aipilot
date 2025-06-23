@@ -1,24 +1,38 @@
 """AI 채팅 버블의 마크다운 렌더링 테스트"""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
+from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QApplication
 
 from application.ui.presentation.ai_chat_bubble import AIChatBubble
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def app():
     """PySide6 애플리케이션 픽스처"""
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    
+    yield app
+    
+    # 테스트 종료 후 Qt 리소스 정리
     try:
-        app = QApplication.instance()
-        if app is None:
-            app = QApplication([])
-        yield app
-    finally:
+        # QThreadPool 정리
+        thread_pool = QThreadPool.globalInstance()
+        if thread_pool:
+            thread_pool.waitForDone(1000)  # 1초 대기
+            thread_pool.clear()
+        
+        # 이벤트 처리 후 앱 정리
         if app:
+            app.processEvents()
             app.quit()
+            
+    except Exception:
+        pass
 
 
 @pytest.fixture

@@ -1,12 +1,5 @@
 from __future__ import annotations
 
-"""StyleManager – Common Layer
-
-PySide6 위젯에 일관된 스타일을 적용하기 위한 헬퍼.
-현재 단계에서는 UI-Tab 매니저에서 호출되는 최소 메서드만 제공한다.
-필요 시 점진적으로 확장한다.
-"""
-
 from typing import Optional
 
 from PySide6.QtWidgets import QLabel, QWidget

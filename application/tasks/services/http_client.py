@@ -9,7 +9,7 @@ from application.tasks.exceptions import HttpClientError
 from application.tasks.interfaces.http_client import IHttpClient
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("http_client") or logging.getLogger("http_client")
+logger: logging.Logger = setup_logger("task") or logging.getLogger("task")
 
 
 class HttpClient(IHttpClient):

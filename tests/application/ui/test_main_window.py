@@ -2,18 +2,42 @@ import sys
 from unittest.mock import Mock, patch
 
 import pytest
+from PySide6.QtCore import QThreadPool
 
 # PySide6 Qt 어플리케이션 테스트를 위한 필수 설정
 from PySide6.QtWidgets import QApplication
-
-# QApplication이 없으면 생성
-if not QApplication.instance():
-    app = QApplication(sys.argv)
 
 from application.config.config_manager import ConfigManager
 from application.llm.mcp.mcp_manager import MCPManager
 from application.llm.mcp.mcp_tool_manager import MCPToolManager
 from application.ui.main_window import MainWindow
+
+
+@pytest.fixture(scope="function")
+def qt_app():
+    """각 테스트 함수마다 QApplication 인스턴스를 생성하고 정리"""
+    # QApplication이 없으면 생성
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+    
+    yield app
+    
+    # 테스트 종료 후 Qt 리소스 정리
+    try:
+        # QThreadPool 정리
+        thread_pool = QThreadPool.globalInstance()
+        if thread_pool:
+            thread_pool.waitForDone(1000)  # 1초 대기
+            thread_pool.clear()
+        
+        # 앱 정리
+        if app:
+            app.processEvents()  # 이벤트 처리
+            app.quit()
+            
+    except Exception:
+        pass
 
 
 class TestMainWindow:
@@ -46,11 +70,28 @@ class TestMainWindow:
         return Mock(spec=MCPToolManager)
 
     @pytest.fixture
-    def main_window(self, mock_config_manager, mock_mcp_manager, mock_mcp_tool_manager) -> MainWindow:
+    def main_window(self, qt_app, mock_config_manager, mock_mcp_manager, mock_mcp_tool_manager) -> MainWindow:
         """MainWindow 인스턴스 생성"""
         with patch('application.ui.main_window.ConfigManager', return_value=mock_config_manager):
             window = MainWindow(mock_mcp_manager, mock_mcp_tool_manager)
-            return window
+            yield window
+            
+            # 윈도우 정리
+            try:
+                # 윈도우의 스레드 풀 정리
+                if hasattr(window, 'thread_pool') and window.thread_pool:
+                    window.thread_pool.waitForDone(1000)
+                    window.thread_pool.clear()
+                
+                # 윈도우 닫기
+                window.close()
+                window.deleteLater()
+                
+                # 이벤트 처리
+                qt_app.processEvents()
+                
+            except Exception:
+                pass
 
     def test_refresh_ui_elements_with_none_model_label(self, main_window: MainWindow):
         """model_label이 None일 때 refresh_ui_elements가 에러 없이 실행되는지 테스트"""

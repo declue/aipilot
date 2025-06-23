@@ -13,9 +13,7 @@ from application.llm.llm_agent import LLMAgent
 from application.ui.signals.worker_signals import WorkerSignals
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("llm_agent_worker") or logging.getLogger(
-    "llm_agent_worker"
-)
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class LLMAgentWorker(QRunnable):

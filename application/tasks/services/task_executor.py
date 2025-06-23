@@ -9,7 +9,7 @@ from application.tasks.interfaces.task_executor import ITaskExecutor
 from application.tasks.models.task_config import TaskConfig
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("task_executor") or logging.getLogger("task_executor")
+logger: logging.Logger = setup_logger("task") or logging.getLogger("task")
 
 
 class TaskExecutor(ITaskExecutor):

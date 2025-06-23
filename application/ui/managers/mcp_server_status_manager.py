@@ -1,5 +1,3 @@
-"""MCP 서버 상태 관리 모듈"""
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTreeWidgetItem
 

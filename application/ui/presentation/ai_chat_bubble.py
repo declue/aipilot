@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QVBoxLayout
 from application.ui.presentation.base_chat_bubble import ChatBubble
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("ai_chat_bubble") or logging.getLogger("ai_chat_bubble")
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 # NOTE: A custom QTextBrowser that preserves the original HTML string passed
 # to setHtml() is needed for reliable unit-testing.  PySide6.QtWidgets.QTextBrowser

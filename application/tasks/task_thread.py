@@ -1,5 +1,3 @@
-"""작업 스케줄러 스레드 (리팩토링됨)"""
-
 import logging
 from typing import Dict, List, Optional
 
@@ -10,7 +8,7 @@ from application.tasks.models.task_config import TaskConfig
 from application.tasks.task_manager import TaskManager
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("task_thread") or logging.getLogger("task_thread")
+logger: logging.Logger = setup_logger("task") or logging.getLogger("task")
 
 
 class TaskThread(QThread):

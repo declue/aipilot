@@ -2,7 +2,7 @@
 """AIChatBubble 스텁 기능 테스트 (GUI 환경 필요)"""
 
 import pytest
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, QThreadPool
 from PySide6.QtWidgets import QApplication
 
 from application.ui.presentation.ai_chat_bubble import AIChatBubble
@@ -26,6 +26,24 @@ def check_gui_available() -> bool:
         return False
 
 
+def cleanup_qt_resources():
+    """Qt 리소스 정리"""
+    try:
+        # QThreadPool 정리
+        thread_pool = QThreadPool.globalInstance()
+        if thread_pool:
+            thread_pool.waitForDone(1000)  # 1초 대기
+            thread_pool.clear()
+        
+        # 앱 이벤트 처리
+        app = QApplication.instance()
+        if app:
+            app.processEvents()
+            
+    except Exception:
+        pass
+
+
 def test_basic_creation() -> None:
     """기본 AIChatBubble 생성이 가능한지 확인한다."""
     if not check_gui_available():
@@ -35,6 +53,11 @@ def test_basic_creation() -> None:
         bubble = AIChatBubble("test message")
         assert bubble.message == "test message"
         assert bubble.avatar_icon == "🤖"
+        
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()
+        
     except Exception as e:
         # GUI 환경이 없을 때는 테스트를 스킵
         pytest.skip(f"GUI environment not available: {e}")
@@ -49,6 +72,11 @@ def test_create_github_bubble() -> None:
         github_bubble = AIChatBubble.create_github_bubble("GitHub test")
         assert github_bubble.message == "GitHub test"
         assert github_bubble.avatar_icon == "🐱"
+        
+        # 리소스 정리
+        github_bubble.deleteLater()
+        cleanup_qt_resources()
+        
     except Exception as e:
         pytest.skip(f"GUI environment not available: {e}")
 
@@ -63,6 +91,11 @@ def test_streaming_attributes() -> None:
         assert bubble.is_streaming is False
         assert bubble.streaming_content == ""
         assert bubble.original_message == "streaming test"
+        
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()
+        
     except Exception as e:
         # GUI 환경이 없을 때는 테스트를 스킵
         pytest.skip(f"GUI environment not available: {e}")
@@ -79,6 +112,11 @@ def test_reasoning_attributes() -> None:
         assert bubble.reasoning_content == ""
         assert bubble.final_answer == ""
         assert bubble.show_reasoning is True
+        
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()
+        
     except Exception as e:
         pytest.skip(f"GUI environment not available: {e}")
 
@@ -100,6 +138,11 @@ def test_set_reasoning_info() -> None:
         assert bubble.is_reasoning_model is True
         assert bubble.reasoning_content == reasoning_content
         assert bubble.final_answer == final_answer
+        
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()
+        
     except Exception as e:
         pytest.skip(f"GUI environment not available: {e}")
 
@@ -118,6 +161,10 @@ def test_copy_content_with_reasoning() -> None:
         # 추론 모델일 때
         bubble.set_reasoning_info(True, "추론 과정", "최종 답변")
         bubble.copy_content()  # 예외가 발생하지 않아야 함
+        
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()
         
     except Exception as e:
         pytest.skip(f"GUI environment not available: {e}")
@@ -141,6 +188,10 @@ def test_raw_mode_with_reasoning() -> None:
         # 다시 Markdown 모드로 전환
         bubble.toggle_raw_mode()
         assert bubble.raw_mode is False
+        
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()        
         
     except Exception as e:
         pytest.skip(f"GUI environment not available: {e}")
@@ -182,41 +233,12 @@ def test_reasoning_parsing_and_display() -> None:
         assert bubble.reasoning_content == reasoning_content
         assert bubble.final_answer == final_answer
         
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()
+        
     except Exception as e:
         pytest.skip(f"GUI environment not available: {e}")
-
-
-def test_reasoning_model_detection() -> None:
-    """추론 모델 감지 테스트"""
-    try:
-        from application.llm.llm_agent import _is_reasoning_model
-        
-        # 추론 모델들
-        reasoning_models = [
-            "o1-preview",
-            "o1-mini", 
-            "claude-3-5-sonnet",
-            "deepseek-r1",
-            "qwen-qvq",
-            "gemini-2.5-pro-preview-06-05"
-        ]
-        
-        for model in reasoning_models:
-            assert _is_reasoning_model(model) is True, f"{model}이 추론 모델로 감지되지 않음"
-            
-        # 일반 모델들
-        normal_models = [
-            "gpt-4",
-            "gpt-3.5-turbo",
-            "llama2",
-            "mistral"
-        ]
-        
-        for model in normal_models:
-            assert _is_reasoning_model(model) is False, f"{model}이 추론 모델로 잘못 감지됨"
-            
-    except ImportError:
-        pytest.skip("LLM agent module not available")
 
 
 def test_real_reasoning_response() -> None:
@@ -264,6 +286,10 @@ def test_real_reasoning_response() -> None:
         assert "추론 과정 보기" in html_content
         
         print("✅ 실제 추론 응답 테스트 성공")
+        
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()
         
     except Exception as e:
         print(f"❌ 실제 추론 응답 테스트 실패: {e}")

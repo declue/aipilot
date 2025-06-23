@@ -16,9 +16,7 @@ from PySide6.QtWidgets import (
 from application.ui.chat_bubble import ChatBubble
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("system_chat_bubble") or logging.getLogger(
-    "system_chat_bubble"
-)
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class SystemChatBubble(ChatBubble):
@@ -341,7 +339,7 @@ class SystemChatBubble(ChatBubble):
                 self.text_browser.document().adjustSize()
                 self.adjust_browser_height(self.text_browser)
 
-                logger.debug(f"시스템 버블 텍스트 브라우저 크기 조정 완료")
+                logger.debug("시스템 버블 텍스트 브라우저 크기 조정 완료")
 
             # 버블 프레임들 크기 업데이트
             bubble_frames = self.findChildren(QFrame)

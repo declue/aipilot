@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, cast
 
 from application.util.logger import setup_logger
 
-logger = cast(logging.Logger, setup_logger("polling_manager") or logging.getLogger("polling_manager"))
+logger = cast(logging.Logger, setup_logger("util") or logging.getLogger("util"))
 
 
 class PollingManager:  # pylint: disable=too-few-public-methods

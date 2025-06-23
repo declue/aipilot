@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-"""ReasoningParser – Domain Layer"""
-
 import logging
 import re
 
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("reasoning_parser") or logging.getLogger(
-    "reasoning_parser"
-)
+logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class ReasoningParser:

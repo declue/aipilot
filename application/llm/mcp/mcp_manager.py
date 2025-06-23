@@ -28,7 +28,7 @@ class MCPManager:
             별도의 MCPConfigManager 인스턴스를 주입 받아 테스트 용이성을 높입니다. 미지정 시 내부에서 생성합니다.
         """
 
-        self.logger: logging.Logger = setup_logger("mcp_manager") or logging.getLogger(__name__)
+        self.logger: logging.Logger = setup_logger("llm") or logging.getLogger("llm")
 
         self.config_manager: ConfigManager = config_manager
         self.mcp_config: MCPConfigManager = mcp_config or MCPConfigManager()

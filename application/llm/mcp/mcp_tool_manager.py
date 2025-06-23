@@ -18,7 +18,7 @@ from application.llm.mcp.tool.cache import ToolCache
 from application.llm.mcp.tool.converter import ToolConverter
 from application.util.logger import setup_logger
 
-logger = setup_logger(__name__) or logging.getLogger(__name__)
+logger = setup_logger("llm") or logging.getLogger("llm")
 
 
 class ToolExecutor:  # pylint: disable=too-few-public-methods

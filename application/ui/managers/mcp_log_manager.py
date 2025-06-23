@@ -1,5 +1,3 @@
-"""MCP 로그 관리 모듈"""
-
 import datetime
 
 from PySide6.QtGui import QTextCursor
