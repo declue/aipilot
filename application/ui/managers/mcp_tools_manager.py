@@ -107,13 +107,13 @@ class MCPToolsManager:
                 param_type = param_info.get("type", "unknown")
                 param_desc = param_info.get("description", "설명 없음")
                 required_mark = "*" if param_name in required_params else ""
-                details += (
-                    f"  • {param_name} ({param_type}){required_mark}: {param_desc}\n"
-                )
+                details += f"  • {param_name} ({param_type}){required_mark}: {param_desc}\n"
         else:
             details += "  • 매개변수 정보 없음\n"
 
-        details += f"\n📊 전체 스키마:\n{json.dumps(tool_data['tool_data'], indent=2, ensure_ascii=False)}"
+        details += (
+            f"\n📊 전체 스키마:\n{json.dumps(tool_data['tool_data'], indent=2, ensure_ascii=False)}"
+        )
 
         self.tool_details_text.setPlainText(details)
 
@@ -126,7 +126,5 @@ class MCPToolsManager:
         return {
             "total_tools": len(tools_data),
             "servers": list(server_groups.keys()),
-            "server_tool_counts": {
-                server: len(tools) for server, tools in server_groups.items()
-            },
+            "server_tool_counts": {server: len(tools) for server, tools in server_groups.items()},
         }

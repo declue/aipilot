@@ -39,7 +39,7 @@ class ToolExecutor:  # pylint: disable=too-few-public-methods
 
         tool_meta = self._cache.get(tool_key)
         server_name = tool_meta["server_name"]
-        actual_tool_name = tool_meta["tool_name"]        # 2) 서버 설정 조회
+        actual_tool_name = tool_meta["tool_name"]  # 2) 서버 설정 조회
         server_config = self._mcp_manager.get_enabled_servers().get(server_name)
         if not server_config:
             return f"오류: 서버 '{server_name}' 설정을 찾을 수 없습니다."
@@ -48,14 +48,14 @@ class ToolExecutor:  # pylint: disable=too-few-public-methods
         cfg = self._config_manager.get_llm_config()
         try:
             client = AsyncOpenAI(
-                api_key=cfg.get("api_key"), 
+                api_key=cfg.get("api_key"),
                 base_url=cfg.get("base_url"),
-                timeout=60.0  # 타임아웃 설정 추가
+                timeout=60.0,  # 타임아웃 설정 추가
             )
             set_default_openai_client(client)
         except Exception as exc:  # pragma: no cover
             logger.error("OpenAI 클라이언트 설정 실패: %s", exc)
-            return f"오류: OpenAI 클라이언트 설정 실패 - {exc}"        # 5) MCPServerStdio 를 이용해 실제 도구 호출 실행
+            return f"오류: OpenAI 클라이언트 설정 실패 - {exc}"  # 5) MCPServerStdio 를 이용해 실제 도구 호출 실행
         try:
             async with MCPServerStdio(
                 cache_tools_list=True,
@@ -79,7 +79,7 @@ class ToolExecutor:  # pylint: disable=too-few-public-methods
 
                 result = await Runner.run(starting_agent=agent, input=prompt, max_turns=10)
                 return getattr(result, "final_output", str(result))
-                
+
         except Exception as exc:
             logger.error("MCP 서버 연결 또는 도구 실행 실패: %s", exc)
             return f"오류: MCP 도구 실행 실패 - {exc}"
@@ -136,7 +136,9 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
     # 임시 ReAct-style 실행 (간소화)
     # ------------------------------------------------------------------
 
-    async def run_agent_with_tools(self, user_msg: str, streaming_cb: Callable[[str], None] | None = None) -> Dict[str, Any]:  # noqa: D401
+    async def run_agent_with_tools(
+        self, user_msg: str, streaming_cb: Callable[[str], None] | None = None
+    ) -> Dict[str, Any]:  # noqa: D401
         """OpenAI function-call 기반 ReAct(Reason-Act-Observe) 루프.
 
         1. 사용자 질문 → LLM 호출
@@ -152,27 +154,25 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
             return await self._run_agent_with_tools_simple(user_msg, streaming_cb)
 
         cfg = self._config_manager.get_llm_config()
-        
+
         # API 키와 base_url 검증
         api_key = cfg.get("api_key")
         base_url = cfg.get("base_url")
-        
+
         if not api_key:
             logger.error("OpenAI API 키가 설정되지 않았습니다")
             return await self._run_agent_with_tools_simple(user_msg, streaming_cb)
-            
+
         # 초기 진단 로깅
         logger.info("=== ReAct 루프 시작 ===")
-        logger.info("사용자 메시지: %s", user_msg[:100] + "..." if len(user_msg) > 100 else user_msg)
+        logger.info(
+            "사용자 메시지: %s", user_msg[:100] + "..." if len(user_msg) > 100 else user_msg
+        )
         logger.info("사용 가능한 도구: %d개", len(tools))
         logger.info("모델: %s", cfg.get("model", "unknown"))
 
         try:
-            client = AsyncOpenAI(
-                api_key=api_key, 
-                base_url=base_url, 
-                timeout=300.0
-            )
+            client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=300.0)
             logger.info("OpenAI 클라이언트 생성 완료")
         except Exception as exc:
             logger.error("OpenAI 클라이언트 생성 실패: %s", exc)
@@ -312,7 +312,9 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
     # 간단한 패턴 기반 폴백 구현 (이전 버전)
     # ------------------------------------------------------------------
 
-    async def _run_agent_with_tools_simple(self, user_msg: str, streaming_cb: Callable[[str], None] | None = None) -> Dict[str, Any]:  # noqa: D401
+    async def _run_agent_with_tools_simple(
+        self, user_msg: str, streaming_cb: Callable[[str], None] | None = None
+    ) -> Dict[str, Any]:  # noqa: D401
         """간단한 '<tool>(args)' 패턴 파싱 버전 (네트워크 호출 없이도 동작)."""
 
         tool_pattern = re.compile(r"(?P<tool>[\w_]+)\s*\((?P<args>[^)]*)\)")
@@ -381,23 +383,26 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
 
         # 병렬로 각 서버 상태 확인 (예외 처리 포함)
         try:
-            await asyncio.gather(*[_process_server(name, cfg) for name, cfg in enabled_servers.items()], return_exceptions=True)
+            await asyncio.gather(
+                *[_process_server(name, cfg) for name, cfg in enabled_servers.items()],
+                return_exceptions=True,
+            )
         except Exception as exc:
             logger.error("서버 처리 중 예상치 못한 오류: %s", exc)
 
     # ------------------------------------------------------------------
     # 연결 상태 확인 및 진단
     # ------------------------------------------------------------------
-    
+
     async def check_connection_status(self) -> Dict[str, Any]:
         """현재 연결 상태를 확인하고 진단 정보를 반환합니다."""
         status: Dict[str, Any] = {
             "openai_client": False,
             "mcp_servers": {},
             "config_valid": False,
-            "errors": []
+            "errors": [],
         }
-        
+
         # 1. 설정 확인
         try:
             cfg = self._config_manager.get_llm_config()
@@ -408,22 +413,20 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
                 status["errors"].append("OpenAI API 키가 설정되지 않았습니다")
         except Exception as exc:
             status["errors"].append(f"설정 로드 실패: {exc}")
-        
+
         # 2. OpenAI 클라이언트 테스트
         if status["config_valid"]:
             try:
                 cfg = self._config_manager.get_llm_config()
                 client = AsyncOpenAI(
-                    api_key=cfg.get("api_key"), 
-                    base_url=cfg.get("base_url"),
-                    timeout=10.0
+                    api_key=cfg.get("api_key"), base_url=cfg.get("base_url"), timeout=10.0
                 )
                 # 간단한 모델 목록 요청으로 연결 테스트
                 await client.models.list()
                 status["openai_client"] = True
             except Exception as exc:
                 status["errors"].append(f"OpenAI 연결 실패: {exc}")
-        
+
         # 3. MCP 서버 상태 확인
         enabled_servers = self._mcp_manager.get_enabled_servers()
         for server_name, server_config in enabled_servers.items():
@@ -432,49 +435,49 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
                 status["mcp_servers"][server_name] = {
                     "connected": getattr(server_status, "connected", False),
                     "tools_count": len(getattr(server_status, "tools", [])),
-                    "command": server_config.command
+                    "command": server_config.command,
                 }
             except Exception as exc:
                 status["mcp_servers"][server_name] = {
                     "connected": False,
                     "error": str(exc),
-                    "command": server_config.command
+                    "command": server_config.command,
                 }
-        
+
         return status
 
     def validate_configuration(self) -> List[str]:
         """설정의 유효성을 검증하고 문제점을 반환합니다."""
         issues = []
-        
+
         try:
             cfg = self._config_manager.get_llm_config()
-            
+
             # API 키 확인
             if not cfg.get("api_key"):
                 issues.append("OpenAI API 키가 설정되지 않았습니다")
-            
+
             # 모델 확인
             if not cfg.get("model"):
                 issues.append("LLM 모델이 설정되지 않았습니다")
-              # base_url 확인 (선택사항이지만 설정된 경우 유효성 확인)
+            # base_url 확인 (선택사항이지만 설정된 경우 유효성 확인)
             base_url = cfg.get("base_url")
             if base_url and not (
-                base_url.startswith("http://") or 
-                base_url.startswith("https://") or
-                base_url.startswith("localhost") or
-                "localhost" in base_url
+                base_url.startswith("http://")
+                or base_url.startswith("https://")
+                or base_url.startswith("localhost")
+                or "localhost" in base_url
             ):
                 issues.append("base_url이 올바른 형식이 아닙니다")
-                
+
         except Exception as exc:
             issues.append(f"설정 로드 중 오류: {exc}")
-        
+
         # MCP 서버 설정 확인
         enabled_servers = self._mcp_manager.get_enabled_servers()
         if not enabled_servers:
             issues.append("활성화된 MCP 서버가 없습니다")
-        
+
         return issues
 
     # ------------------------------------------------------------------
@@ -493,7 +496,9 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
                         "description": self._converter.enhance_description(
                             meta["server_name"], meta["tool_name"], tool_info["description"]
                         ),
-                        "parameters": self._converter.convert_schema(tool_info.get("inputSchema", {})),
+                        "parameters": self._converter.convert_schema(
+                            tool_info.get("inputSchema", {})
+                        ),
                     },
                 }
             )
@@ -504,12 +509,12 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
         diagnosis: Dict[str, Any] = {
             "timestamp": "2025-06-21",
             "config_status": "unknown",
-            "connection_test": "unknown", 
+            "connection_test": "unknown",
             "simple_test": "unknown",
             "tools_available": 0,
-            "recommendations": []
+            "recommendations": [],
         }
-        
+
         # 1. 설정 검증
         config_issues = self.validate_configuration()
         if config_issues:
@@ -517,16 +522,18 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
             diagnosis["recommendations"].extend([f"설정 문제: {issue}" for issue in config_issues])
         else:
             diagnosis["config_status"] = "ok"
-        
+
         # 2. 도구 가용성 확인
         try:
             tools = await self.get_openai_tools()
             diagnosis["tools_available"] = len(tools)
             if not tools:
-                diagnosis["recommendations"].append("사용 가능한 MCP 도구가 없습니다. MCP 서버 상태를 확인하세요.")
+                diagnosis["recommendations"].append(
+                    "사용 가능한 MCP 도구가 없습니다. MCP 서버 상태를 확인하세요."
+                )
         except Exception as exc:
             diagnosis["recommendations"].append(f"도구 로드 실패: {exc}")
-        
+
         # 3. 연결 상태 테스트
         try:
             connection_status = await self.check_connection_status()
@@ -538,7 +545,7 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
         except Exception as exc:
             diagnosis["connection_test"] = "error"
             diagnosis["recommendations"].append(f"연결 테스트 실패: {exc}")
-        
+
         # 4. 간단한 응답 테스트
         try:
             simple_result = await self._run_agent_with_tools_simple(user_msg)
@@ -546,14 +553,14 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
         except Exception as exc:
             diagnosis["simple_test"] = "error"
             diagnosis["recommendations"].append(f"간단한 테스트 실패: {exc}")
-        
+
         # 5. 구체적인 권장사항 추가
         if diagnosis["config_status"] == "ok" and diagnosis["connection_test"] == "failed":
             diagnosis["recommendations"].append("API 키나 base_url 설정을 확인하세요.")
-        
+
         if diagnosis["tools_available"] == 0:
             diagnosis["recommendations"].append("MCP 서버를 시작하고 도구를 새로고침하세요.")
-        
+
         return diagnosis
 
 
@@ -561,7 +568,10 @@ class MCPToolManager:  # pylint: disable=too-many-instance-attributes
 # 내부 헬퍼: 비동기 재시도
 # ------------------------------------------------------------------
 
-def _retry_async(coro_factory: Callable[[], Any], *, attempts: int = 3, backoff: float = 1.0) -> Any:
+
+def _retry_async(
+    coro_factory: Callable[[], Any], *, attempts: int = 3, backoff: float = 1.0
+) -> Any:
     """주어진 awaitable factory 에 대해 재시도(backoff) 수행."""
 
     async def _inner() -> Any:

@@ -7,7 +7,7 @@ from application.tasks.services.task_scheduler import TaskScheduler
 
 __all__ = [
     "HttpClient",
-    "TaskConfiguration", 
+    "TaskConfiguration",
     "TaskExecutor",
     "TaskScheduler",
-] 
+]

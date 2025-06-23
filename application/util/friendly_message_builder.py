@@ -28,4 +28,4 @@ def build_friendly_message(message: Dict[str, Any]) -> Tuple[str, str]:
     )
 
     dummy = object.__new__(_WC)  # type: ignore[arg-type]
-    return _WC._create_friendly_message(dummy, message)  # type: ignore[attr-defined] 
+    return _WC._create_friendly_message(dummy, message)  # type: ignore[attr-defined]

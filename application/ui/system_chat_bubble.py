@@ -234,12 +234,8 @@ class SystemChatBubble(ChatBubble):
             """
             )
 
-            self.text_browser.setVerticalScrollBarPolicy(
-                Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-            )
-            self.text_browser.setHorizontalScrollBarPolicy(
-                Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-            )
+            self.text_browser.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.text_browser.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             self.text_browser.setOpenExternalLinks(True)
             self.text_browser.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
 
@@ -458,9 +454,7 @@ class SystemChatBubble(ChatBubble):
             if self.raw_mode:
                 # Raw 모드: 원본 텍스트 복사
                 clipboard.setText(self.message)
-                logger.debug(
-                    f"Raw content copied to clipboard: {len(self.message)} characters"
-                )
+                logger.debug(f"Raw content copied to clipboard: {len(self.message)} characters")
             else:
                 # Markdown 모드: 렌더링된 마크다운 텍스트 복사
                 clipboard.setText(self.message)

@@ -50,7 +50,7 @@ class TaskConfiguration(ITaskConfiguration):
         try:
             if self._settings is None:
                 self.load_settings()
-            
+
             assert self._settings is not None
             self._settings.add_task(task)
             self.save_settings(self._settings)
@@ -65,11 +65,11 @@ class TaskConfiguration(ITaskConfiguration):
         try:
             if self._settings is None:
                 self.load_settings()
-            
+
             assert self._settings is not None
             if task_id not in (self._settings.tasks or {}):
                 return False
-                
+
             self._settings.remove_task(task_id)
             self.save_settings(self._settings)
             logger.info(f"작업 제거 완료: {task_id}")
@@ -82,7 +82,7 @@ class TaskConfiguration(ITaskConfiguration):
         """특정 작업을 조회합니다."""
         if self._settings is None:
             self.load_settings()
-        
+
         assert self._settings is not None
         return self._settings.get_task(task_id)
 
@@ -90,7 +90,7 @@ class TaskConfiguration(ITaskConfiguration):
         """모든 작업을 조회합니다."""
         if self._settings is None:
             self.load_settings()
-        
+
         assert self._settings is not None
         return (self._settings.tasks or {}).copy()
 
@@ -98,7 +98,7 @@ class TaskConfiguration(ITaskConfiguration):
         """활성화된 작업만 조회합니다."""
         if self._settings is None:
             self.load_settings()
-        
+
         assert self._settings is not None
         return self._settings.get_enabled_tasks()
 
@@ -107,6 +107,6 @@ class TaskConfiguration(ITaskConfiguration):
         """현재 설정을 반환합니다."""
         if self._settings is None:
             self.load_settings()
-        
+
         assert self._settings is not None
-        return self._settings 
+        return self._settings

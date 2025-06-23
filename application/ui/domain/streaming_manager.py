@@ -26,9 +26,10 @@ class StreamingManager:
         # 각 책임별 매니저 초기화
         self.state: StreamingState = StreamingState()
         self.reasoning_parser: ReasoningParser = ReasoningParser()
-        
+
         # Runtime import to avoid circular dependency
         from application.ui.presentation.streaming_bubble_manager import StreamingBubbleManager
+
         self.bubble_manager: StreamingBubbleManager = StreamingBubbleManager(
             main_window, self.ui_config
         )
@@ -45,9 +46,7 @@ class StreamingManager:
         """스트리밍 시작"""
         logger.info("🎬 StreamingManager 스트리밍 시작")
         self.state.start_streaming()
-        self.state.current_streaming_bubble = (
-            self.bubble_manager.create_streaming_ai_bubble()
-        )
+        self.state.current_streaming_bubble = self.bubble_manager.create_streaming_ai_bubble()
         logger.info("📱 스트리밍 버블 생성: %s", self.state.current_streaming_bubble)
         # 실시간 업데이트 타이머 시작 (50 ms 간격)
         self.update_timer.start(50)
@@ -93,9 +92,7 @@ class StreamingManager:
 
         if self.state.current_streaming_bubble:
             # 스트리밍 중에도 original_message 업데이트
-            self.state.current_streaming_bubble.original_message = (
-                self.state.streaming_content
-            )
+            self.state.current_streaming_bubble.original_message = self.state.streaming_content
             self.bubble_manager.update_streaming_bubble(
                 self.state.current_streaming_bubble, self.state
             )
@@ -124,7 +121,9 @@ class StreamingManager:
             final_answer,
         ) = self.reasoning_parser.parse_reasoning_content(final_content)
 
-        logger.info(f"🧠 파싱 결과 - 추론모델: {is_reasoning}, 추론내용: {len(reasoning_content)}자, 답변: {len(final_answer)}자")
+        logger.info(
+            f"🧠 파싱 결과 - 추론모델: {is_reasoning}, 추론내용: {len(reasoning_content)}자, 답변: {len(final_answer)}자"
+        )
 
         self.state.is_reasoning_model = is_reasoning
         self.state.reasoning_content = reasoning_content
@@ -184,9 +183,7 @@ class StreamingManager:
                 is_reasoning,
                 reasoning_content,
                 final_answer,
-            ) = self.reasoning_parser.parse_reasoning_content(
-                self.state.streaming_content
-            )
+            ) = self.reasoning_parser.parse_reasoning_content(self.state.streaming_content)
             self.state.is_reasoning_model = is_reasoning
             self.state.reasoning_content = reasoning_content
             self.state.final_answer = final_answer

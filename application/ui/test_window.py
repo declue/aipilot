@@ -4,8 +4,7 @@ import traceback
 
 import requests
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import (QLabel, QMainWindow, QMessageBox, QPushButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
 from application.config.config_manager import ConfigManager
 
@@ -72,9 +71,7 @@ class TestWindow(QMainWindow):
 
         # 시스템 알림 테스트
         notification_label = QLabel("시스템 알림 테스트:")
-        notification_label.setStyleSheet(
-            "font-weight: bold; margin-top: 10px; color: #2196F3;"
-        )
+        notification_label.setStyleSheet("font-weight: bold; margin-top: 10px; color: #2196F3;")
         layout.addWidget(notification_label)
 
         btn_direct_notify = QPushButton("💬 기본 시스템 알림")
@@ -82,9 +79,7 @@ class TestWindow(QMainWindow):
         layout.addWidget(btn_direct_notify)
 
         btn_warning_notify = QPushButton("⚠️ 경고 알림")
-        btn_warning_notify.clicked.connect(
-            lambda: self.test_notification_api("warning")
-        )
+        btn_warning_notify.clicked.connect(lambda: self.test_notification_api("warning"))
         layout.addWidget(btn_warning_notify)
 
         btn_error_notify = QPushButton("❌ 오류 알림")
@@ -93,9 +88,7 @@ class TestWindow(QMainWindow):
 
         # 커스텀 다이얼로그 테스트
         dialog_label = QLabel("커스텀 다이얼로그 테스트:")
-        dialog_label.setStyleSheet(
-            "font-weight: bold; margin-top: 10px; color: #FF6B6B;"
-        )
+        dialog_label.setStyleSheet("font-weight: bold; margin-top: 10px; color: #FF6B6B;")
         layout.addWidget(dialog_label)
 
         btn_dialog_test = QPushButton("💬 커스텀 다이얼로그")
@@ -173,9 +166,7 @@ class TestWindow(QMainWindow):
                 error_msg = f"HTTP {response.status_code}"
                 self.api_status_btn.setText(f"API 서버 상태: ⚠️ {error_msg}")
                 self.api_status_btn.setStyleSheet("color: orange;")
-                print(
-                    f"[WARNING] API 서버 응답 이상 - {response.status_code}: {response.text}"
-                )
+                print(f"[WARNING] API 서버 응답 이상 - {response.status_code}: {response.text}")
 
         except requests.exceptions.ConnectionError as e:
             error_msg = f"연결 실패 - {str(e)}"
@@ -344,14 +335,10 @@ class TestWindow(QMainWindow):
                     "HTML 알림 실패",
                     f"❌ HTTP {response.status_code}\n응답: {response.text}",
                 )
-                print(
-                    f"[ERROR] HTML 알림 API 오류 - {response.status_code}: {response.text}"
-                )
+                print(f"[ERROR] HTML 알림 API 오류 - {response.status_code}: {response.text}")
 
         except Exception as e:
-            QMessageBox.critical(
-                self, "HTML 알림 오류", f"❌ HTML 알림 요청 실패\n오류: {str(e)}"
-            )
+            QMessageBox.critical(self, "HTML 알림 오류", f"❌ HTML 알림 요청 실패\n오류: {str(e)}")
             print(f"[ERROR] HTML 알림 API 호출 실패: {e}")
 
     def test_image_dialog_api(self):
@@ -443,9 +430,7 @@ class TestWindow(QMainWindow):
                 print(f"[ERROR] API Health Check 실패: {response.status_code}")
 
         except Exception as e:
-            QMessageBox.critical(
-                self, "API Health Check 오류", f"❌ API 연결 실패\n오류: {str(e)}"
-            )
+            QMessageBox.critical(self, "API Health Check 오류", f"❌ API 연결 실패\n오류: {str(e)}")
             print(f"[ERROR] API Health Check 오류: {e}")
 
     def test_llm_simple(self):
@@ -462,9 +447,7 @@ class TestWindow(QMainWindow):
                 timeout=10,
                 headers={"Content-Type": "application/json"},
             )
-            print(
-                f"[DEBUG] LLM 간단 질문 API 응답: {response.status_code} - {response.text}"
-            )
+            print(f"[DEBUG] LLM 간단 질문 API 응답: {response.status_code} - {response.text}")
 
             if response.status_code == 200:
                 result = response.json()
@@ -482,14 +465,10 @@ class TestWindow(QMainWindow):
                     "LLM 요청 실패",
                     f"❌ HTTP {response.status_code}\n응답: {response.text}",
                 )
-                print(
-                    f"[ERROR] LLM 간단 질문 오류 - {response.status_code}: {response.text}"
-                )
+                print(f"[ERROR] LLM 간단 질문 오류 - {response.status_code}: {response.text}")
 
         except Exception as exception:
-            QMessageBox.critical(
-                self, "LLM 요청 오류", f"❌ LLM 요청 실패\n오류: {str(exception)}"
-            )
+            QMessageBox.critical(self, "LLM 요청 오류", f"❌ LLM 요청 실패\n오류: {str(exception)}")
             print(f"[ERROR] LLM 간단 질문 API 호출 실패: {exception}")
 
     def test_llm_complex(self):
@@ -506,9 +485,7 @@ class TestWindow(QMainWindow):
                 timeout=15,
                 headers={"Content-Type": "application/json"},
             )
-            print(
-                f"[DEBUG] LLM 복잡 질문 API 응답: {response.status_code} - {response.text}"
-            )
+            print(f"[DEBUG] LLM 복잡 질문 API 응답: {response.status_code} - {response.text}")
 
             if response.status_code == 200:
                 result = response.json()
@@ -526,9 +503,7 @@ class TestWindow(QMainWindow):
                     "LLM 복잡 요청 실패",
                     f"❌ HTTP {response.status_code}\n응답: {response.text}",
                 )
-                print(
-                    f"[ERROR] LLM 복잡 질문 오류 - {response.status_code}: {response.text}"
-                )
+                print(f"[ERROR] LLM 복잡 질문 오류 - {response.status_code}: {response.text}")
 
         except Exception as exception:
             QMessageBox.critical(

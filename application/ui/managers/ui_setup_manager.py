@@ -123,9 +123,7 @@ class UISetupManager:
         )
 
         # 모델 선택 변경 시 이벤트 연결
-        self.main_window.model_selector.currentTextChanged.connect(
-            self.on_model_selection_changed
-        )
+        self.main_window.model_selector.currentTextChanged.connect(self.on_model_selection_changed)
 
         model_layout.addWidget(self.main_window.model_selector)
         header_layout.addWidget(model_container)
@@ -150,17 +148,17 @@ class UISetupManager:
             """
         )
         webhook_status_label.setToolTip("Webhook 서버 연결 상태: 확인 중... (클릭하여 새로고침)")
-        
+
         # 클릭 이벤트 추가 - 마우스 이벤트로 처리
         def on_webhook_status_click(event: Any) -> None:
-            if hasattr(self.main_window, 'force_webhook_status_refresh'):
+            if hasattr(self.main_window, "force_webhook_status_refresh"):
                 print("[DEBUG] Webhook 상태 라벨 클릭됨 - 강제 상태 체크 실행")
                 self.main_window.force_webhook_status_refresh()
-        
+
         webhook_status_label.mousePressEvent = on_webhook_status_click  # type: ignore
-        
+
         header_layout.addWidget(webhook_status_label)
-        
+
         # 메인 윈도우에 webhook 상태 라벨 참조 저장
         self.main_window.webhook_status_label = webhook_status_label
 
@@ -191,7 +189,7 @@ class UISetupManager:
         theme_toggle_button.setToolTip("다크/라이트 모드 전환")
         theme_toggle_button.clicked.connect(self.main_window.toggle_theme)
         header_layout.addWidget(theme_toggle_button)
-        
+
         # 메인 윈도우에 테마 토글 버튼 참조 저장
         self.main_window.theme_toggle_button = theme_toggle_button
 
@@ -289,7 +287,6 @@ class UISetupManager:
                     if hasattr(self.main_window, "llm_agent"):
                         self.main_window.llm_agent._client = None  # 클라이언트 초기화
 
-
                 except Exception as e:
                     print(f"모델 변경 실패: {e}")
 
@@ -317,9 +314,7 @@ class UISetupManager:
         # 채팅 컨테이너 및 레이아웃
         self.main_window.chat_container = chat_frame
         self.main_window.chat_layout = QVBoxLayout(self.main_window.chat_container)
-        self.main_window.chat_layout.setContentsMargins(
-            8, 20, 8, 20
-        )  # 좌우 여백을 8px로 최소화
+        self.main_window.chat_layout.setContentsMargins(8, 20, 8, 20)  # 좌우 여백을 8px로 최소화
         self.main_window.chat_layout.setSpacing(16)
         self.main_window.chat_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -456,78 +451,91 @@ class UISetupManager:
 
     def _apply_header_theme(self, header_frame: QFrame) -> None:
         """헤더 프레임에 테마 적용"""
-        if hasattr(self.main_window, 'theme_manager'):
+        if hasattr(self.main_window, "theme_manager"):
             colors = self.main_window.theme_manager.get_theme_colors()
-            header_frame.setStyleSheet(f"""
+            header_frame.setStyleSheet(
+                f"""
                 QFrame {{
                     background-color: {colors['header_background']};
                     border: none;
                     border-bottom: 1px solid {colors['border']};
                     padding: 0;
                 }}
-            """)
+            """
+            )
         else:
             # 기본 라이트 테마
-            header_frame.setStyleSheet("""
+            header_frame.setStyleSheet(
+                """
                 QFrame {
                     background-color: #FFFFFF;
                     border: none;
                     border-bottom: 1px solid #E5E7EB;
                     padding: 0;
                 }
-            """)
+            """
+            )
 
     def _apply_model_container_theme(self, model_container: QFrame) -> None:
         """모델 컨테이너에 테마 적용"""
-        if hasattr(self.main_window, 'theme_manager'):
+        if hasattr(self.main_window, "theme_manager"):
             colors = self.main_window.theme_manager.get_theme_colors()
-            model_container.setStyleSheet(f"""
+            model_container.setStyleSheet(
+                f"""
                 QFrame {{
                     background-color: {colors['surface']};
                     border: 1px solid {colors['border']};
                     border-radius: 20px;
                     padding: 0;
                 }}
-            """)
+            """
+            )
         else:
             # 기본 라이트 테마
-            model_container.setStyleSheet("""
+            model_container.setStyleSheet(
+                """
                 QFrame {
                     background-color: #F9FAFB;
                     border: 1px solid #E5E7EB;
                     border-radius: 20px;
                     padding: 0;
                 }
-            """)
+            """
+            )
 
     def _apply_chat_frame_theme(self, chat_frame: QFrame) -> None:
         """채팅 프레임에 테마 적용"""
-        if hasattr(self.main_window, 'theme_manager'):
+        if hasattr(self.main_window, "theme_manager"):
             colors = self.main_window.theme_manager.get_theme_colors()
-            chat_frame.setStyleSheet(f"""
+            chat_frame.setStyleSheet(
+                f"""
                 QFrame {{
                     background-color: {colors['background']};
                     border: 1px solid {colors['border']};
                     border-radius: 12px;
                     margin: 0px;
                 }}
-            """)
+            """
+            )
         else:
             # 기본 라이트 테마
-            chat_frame.setStyleSheet("""
+            chat_frame.setStyleSheet(
+                """
                 QFrame {
                     background-color: #FFFFFF;
                     border: 1px solid #E5E7EB;
                     border-radius: 12px;
                     margin: 0px;
                 }
-            """)
+            """
+            )
 
     def _apply_scroll_area_theme(self, scroll_area: QScrollArea) -> None:
         """스크롤 영역에 테마 적용"""
-        if hasattr(self.main_window, 'theme_manager'):
+        if hasattr(self.main_window, "theme_manager"):
             colors = self.main_window.theme_manager.get_theme_colors()
-            scroll_area.setStyleSheet(f"""
+            scroll_area.setStyleSheet(
+                f"""
                 QScrollArea {{
                     border: none;
                     background-color: transparent;
@@ -545,10 +553,12 @@ class UISetupManager:
                 QScrollBar::handle:vertical:hover {{
                     background-color: {colors['scrollbar_hover']};
                 }}
-            """)
+            """
+            )
         else:
             # 기본 라이트 테마
-            scroll_area.setStyleSheet("""
+            scroll_area.setStyleSheet(
+                """
                 QScrollArea {
                     border: none;
                     background-color: transparent;
@@ -566,36 +576,42 @@ class UISetupManager:
                 QScrollBar::handle:vertical:hover {
                     background-color: #9CA3AF;
                 }
-            """)
+            """
+            )
 
     def _apply_input_frame_theme(self, input_frame: QFrame) -> None:
         """입력 프레임에 테마 적용"""
-        if hasattr(self.main_window, 'theme_manager'):
+        if hasattr(self.main_window, "theme_manager"):
             colors = self.main_window.theme_manager.get_theme_colors()
-            input_frame.setStyleSheet(f"""
+            input_frame.setStyleSheet(
+                f"""
                 QFrame {{
                     background-color: {colors['background']};
                     border: none;
                     border-top: 1px solid {colors['border']};
                     padding: 0;
                 }}
-            """)
+            """
+            )
         else:
             # 기본 라이트 테마
-            input_frame.setStyleSheet("""
+            input_frame.setStyleSheet(
+                """
                 QFrame {
                     background-color: #FFFFFF;
                     border: none;
                     border-top: 1px solid #E5E7EB;
                     padding: 0;
                 }
-            """)
+            """
+            )
 
     def _apply_input_container_theme(self, input_container: QFrame) -> None:
         """입력 컨테이너에 테마 적용"""
-        if hasattr(self.main_window, 'theme_manager'):
+        if hasattr(self.main_window, "theme_manager"):
             colors = self.main_window.theme_manager.get_theme_colors()
-            input_container.setStyleSheet(f"""
+            input_container.setStyleSheet(
+                f"""
                 QFrame {{
                     background-color: {colors['surface']};
                     border: 2px solid {colors['border']};
@@ -606,10 +622,12 @@ class UISetupManager:
                     border-color: {colors['primary']};
                     background-color: {colors['input_background']};
                 }}
-            """)
+            """
+            )
         else:
             # 기본 라이트 테마
-            input_container.setStyleSheet("""
+            input_container.setStyleSheet(
+                """
                 QFrame {
                     background-color: #F8FAFC;
                     border: 2px solid #E2E8F0;
@@ -620,22 +638,23 @@ class UISetupManager:
                     border-color: #2563EB;
                     background-color: #FFFFFF;
                 }
-            """)
+            """
+            )
 
     def update_container_themes(self) -> None:
         """모든 컨테이너의 테마를 업데이트합니다."""
         try:
-            if hasattr(self.main_window, 'header_frame'):
+            if hasattr(self.main_window, "header_frame"):
                 self._apply_header_theme(self.main_window.header_frame)
-            if hasattr(self.main_window, 'model_container'):
+            if hasattr(self.main_window, "model_container"):
                 self._apply_model_container_theme(self.main_window.model_container)
-            if hasattr(self.main_window, 'chat_frame'):
+            if hasattr(self.main_window, "chat_frame"):
                 self._apply_chat_frame_theme(self.main_window.chat_frame)
-            if hasattr(self.main_window, 'scroll_area'):
+            if hasattr(self.main_window, "scroll_area"):
                 self._apply_scroll_area_theme(self.main_window.scroll_area)
-            if hasattr(self.main_window, 'input_frame'):
+            if hasattr(self.main_window, "input_frame"):
                 self._apply_input_frame_theme(self.main_window.input_frame)
-            if hasattr(self.main_window, 'input_container'):
+            if hasattr(self.main_window, "input_container"):
                 self._apply_input_container_theme(self.main_window.input_container)
         except Exception as e:
             print(f"컨테이너 테마 업데이트 실패: {e}")

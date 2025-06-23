@@ -50,9 +50,7 @@ class MCPLogManager:
 
     def log_data_refresh_success(self, server_count, tools_count):
         """데이터 새로고침 성공 로그"""
-        self.add_log(
-            f"✅ 데이터 새로고침 완료 - 서버 {server_count}개, 도구 {tools_count}개"
-        )
+        self.add_log(f"✅ 데이터 새로고침 완료 - 서버 {server_count}개, 도구 {tools_count}개")
 
     def log_data_refresh_error(self, error_message):
         """데이터 새로고침 오류 로그"""
@@ -70,9 +68,7 @@ class MCPLogManager:
     def log_guidance_messages(self, server_count, tools_count, enabled_server_count):
         """안내 메시지 로그"""
         if server_count == 0:
-            self.add_log(
-                "💡 MCP 서버가 설정되지 않았습니다. mcp.json 파일을 확인하세요"
-            )
+            self.add_log("💡 MCP 서버가 설정되지 않았습니다. mcp.json 파일을 확인하세요")
         elif tools_count == 0:
             if enabled_server_count == 0:
                 self.add_log(

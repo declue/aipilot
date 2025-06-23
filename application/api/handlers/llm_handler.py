@@ -34,9 +34,7 @@ class LLMHandler(BaseHandler):
     async def send_streaming_request(self, request: LLMRequest) -> Dict[str, Any]:
         """LLM 스트리밍 요청"""
         try:
-            self._log_request(
-                "send_streaming_request", {"prompt": request.prompt[:50] + "..."}
-            )
+            self._log_request("send_streaming_request", {"prompt": request.prompt[:50] + "..."})
 
             # 스트리밍 모드로 LLM 응답 요청
             self.notification_signals.trigger_llm_response.emit(request.prompt)

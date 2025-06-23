@@ -54,8 +54,7 @@ class UnifiedConfigManager:
                 if os.path.exists(self._github_notification_config_file):
                     with open(self._github_notification_config_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                        self._github_notification_config = GitHubNotificationConfig.from_dict(
-                            data)
+                        self._github_notification_config = GitHubNotificationConfig.from_dict(data)
                 else:
                     # 기본 설정 생성
                     self._github_notification_config = GitHubNotificationConfig()
@@ -68,22 +67,23 @@ class UnifiedConfigManager:
         """GitHub 알림 설정 저장"""
         try:
             if self._github_notification_config and self._github_notification_config_file:
-                config_dir = os.path.dirname(
-                    self._github_notification_config_file)
+                config_dir = os.path.dirname(self._github_notification_config_file)
                 if config_dir and not os.path.exists(config_dir):
                     os.makedirs(config_dir, exist_ok=True)
 
                 with open(self._github_notification_config_file, "w", encoding="utf-8") as f:
-                    json.dump(self._github_notification_config.to_dict(),
-                              f, ensure_ascii=False, indent=2)
+                    json.dump(
+                        self._github_notification_config.to_dict(), f, ensure_ascii=False, indent=2
+                    )
 
-                logger.debug(
-                    f"GitHub 알림 설정 저장 완료: {self._github_notification_config_file}")
+                logger.debug(f"GitHub 알림 설정 저장 완료: {self._github_notification_config_file}")
         except Exception as exception:
             logger.error(f"GitHub 알림 설정 저장 실패: {exception}")
 
     # ========== 앱 설정 관련 메서드들 ==========
-    def get_config_value(self, section: str, key: str, fallback: Optional[str] = None) -> Optional[str]:
+    def get_config_value(
+        self, section: str, key: str, fallback: Optional[str] = None
+    ) -> Optional[str]:
         """앱 설정값 가져오기"""
         return self.app_config_manager.get_config_value(section, key, fallback)
 
@@ -95,10 +95,13 @@ class UnifiedConfigManager:
         """UI 설정 반환"""
         return self.app_config_manager.get_ui_config()
 
-    def set_ui_config(self, font_family: str, font_size: int, chat_bubble_max_width: int, window_theme: str) -> None:
+    def set_ui_config(
+        self, font_family: str, font_size: int, chat_bubble_max_width: int, window_theme: str
+    ) -> None:
         """UI 설정 저장"""
         self.app_config_manager.set_ui_config(
-            font_family, font_size, chat_bubble_max_width, window_theme)
+            font_family, font_size, chat_bubble_max_width, window_theme
+        )
 
     def save_ui_config(self, ui_config: Dict[str, Any]) -> None:
         """UI 설정 저장 (딕셔너리 형태)"""
@@ -204,10 +207,14 @@ class UnifiedConfigManager:
         self._github_notification_config = config
         self._save_github_notification_config()
 
-    def should_show_github_notification(self, event_type: str, action: Optional[str] = None, **kwargs) -> tuple[bool, bool]:
+    def should_show_github_notification(
+        self, event_type: str, action: Optional[str] = None, **kwargs
+    ) -> tuple[bool, bool]:
         """GitHub 알림을 표시할지 여부를 결정"""
         if self._github_notification_config:
-            return self._github_notification_config.should_show_notification(event_type, action, **kwargs)
+            return self._github_notification_config.should_show_notification(
+                event_type, action, **kwargs
+            )
         return False, False
 
     # ========== 통합 메서드들 ==========

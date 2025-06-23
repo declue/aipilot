@@ -82,7 +82,8 @@ class TaskDialog(QDialog):
 
         # Cron 도움말
         cron_help = QLabel(
-            "Cron 형식: 분 시 일 월 요일\n예시:\n• 0 10 * * * - 매일 10시\n• 0 9 * * 1-5 - 평일 9시\n• 30 14 * * 0 - 일요일 14시 30분")
+            "Cron 형식: 분 시 일 월 요일\n예시:\n• 0 10 * * * - 매일 10시\n• 0 9 * * 1-5 - 평일 9시\n• 30 14 * * 0 - 일요일 14시 30분"
+        )
         cron_help.setStyleSheet("color: #666; font-size: 11px;")
         schedule_layout.addRow("", cron_help)
 
@@ -93,10 +94,8 @@ class TaskDialog(QDialog):
         action_layout = QFormLayout(action_group)
 
         self.action_type_combo = QComboBox()
-        self.action_type_combo.addItems(
-            ["llm_request", "api_call", "notification"])
-        self.action_type_combo.currentTextChanged.connect(
-            self.on_action_type_changed)
+        self.action_type_combo.addItems(["llm_request", "api_call", "notification"])
+        self.action_type_combo.currentTextChanged.connect(self.on_action_type_changed)
         action_layout.addRow("작업 타입:", self.action_type_combo)
 
         # 작업별 파라미터 위젯
@@ -108,7 +107,8 @@ class TaskDialog(QDialog):
 
         # 버튼
         button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -163,8 +163,7 @@ class TaskDialog(QDialog):
         layout.addRow("메서드:", self.api_method_combo)
 
         self.api_headers_edit = QTextEdit()
-        self.api_headers_edit.setPlaceholderText(
-            '{"Content-Type": "application/json"}')
+        self.api_headers_edit.setPlaceholderText('{"Content-Type": "application/json"}')
         self.api_headers_edit.setMaximumHeight(60)
         layout.addRow("헤더:", self.api_headers_edit)
 
@@ -194,8 +193,7 @@ class TaskDialog(QDialog):
         self.noti_type_combo.addItems(["info", "warning", "error"])
         layout.addRow("타입:", self.noti_type_combo)
 
-        self.noti_url_edit = QLineEdit(
-            "http://127.0.0.1:8000/notifications/info")
+        self.noti_url_edit = QLineEdit("http://127.0.0.1:8000/notifications/info")
         layout.addRow("API URL:", self.noti_url_edit)
 
         widget = QWidget()
@@ -222,32 +220,30 @@ class TaskDialog(QDialog):
         action_type = self.task.action_type
 
         if action_type == "llm_request":
-            if hasattr(self, 'llm_prompt_edit'):
+            if hasattr(self, "llm_prompt_edit"):
                 self.llm_prompt_edit.setPlainText(params.get("prompt", ""))
-                self.llm_url_edit.setText(params.get(
-                    "api_url", "http://127.0.0.1:8000/llm/request"))
+                self.llm_url_edit.setText(
+                    params.get("api_url", "http://127.0.0.1:8000/llm/request")
+                )
                 self.llm_stream_check.setChecked(params.get("stream", False))
         elif action_type == "api_call":
-            if hasattr(self, 'api_url_edit'):
+            if hasattr(self, "api_url_edit"):
                 self.api_url_edit.setText(params.get("url", ""))
-                method_index = self.api_method_combo.findText(
-                    params.get("method", "GET"))
+                method_index = self.api_method_combo.findText(params.get("method", "GET"))
                 if method_index >= 0:
                     self.api_method_combo.setCurrentIndex(method_index)
-                self.api_headers_edit.setPlainText(
-                    str(params.get("headers", {})))
-                self.api_payload_edit.setPlainText(
-                    str(params.get("payload", {})))
+                self.api_headers_edit.setPlainText(str(params.get("headers", {})))
+                self.api_payload_edit.setPlainText(str(params.get("payload", {})))
         elif action_type == "notification":
-            if hasattr(self, 'noti_title_edit'):
+            if hasattr(self, "noti_title_edit"):
                 self.noti_title_edit.setText(params.get("title", ""))
                 self.noti_message_edit.setPlainText(params.get("message", ""))
-                type_index = self.noti_type_combo.findText(
-                    params.get("type", "info"))
+                type_index = self.noti_type_combo.findText(params.get("type", "info"))
                 if type_index >= 0:
                     self.noti_type_combo.setCurrentIndex(type_index)
-                self.noti_url_edit.setText(params.get(
-                    "api_url", "http://127.0.0.1:8000/notifications/info"))
+                self.noti_url_edit.setText(
+                    params.get("api_url", "http://127.0.0.1:8000/notifications/info")
+                )
 
     def get_task_config(self) -> TaskConfig:
         """폼 데이터로부터 TaskConfig 생성"""
@@ -267,15 +263,14 @@ class TaskDialog(QDialog):
             action_params = {
                 "prompt": self.llm_prompt_edit.toPlainText().strip(),
                 "api_url": self.llm_url_edit.text().strip(),
-                "stream": self.llm_stream_check.isChecked()
+                "stream": self.llm_stream_check.isChecked(),
             }
         elif action_type == "api_call":
             try:
                 import json
-                headers = json.loads(
-                    self.api_headers_edit.toPlainText().strip() or "{}")
-                payload = json.loads(
-                    self.api_payload_edit.toPlainText().strip() or "{}")
+
+                headers = json.loads(self.api_headers_edit.toPlainText().strip() or "{}")
+                payload = json.loads(self.api_payload_edit.toPlainText().strip() or "{}")
             except json.JSONDecodeError:
                 headers = {}
                 payload = {}
@@ -284,14 +279,14 @@ class TaskDialog(QDialog):
                 "url": self.api_url_edit.text().strip(),
                 "method": self.api_method_combo.currentText(),
                 "headers": headers,
-                "payload": payload
+                "payload": payload,
             }
         elif action_type == "notification":
             action_params = {
                 "title": self.noti_title_edit.text().strip(),
                 "message": self.noti_message_edit.toPlainText().strip(),
                 "type": self.noti_type_combo.currentText(),
-                "api_url": self.noti_url_edit.text().strip()
+                "api_url": self.noti_url_edit.text().strip(),
             }
 
         # TaskConfig 생성
@@ -306,7 +301,7 @@ class TaskDialog(QDialog):
                 enabled=enabled,
                 created_at=self.task.created_at if self.task else None,
                 last_run=self.task.last_run if self.task else None,
-                run_count=self.task.run_count if self.task else 0
+                run_count=self.task.run_count if self.task else 0,
             )
         else:
             task_config = TaskConfig(
@@ -316,7 +311,7 @@ class TaskDialog(QDialog):
                 cron_expression=cron_expression,
                 action_type=action_type,
                 action_params=action_params,
-                enabled=enabled
+                enabled=enabled,
             )
 
         return task_config
@@ -393,8 +388,7 @@ class TaskTabManager:
 
         # 스케줄러 상태
         self.scheduler_status_label = QLabel("스케줄러: 중지됨")
-        self.scheduler_status_label.setStyleSheet(
-            "font-weight: bold; color: #dc3545;")
+        self.scheduler_status_label.setStyleSheet("font-weight: bold; color: #dc3545;")
         controls_layout.addWidget(self.scheduler_status_label)
 
         controls_layout.addStretch()
@@ -436,9 +430,9 @@ class TaskTabManager:
 
         self.task_table = QTableWidget()
         self.task_table.setColumnCount(6)
-        self.task_table.setHorizontalHeaderLabels([
-            "이름", "상태", "스케줄", "마지막 실행", "실행 횟수", "다음 실행"
-        ])
+        self.task_table.setHorizontalHeaderLabels(
+            ["이름", "상태", "스케줄", "마지막 실행", "실행 횟수", "다음 실행"]
+        )
 
         # 테이블 설정
         header = self.task_table.horizontalHeader()
@@ -449,8 +443,7 @@ class TaskTabManager:
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
-        self.task_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows)
+        self.task_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.task_table.setAlternatingRowColors(True)
         self.task_table.itemSelectionChanged.connect(self.on_task_selected)
         self.task_table.itemDoubleClicked.connect(self.edit_task)
@@ -483,10 +476,8 @@ class TaskTabManager:
 
         running_header = self.running_table.horizontalHeader()
         running_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        running_header.setSectionResizeMode(
-            1, QHeaderView.ResizeMode.ResizeToContents)
-        running_header.setSectionResizeMode(
-            2, QHeaderView.ResizeMode.ResizeToContents)
+        running_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        running_header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
 
         details_layout.addWidget(self.running_table)
 
@@ -511,6 +502,7 @@ class TaskTabManager:
         if not self.task_thread:
             # TaskThread가 없으면 새로 생성
             from application.tasks.task_thread import TaskThread
+
             self.task_thread = TaskThread()
             self.set_task_thread(self.task_thread)
             self.task_thread.start()
@@ -530,8 +522,7 @@ class TaskTabManager:
     def on_scheduler_started(self):
         """스케줄러 시작됨"""
         self.scheduler_status_label.setText("스케줄러: 실행 중")
-        self.scheduler_status_label.setStyleSheet(
-            "font-weight: bold; color: #28a745;")
+        self.scheduler_status_label.setStyleSheet("font-weight: bold; color: #28a745;")
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
         self.refresh_task_list()
@@ -540,8 +531,7 @@ class TaskTabManager:
     def on_scheduler_stopped(self):
         """스케줄러 중지됨"""
         self.scheduler_status_label.setText("스케줄러: 중지됨")
-        self.scheduler_status_label.setStyleSheet(
-            "font-weight: bold; color: #dc3545;")
+        self.scheduler_status_label.setStyleSheet("font-weight: bold; color: #dc3545;")
         self.start_button.setEnabled(True)
         self.stop_button.setEnabled(False)
         self.refresh_task_list()
@@ -566,11 +556,9 @@ class TaskTabManager:
                 success = self.task_thread.add_task(task_config)
                 if success:
                     self.refresh_task_list()
-                    QMessageBox.information(
-                        self.settings_window, "성공", "작업이 추가되었습니다.")
+                    QMessageBox.information(self.settings_window, "성공", "작업이 추가되었습니다.")
                 else:
-                    QMessageBox.warning(
-                        self.settings_window, "오류", "작업 추가에 실패했습니다.")
+                    QMessageBox.warning(self.settings_window, "오류", "작업 추가에 실패했습니다.")
 
     def edit_task(self):
         """작업 편집"""
@@ -591,10 +579,12 @@ class TaskTabManager:
                     if success:
                         self.refresh_task_list()
                         QMessageBox.information(
-                            self.settings_window, "성공", "작업이 수정되었습니다.")
+                            self.settings_window, "성공", "작업이 수정되었습니다."
+                        )
                     else:
                         QMessageBox.warning(
-                            self.settings_window, "오류", "작업 수정에 실패했습니다.")
+                            self.settings_window, "오류", "작업 수정에 실패했습니다."
+                        )
 
     def delete_task(self):
         """작업 삭제"""
@@ -610,7 +600,7 @@ class TaskTabManager:
             self.settings_window,
             "작업 삭제",
             f"'{task_name}' 작업을 삭제하시겠습니까?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -618,11 +608,9 @@ class TaskTabManager:
                 success = self.task_thread.remove_task(task_id)
                 if success:
                     self.refresh_task_list()
-                    QMessageBox.information(
-                        self.settings_window, "성공", "작업이 삭제되었습니다.")
+                    QMessageBox.information(self.settings_window, "성공", "작업이 삭제되었습니다.")
                 else:
-                    QMessageBox.warning(
-                        self.settings_window, "오류", "작업 삭제에 실패했습니다.")
+                    QMessageBox.warning(self.settings_window, "오류", "작업 삭제에 실패했습니다.")
 
     def on_task_selected(self):
         """작업 선택 시"""
@@ -634,8 +622,7 @@ class TaskTabManager:
 
         if has_selection:
             row = selected_items[0].row()
-            task_id = self.task_table.item(
-                row, 0).data(Qt.ItemDataRole.UserRole)
+            task_id = self.task_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
             self.show_task_details(task_id)
 
     def show_task_details(self, task_id: str):
@@ -693,8 +680,7 @@ Cron 표현식: {task.cron_expression}
             self.task_table.setItem(row, 1, QTableWidgetItem(status))
 
             # 스케줄
-            self.task_table.setItem(
-                row, 2, QTableWidgetItem(task.cron_expression))
+            self.task_table.setItem(row, 2, QTableWidgetItem(task.cron_expression))
 
             # 마지막 실행
             last_run = task.last_run
@@ -709,8 +695,7 @@ Cron 표현식: {task.cron_expression}
             self.task_table.setItem(row, 3, QTableWidgetItem(last_run_str))
 
             # 실행 횟수
-            self.task_table.setItem(
-                row, 4, QTableWidgetItem(str(task.run_count)))
+            self.task_table.setItem(row, 4, QTableWidgetItem(str(task.run_count)))
 
             # 다음 실행 (실행 중인 작업에서 찾기)
             next_run = "없음"
@@ -728,8 +713,7 @@ Cron 표현식: {task.cron_expression}
         self.running_table.setRowCount(len(running_jobs))
 
         for row, job in enumerate(running_jobs):
-            self.running_table.setItem(
-                row, 0, QTableWidgetItem(job["name"] or job["id"]))
+            self.running_table.setItem(row, 0, QTableWidgetItem(job["name"] or job["id"]))
 
             next_run = job["next_run"]
             if next_run:
@@ -742,8 +726,7 @@ Cron 표현식: {task.cron_expression}
                 next_run_str = "없음"
             self.running_table.setItem(row, 1, QTableWidgetItem(next_run_str))
 
-            self.running_table.setItem(
-                row, 2, QTableWidgetItem(str(job["trigger"])))
+            self.running_table.setItem(row, 2, QTableWidgetItem(str(job["trigger"])))
 
     def cleanup(self):
         """정리 작업"""
@@ -758,7 +741,7 @@ Cron 표현식: {task.cron_expression}
     def update_theme(self):
         """테마 업데이트"""
         try:
-            if hasattr(self.settings_window, 'theme_manager'):
+            if hasattr(self.settings_window, "theme_manager"):
                 colors = self.settings_window.theme_manager.get_theme_colors()
 
                 # 테이블 위젯들 테마 업데이트
@@ -795,15 +778,16 @@ Cron 표현식: {task.cron_expression}
             }}
         """
 
-        if hasattr(self, 'task_table'):
+        if hasattr(self, "task_table"):
             self.task_table.setStyleSheet(table_style)
-        if hasattr(self, 'running_table'):
+        if hasattr(self, "running_table"):
             self.running_table.setStyleSheet(table_style)
 
     def _update_text_edit_themes(self, colors):
         """텍스트 편집 위젯 테마 업데이트"""
-        if hasattr(self, 'details_text'):
-            self.details_text.setStyleSheet(f"""
+        if hasattr(self, "details_text"):
+            self.details_text.setStyleSheet(
+                f"""
                 QTextEdit {{
                     background-color: {colors['surface']};
                     color: {colors['text']};
@@ -813,4 +797,5 @@ Cron 표현식: {task.cron_expression}
                     font-family: 'Consolas', 'Monaco', monospace;
                     font-size: 12px;
                 }}
-            """)
+            """
+            )

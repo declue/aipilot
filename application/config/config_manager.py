@@ -93,8 +93,12 @@ class ConfigManager:
                     # 프로필 리로드
                     self.llm_profile_manager.load_llm_profiles()
                     # 참조 동기화
-                    self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
-                    self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+                    self._llm_profiles = (
+                        self.llm_profile_manager._llm_profiles
+                    )  # pylint: disable=protected-access
+                    self._current_profile_name = (
+                        self.llm_profile_manager._current_profile_name
+                    )  # pylint: disable=protected-access
 
                     # 등록된 콜백들에게 알림
                     self._notify_config_changed(file_path, change_type)
@@ -103,8 +107,12 @@ class ConfigManager:
                 elif change_type == "deleted":
                     logger.warning("LLM 프로필 파일이 삭제됨, 기본 프로필로 복원")
                     self.llm_profile_manager.create_default_llm_profiles()
-                    self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
-                    self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+                    self._llm_profiles = (
+                        self.llm_profile_manager._llm_profiles
+                    )  # pylint: disable=protected-access
+                    self._current_profile_name = (
+                        self.llm_profile_manager._current_profile_name
+                    )  # pylint: disable=protected-access
                     self._notify_config_changed(file_path, change_type)
 
         except Exception as e:
@@ -146,8 +154,12 @@ class ConfigManager:
 
                 # llm_profiles.json 리로드
                 self.llm_profile_manager.load_llm_profiles()
-                self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
-                self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+                self._llm_profiles = (
+                    self.llm_profile_manager._llm_profiles
+                )  # pylint: disable=protected-access
+                self._current_profile_name = (
+                    self.llm_profile_manager._current_profile_name
+                )  # pylint: disable=protected-access
 
                 # 콜백 알림
                 self._notify_config_changed("manual_reload", "forced")
@@ -176,15 +188,23 @@ class ConfigManager:
         with self._lock:
             self.llm_profile_manager.load_llm_profiles()
             # 참조 동기화
-            self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
-            self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+            self._llm_profiles = (
+                self.llm_profile_manager._llm_profiles
+            )  # pylint: disable=protected-access
+            self._current_profile_name = (
+                self.llm_profile_manager._current_profile_name
+            )  # pylint: disable=protected-access
 
     def create_default_llm_profiles(self) -> None:
         """기본 LLM 프로필 생성 - LLMProfileManager에 위임"""
         self.llm_profile_manager.create_default_llm_profiles()
         # 참조 동기화
-        self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
-        self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+        self._llm_profiles = (
+            self.llm_profile_manager._llm_profiles
+        )  # pylint: disable=protected-access
+        self._current_profile_name = (
+            self.llm_profile_manager._current_profile_name
+        )  # pylint: disable=protected-access
 
     def save_llm_profiles(self) -> None:
         """LLM 프로필 저장 - LLMProfileManager에 위임"""
@@ -213,7 +233,9 @@ class ConfigManager:
             self.save_config()
 
             # 참조 동기화
-            self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+            self._current_profile_name = (
+                self.llm_profile_manager._current_profile_name
+            )  # pylint: disable=protected-access
 
     def get_llm_config(self) -> Dict[str, Any]:
         """LLM 설정 반환 - 프로필 우선, 하위 호환성 유지"""
@@ -227,9 +249,7 @@ class ConfigManager:
                 if current_profile:
                     return {
                         "api_key": current_profile.get("api_key", "your-api-key-here"),
-                        "base_url": current_profile.get(
-                            "base_url", "http://localhost:11434/v1"
-                        ),
+                        "base_url": current_profile.get("base_url", "http://localhost:11434/v1"),
                         "model": current_profile.get("model", "llama3.2"),
                         "temperature": current_profile.get("temperature", 0.7),
                         "max_tokens": current_profile.get("max_tokens", 100000),
@@ -246,21 +266,13 @@ class ConfigManager:
                 else:
                     # 프로필이 없으면 기본 설정에서 가져오기 (하위 호환성)
                     return {
-                        "api_key": self.config.get(
-                            "LLM", "api_key", fallback="your-api-key-here"
-                        ),
+                        "api_key": self.config.get("LLM", "api_key", fallback="your-api-key-here"),
                         "base_url": self.config.get(
                             "LLM", "base_url", fallback="http://localhost:11434/v1"
                         ),
                         "model": self.config.get("LLM", "model", fallback="llama3.2"),
-                        "temperature": float(
-                            self.config.get(
-                                "LLM", "temperature", fallback="0.7")
-                        ),
-                        "max_tokens": int(
-                            self.config.get("LLM", "max_tokens",
-                                            fallback="100000")
-                        ),
+                        "temperature": float(self.config.get("LLM", "temperature", fallback="0.7")),
+                        "max_tokens": int(self.config.get("LLM", "max_tokens", fallback="100000")),
                         "top_k": int(self.config.get("LLM", "top_k", fallback="50")),
                         "instruction_file": self.config.get(
                             "LLM",
@@ -269,12 +281,12 @@ class ConfigManager:
                         ),
                         "show_cot": self.config.get("LLM", "show_cot", fallback="false"),
                         "react_max_turns": self.config.get("LLM", "react_max_turns", fallback="5"),
-                        "llm_retry_attempts":
-                        self.config.get(
-                            "LLM", "llm_retry_attempts", fallback="3"),
-                        "retry_backoff_sec":
-                        self.config.get(
-                            "LLM", "retry_backoff_sec", fallback="1"),
+                        "llm_retry_attempts": self.config.get(
+                            "LLM", "llm_retry_attempts", fallback="3"
+                        ),
+                        "retry_backoff_sec": self.config.get(
+                            "LLM", "retry_backoff_sec", fallback="1"
+                        ),
                     }
             except Exception as exception:
                 logger.error("LLM 설정 가져오기 실패: %s", exception)
@@ -297,22 +309,30 @@ class ConfigManager:
         with self._lock:
             self.llm_profile_manager.create_llm_profile(profile_name, config)
             # 참조 동기화
-            self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
+            self._llm_profiles = (
+                self.llm_profile_manager._llm_profiles
+            )  # pylint: disable=protected-access
 
     def update_llm_profile(self, profile_name: str, config: Dict[str, Any]) -> None:
         """LLM 프로필 업데이트 - LLMProfileManager에 위임"""
         with self._lock:
             self.llm_profile_manager.update_llm_profile(profile_name, config)
             # 참조 동기화
-            self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
+            self._llm_profiles = (
+                self.llm_profile_manager._llm_profiles
+            )  # pylint: disable=protected-access
 
     def delete_llm_profile(self, profile_name: str) -> None:
         """LLM 프로필 삭제 - LLMProfileManager에 위임"""
         with self._lock:
             self.llm_profile_manager.delete_llm_profile(profile_name)
             # 참조 동기화
-            self._llm_profiles = self.llm_profile_manager._llm_profiles  # pylint: disable=protected-access
-            self._current_profile_name = self.llm_profile_manager._current_profile_name  # pylint: disable=protected-access
+            self._llm_profiles = (
+                self.llm_profile_manager._llm_profiles
+            )  # pylint: disable=protected-access
+            self._current_profile_name = (
+                self.llm_profile_manager._current_profile_name
+            )  # pylint: disable=protected-access
 
     def set_llm_config(self, api_key: str, base_url: str, model: str) -> None:
         """LLM 설정 저장 - AppConfigManager에 위임"""
@@ -376,9 +396,7 @@ class ConfigManager:
         """지시 사항 파일 경로 반환"""
         if "llm" in self.config and "instruction_file" in self.config["llm"]:
             return self.config["llm"]["instruction_file"]
-        return os.path.join(
-            os.getcwd(), "instructions", "default_agent_instructions.txt"
-        )
+        return os.path.join(os.getcwd(), "instructions", "default_agent_instructions.txt")
 
     def get_instruction_content(self) -> str:
         """지시 사항 내용 반환"""
@@ -386,9 +404,7 @@ class ConfigManager:
         try:
             # 파일이 존재하는지 확인
             if instruction_file and not os.path.exists(instruction_file):
-                logger.warning(
-                    f"Instruction 파일이 존재하지 않습니다: {instruction_file}"
-                )
+                logger.warning(f"Instruction 파일이 존재하지 않습니다: {instruction_file}")
                 return self._get_default_instruction_content()
 
             # 파일 읽기
@@ -396,9 +412,7 @@ class ConfigManager:
                 with open(instruction_file, "r", encoding="utf-8") as f:
                     content = f.read().strip()
                     if not content:
-                        logger.warning(
-                            f"Instruction 파일이 비어있습니다: {instruction_file}"
-                        )
+                        logger.warning(f"Instruction 파일이 비어있습니다: {instruction_file}")
                         return self._get_default_instruction_content()
 
                     logger.debug(f"Instruction 파일 로드 성공: {instruction_file}")
@@ -441,11 +455,9 @@ GitHub 관련 키워드("이슈", "issue", "PR", "pull request", "커밋", "comm
         try:
             # 파일 감시 해제
             if self.config_file:
-                self._file_change_notifier.unregister_all_callbacks(
-                    self.config_file)
+                self._file_change_notifier.unregister_all_callbacks(self.config_file)
             if self.llm_profiles_file:
-                self._file_change_notifier.unregister_all_callbacks(
-                    self.llm_profiles_file)
+                self._file_change_notifier.unregister_all_callbacks(self.llm_profiles_file)
 
             # 콜백 리스트 클리어
             with self._lock:

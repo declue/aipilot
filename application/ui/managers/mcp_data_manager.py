@@ -66,16 +66,10 @@ class MCPDataLoader(QThread):
                     # 서버 상태 테스트 (활성화된 서버만)
                     if server.enabled:
                         print(f"[MCP] 서버 {server_name} 연결 테스트 시작...")
-                        status = await self.mcp_manager.test_server_connection(
-                            server_name
-                        )
-                        print(
-                            f"[MCP] 서버 {server_name} 연결 결과: connected={status.connected}"
-                        )
+                        status = await self.mcp_manager.test_server_connection(server_name)
+                        print(f"[MCP] 서버 {server_name} 연결 결과: connected={status.connected}")
                         if not status.connected and status.error_message:
-                            print(
-                                f"[MCP] 서버 {server_name} 오류: {status.error_message}"
-                            )
+                            print(f"[MCP] 서버 {server_name} 오류: {status.error_message}")
                         if status.connected:
                             print(
                                 f"[MCP] 서버 {server_name} 도구: {len(status.tools)}개, 리소스: {len(status.resources)}개"

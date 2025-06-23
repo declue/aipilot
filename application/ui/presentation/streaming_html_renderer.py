@@ -77,6 +77,7 @@ class StreamingHtmlRenderer:
         final_answer: str,
         show_cursor: bool = True,
         reasoning_only: bool = False,
+        is_complete: bool = False,
     ) -> str:
         """스트리밍 중인 추론 과정을 위한 HTML 생성"""
         reasoning_html = markdown.markdown(
@@ -93,11 +94,19 @@ class StreamingHtmlRenderer:
             )
             final_html = self.md_manager.apply_table_styles(final_html)
 
-        cursor = (
-            '<span style="color: #10B981; font-weight: bold;">▌</span>'
-            if show_cursor
-            else ""
-        )
+        # 추론 완료 여부에 따른 커서와 상태 메시지
+        if show_cursor and not is_complete:
+            cursor = '<span style="color: #10B981; font-weight: bold;">▌</span>'
+            status_text = "추론 중..."
+            status_icon = "🤔"
+        elif is_complete:
+            cursor = ""
+            status_text = "추론 완료"
+            status_icon = "✅"
+        else:
+            cursor = ""
+            status_text = "추론 과정"
+            status_icon = "🤔"
 
         if reasoning_only:
             return f"""
@@ -124,14 +133,17 @@ class StreamingHtmlRenderer:
                         align-items: center;
                         gap: 6px;
                     ">
-                        <span style="font-size: 14px;">🤔</span>
-                        <span>&lt;think&gt; 추론 중...</span>
+                        <span style="font-size: 14px;">{status_icon}</span>
+                        <span>&lt;think&gt; {status_text}</span>
                     </div>
                     {reasoning_html}
                     {cursor}
                 </div>
             </div>
             """
+        # 스트리밍 중에는 추론 과정을 열린 상태로 표시
+        details_state = "open" if not is_complete else ""
+        
         return f"""
             <div style="
                 color: #1F2937;
@@ -139,7 +151,7 @@ class StreamingHtmlRenderer:
                 font-family: '{self.ui_config['font_family']}';
                 font-size: {self.ui_config['font_size']}px;
             ">
-                <details open style="margin-bottom: 16px; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px; background-color: #FFFBEB;">
+                <details {details_state} style="margin-bottom: 16px; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px; background-color: #FFFBEB;">
                     <summary style="
                         font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
                         color: #F59E0B;
@@ -150,8 +162,8 @@ class StreamingHtmlRenderer:
                         align-items: center;
                         gap: 6px;
                     ">
-                        <span style="font-size: 14px;">🤔</span>
-                        <span>&lt;think&gt; 추론 과정 보기</span>
+                        <span style="font-size: 14px;">{status_icon}</span>
+                        <span>&lt;think&gt; {status_text}</span>
                     </summary>
                     <div style="
                         font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
@@ -163,10 +175,10 @@ class StreamingHtmlRenderer:
                         border-left: 3px solid #F59E0B;
                     ">
                         {reasoning_html}
+                        {cursor}
                     </div>
                 </details>
                 {final_html}
-                {cursor}
             </div>
             """
 
@@ -213,4 +225,4 @@ class StreamingHtmlRenderer:
                 [응답이 중단되었습니다]
             </div>
         </div>
-        """ 
+        """

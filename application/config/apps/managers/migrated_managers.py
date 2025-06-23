@@ -6,13 +6,23 @@
 """
 
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
+from application.config.apps.defaults.default_app_config import (
+    DEFAULT_APP_CONFIG_SECTIONS,
+    DEFAULT_UI_VALUES,
+)
+from application.config.apps.defaults.default_llm_profiles import (
+    DEFAULT_LLM_PROFILE,
+    DEFAULT_LLM_PROFILES,
+)
 from application.config.libs.base_config_manager import BaseConfigManager
 from application.config.libs.interfaces import ConfigDict
-from application.config.libs.validators import LLMConfigValidator, MCPConfigValidator, GitHubConfigValidator
-from application.config.apps.defaults.default_app_config import DEFAULT_APP_CONFIG_SECTIONS, DEFAULT_UI_VALUES
-from application.config.apps.defaults.default_llm_profiles import DEFAULT_LLM_PROFILES, DEFAULT_LLM_PROFILE
+from application.config.libs.validators import (
+    GitHubConfigValidator,
+    LLMConfigValidator,
+    MCPConfigValidator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +38,8 @@ class ModernAppConfigManager(BaseConfigManager):
         config_file = config_file or "app.config"
 
         # GitHub 검증기 추가
-        if 'validator' not in kwargs:
-            kwargs['validator'] = GitHubConfigValidator()
+        if "validator" not in kwargs:
+            kwargs["validator"] = GitHubConfigValidator()
 
         super().__init__(config_file, **kwargs)
 
@@ -51,10 +61,10 @@ class ModernAppConfigManager(BaseConfigManager):
             ui_section = self.get_section("UI")
 
             # 타입 변환 및 검증
-            font_size = int(ui_section.get(
-                "font_size", DEFAULT_UI_VALUES["font_size"]))
-            chat_bubble_max_width = int(ui_section.get(
-                "chat_bubble_max_width", DEFAULT_UI_VALUES["chat_bubble_max_width"]))
+            font_size = int(ui_section.get("font_size", DEFAULT_UI_VALUES["font_size"]))
+            chat_bubble_max_width = int(
+                ui_section.get("chat_bubble_max_width", DEFAULT_UI_VALUES["chat_bubble_max_width"])
+            )
 
             return {
                 "font_family": ui_section.get("font_family", DEFAULT_UI_VALUES["font_family"]),
@@ -66,7 +76,9 @@ class ModernAppConfigManager(BaseConfigManager):
             logger.error("UI 설정 가져오기 실패: %s", e)
             return DEFAULT_UI_VALUES.copy()
 
-    def set_ui_config(self, font_family: str, font_size: int, chat_bubble_max_width: int, window_theme: str) -> None:
+    def set_ui_config(
+        self, font_family: str, font_size: int, chat_bubble_max_width: int, window_theme: str
+    ) -> None:
         """UI 설정 저장"""
         try:
             ui_config = {
@@ -85,17 +97,14 @@ class ModernAppConfigManager(BaseConfigManager):
     def save_ui_config(self, ui_config: Dict[str, Any]) -> None:
         """UI 설정 저장 (딕셔너리 형태)"""
         try:
-            font_family = ui_config.get(
-                "font_family", DEFAULT_UI_VALUES["font_family"])
-            font_size = int(ui_config.get(
-                "font_size", DEFAULT_UI_VALUES["font_size"]))
-            chat_bubble_max_width = int(ui_config.get(
-                "chat_bubble_max_width", DEFAULT_UI_VALUES["chat_bubble_max_width"]))
-            window_theme = ui_config.get(
-                "window_theme", DEFAULT_UI_VALUES["window_theme"])
+            font_family = ui_config.get("font_family", DEFAULT_UI_VALUES["font_family"])
+            font_size = int(ui_config.get("font_size", DEFAULT_UI_VALUES["font_size"]))
+            chat_bubble_max_width = int(
+                ui_config.get("chat_bubble_max_width", DEFAULT_UI_VALUES["chat_bubble_max_width"])
+            )
+            window_theme = ui_config.get("window_theme", DEFAULT_UI_VALUES["window_theme"])
 
-            self.set_ui_config(font_family, font_size,
-                               chat_bubble_max_width, window_theme)
+            self.set_ui_config(font_family, font_size, chat_bubble_max_width, window_theme)
         except Exception as e:
             logger.error("UI 설정 딕셔너리 저장 실패: %s", e)
             raise
@@ -127,8 +136,7 @@ class ModernAppConfigManager(BaseConfigManager):
     def get_github_config(self) -> Dict[str, Any]:
         """GitHub 설정 반환"""
         try:
-            webhook_enabled_str = self.get_value(
-                "GITHUB.webhook_enabled", "false")
+            webhook_enabled_str = self.get_value("GITHUB.webhook_enabled", "false")
             webhook_port_str = self.get_value("GITHUB.webhook_port", "8000")
 
             webhook_enabled = webhook_enabled_str.lower() in ("true", "1", "yes", "on")
@@ -160,8 +168,9 @@ class ModernAppConfigManager(BaseConfigManager):
                 self.set_github_repositories(github_config["repositories"])
 
             if "webhook_enabled" in github_config:
-                self.set_value("GITHUB.webhook_enabled", str(
-                    github_config["webhook_enabled"]).lower())
+                self.set_value(
+                    "GITHUB.webhook_enabled", str(github_config["webhook_enabled"]).lower()
+                )
 
             if "webhook_port" in github_config:
                 port = int(github_config["webhook_port"])
@@ -188,8 +197,8 @@ class ModernLLMProfileManager(BaseConfigManager):
         profiles_file = profiles_file or "llm_profiles.json"
 
         # LLM 검증기 추가
-        if 'validator' not in kwargs:
-            kwargs['validator'] = LLMConfigValidator()
+        if "validator" not in kwargs:
+            kwargs["validator"] = LLMConfigValidator()
 
         super().__init__(profiles_file, **kwargs)
         self._current_profile_name = DEFAULT_LLM_PROFILE
@@ -211,8 +220,7 @@ class ModernLLMProfileManager(BaseConfigManager):
     def on_after_load(self) -> None:
         """로드 후 처리"""
         super().on_after_load()
-        self._current_profile_name = self.get_value(
-            "current_profile", DEFAULT_LLM_PROFILE)
+        self._current_profile_name = self.get_value("current_profile", DEFAULT_LLM_PROFILE)
 
     # ========== LLM 프로필 관련 메서드들 ==========
 
@@ -296,8 +304,8 @@ class ModernMCPConfigManager(BaseConfigManager):
         config_file = config_file or "mcp.json"
 
         # MCP 검증기 추가
-        if 'validator' not in kwargs:
-            kwargs['validator'] = MCPConfigValidator()
+        if "validator" not in kwargs:
+            kwargs["validator"] = MCPConfigValidator()
 
         super().__init__(config_file, **kwargs)
 

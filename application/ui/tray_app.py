@@ -22,7 +22,13 @@ logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class TrayApp(QObject):
-    def __init__(self, app: Any, mcp_manager: Optional[Any] = None, mcp_tool_manager: Optional[Any] = None, app_instance: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        app: Any,
+        mcp_manager: Optional[Any] = None,
+        mcp_tool_manager: Optional[Any] = None,
+        app_instance: Optional[Any] = None,
+    ) -> None:
         super().__init__()
 
         self.app = app
@@ -52,9 +58,7 @@ class TrayApp(QObject):
             logger.error("시스템 트레이를 사용할 수 없습니다.")
             return
 
-        logger.debug(
-            "시스템 트레이 지원 여부: %s", QSystemTrayIcon.isSystemTrayAvailable()
-        )
+        logger.debug("시스템 트레이 지원 여부: %s", QSystemTrayIcon.isSystemTrayAvailable())
 
         # 창 인스턴스 생성 (App 인스턴스 전달)
         self.main_window = MainWindow(self.mcp_manager, self.mcp_tool_manager, self.app_instance)  # type: ignore
@@ -94,9 +98,7 @@ class TrayApp(QObject):
             )
 
             # 메시지 수신 시 트레이 아이콘 깜박임 처리
-            self.app_instance.notification_signals.add_api_message.connect(
-                self.on_message_received
-            )
+            self.app_instance.notification_signals.add_api_message.connect(self.on_message_received)
             self.app_instance.notification_signals.add_user_message.connect(
                 self.on_message_received
             )
@@ -113,12 +115,8 @@ class TrayApp(QObject):
             self.app_instance.notification_signals.clear_chat.connect(
                 self.main_window.start_new_conversation
             )
-            self.app_instance.notification_signals.save_chat.connect(
-                self.handle_save_chat
-            )
-            self.app_instance.notification_signals.load_chat.connect(
-                self.handle_load_chat
-            )
+            self.app_instance.notification_signals.save_chat.connect(self.handle_save_chat)
+            self.app_instance.notification_signals.load_chat.connect(self.handle_load_chat)
 
         # 트레이 아이콘 설정
         self.setup_tray_icon()
@@ -333,11 +331,11 @@ class TrayApp(QObject):
                 3000,  # 3초간 표시
             )
 
-    def handle_notification_signal(self, notification_type: str, title: str, message: str, duration: int) -> None:
+    def handle_notification_signal(
+        self, notification_type: str, title: str, message: str, duration: int
+    ) -> None:
         """show_notification 시그널 처리 (크로스 플랫폼 알림 표시)"""
-        logger.debug(
-            "🔔 알림 시그널 수신: %s - %s - %s", notification_type, title, message
-        )
+        logger.debug("🔔 알림 시그널 수신: %s - %s - %s", notification_type, title, message)
         print(f"[DEBUG] 🔔 알림 시그널 수신: {notification_type} - {title} - {message}")
 
         # 윈도우 상태 디버깅
@@ -413,7 +411,9 @@ class TrayApp(QObject):
             except Exception as dialog_error:
                 print(f"[DEBUG] ❌ 커스텀 다이얼로그도 실패: {dialog_error}")
 
-    def handle_system_notification(self, title: str, message: str, icon_path: Optional[str]) -> None:
+    def handle_system_notification(
+        self, title: str, message: str, icon_path: Optional[str]
+    ) -> None:
         """시스템 알림 처리 (notifypy 사용)"""
         logger.debug("🖥️ 시스템 알림 요청: %s - %s", title, message)
         print(f"[DEBUG] 🖥️ 시스템 알림 요청: {title} - {message}")
@@ -880,9 +880,7 @@ class TrayApp(QObject):
                 self.fastapi_thread.quit()
                 # 최대 3초간 대기
                 if not self.fastapi_thread.wait(3000):
-                    logger.warning(
-                        "FastAPI 스레드가 정상 종료되지 않아 강제 종료합니다."
-                    )
+                    logger.warning("FastAPI 스레드가 정상 종료되지 않아 강제 종료합니다.")
                     self.fastapi_thread.terminate()
             except Exception as exception:
                 logger.error("FastAPI 서버 종료 중 오류: %s", exception)

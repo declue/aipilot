@@ -128,7 +128,9 @@ class FilterEngine:
 
             elif event_key == "release":
                 release = payload.get("release", {})
-                if release.get("prerelease", False) and not event_config.get("include_prerelease", True):
+                if release.get("prerelease", False) and not event_config.get(
+                    "include_prerelease", True
+                ):
                     return False
                 if release.get("draft", False) and not event_config.get("include_draft", False):
                     return False
@@ -152,4 +154,4 @@ class FilterEngine:
             return True
         except Exception as exc:  # pylint: disable=broad-except
             logger.error("커스텀 필터링 확인 중 오류: %s", exc)
-            return True  # 오류 시 필터를 무시하고 표시함 
+            return True  # 오류 시 필터를 무시하고 표시함

@@ -13,6 +13,7 @@ from application.util.webhook_client import WebhookClient
 
 logger = setup_logger("app") or logging.getLogger("app")
 
+
 # pylint: disable=too-few-public-methods
 class App:
     """메인 애플리케이션 클래스 - QT와 FastAPI를 통합 관리"""
@@ -47,8 +48,7 @@ class App:
         notification_signals: NotificationSignals,
     ) -> APIServer:
         """API 앱 초기화"""
-        api_app = APIServer(mcp_manager, mcp_tool_manager,
-                            notification_signals)
+        api_app = APIServer(mcp_manager, mcp_tool_manager, notification_signals)
 
         # API 포트와 호스트 설정
         port = self.config_manager.get_config_value("API", "port", "8000")
@@ -73,27 +73,19 @@ class App:
     def _init_webhook_client(self) -> WebhookClient | None:
         """Webhook 클라이언트 초기화"""
         # 설정에서 webhook 서버 정보 읽기
-        webhook_enabled_str = self.config_manager.get_config_value(
-            "WEBHOOK", "enabled", "false"
-        )
-        webhook_enabled = (
-            webhook_enabled_str.lower() == "true" if webhook_enabled_str else False
-        )
+        webhook_enabled_str = self.config_manager.get_config_value("WEBHOOK", "enabled", "false")
+        webhook_enabled = webhook_enabled_str.lower() == "true" if webhook_enabled_str else False
 
         if not webhook_enabled:
             logger.info("Webhook 클라이언트가 비활성화되었습니다.")
             return None
 
         webhook_server_url = (
-            self.config_manager.get_config_value(
-                "WEBHOOK", "server_url", "http://localhost:8005"
-            )
+            self.config_manager.get_config_value("WEBHOOK", "server_url", "http://localhost:8005")
             or "http://localhost:8005"
         )
         client_name = (
-            self.config_manager.get_config_value(
-                "WEBHOOK", "client_name", "DSPilot Client"
-            )
+            self.config_manager.get_config_value("WEBHOOK", "client_name", "DSPilot Client")
             or "DSPilot Client"
         )
         client_description = (
@@ -105,9 +97,7 @@ class App:
 
         # polling 간격 설정
         poll_interval_str = (
-            self.config_manager.get_config_value(
-                "WEBHOOK", "poll_interval", "10")
-            or "10"
+            self.config_manager.get_config_value("WEBHOOK", "poll_interval", "10") or "10"
         )
         poll_interval = int(poll_interval_str)
 
@@ -139,9 +129,7 @@ class App:
         )
 
         # QT 초기화
-        self.qt_app = self._init_qt(
-            self.mcp_manager, self.mcp_tool_manager, self.api_app
-        )
+        self.qt_app = self._init_qt(self.mcp_manager, self.mcp_tool_manager, self.api_app)
 
         # Webhook 클라이언트 초기화
         self.webhook_client = self._init_webhook_client()
@@ -177,8 +165,7 @@ class App:
 
         # 별도 스레드에서 실행하여 메인 스레드 블로킹 방지
 
-        webhook_thread = threading.Thread(
-            target=start_webhook_async, daemon=True)
+        webhook_thread = threading.Thread(target=start_webhook_async, daemon=True)
         webhook_thread.start()
         logger.info("Webhook 클라이언트 백그라운드 시작 중...")
 

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional
 if TYPE_CHECKING:
     from application.ui.presentation.ai_chat_bubble import AIChatBubble
 
+
 class StreamingState:
     """스트리밍 상태를 관리하는 클래스"""
 
@@ -56,4 +57,4 @@ class StreamingState:
 
         self.streaming_content += "".join(self.pending_chunks)
         self.pending_chunks.clear()
-        return True 
+        return True

@@ -14,7 +14,7 @@ class StyleManager:  # pylint: disable=too-few-public-methods
     BORDER_COLOR = "#D1D5DB"
     BG_GROUP = "#F8FAFC"
     FONT_COLOR = "#1F2937"
-    
+
     # 테마 매니저 인스턴스
     _theme_manager: Optional[ThemeManager] = None
 
@@ -25,7 +25,7 @@ class StyleManager:  # pylint: disable=too-few-public-methods
     def set_theme_manager(cls, theme_manager: ThemeManager) -> None:
         """테마 매니저를 설정합니다."""
         cls._theme_manager = theme_manager
-    
+
     @classmethod
     def get_group_box_style(cls) -> str:  # noqa: D401
         """Return QSS for group boxes / frames."""
@@ -98,4 +98,4 @@ class StyleManager:  # pylint: disable=too-few-public-methods
             )
 
 
-__all__: list[str] = ["StyleManager"] 
+__all__: list[str] = ["StyleManager"]

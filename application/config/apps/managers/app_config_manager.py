@@ -72,9 +72,7 @@ class AppConfigManager:
                 logger.error("설정 파일 로드 중 예상치 못한 오류: %s", exception)
                 self.create_default_config()
         else:
-            logger.info(
-                "설정 파일이 존재하지 않음, 기본 설정 생성: %s", self.config_file
-            )
+            logger.info("설정 파일이 존재하지 않음, 기본 설정 생성: %s", self.config_file)
             self.create_default_config()
 
     def create_default_config(self) -> None:
@@ -120,23 +118,22 @@ class AppConfigManager:
 
             # 기본값을 사용하여 설정값 가져오기
             font_size_str = self.config.get(
-                "UI", "font_size", fallback=str(DEFAULT_UI_VALUES["font_size"]))
+                "UI", "font_size", fallback=str(DEFAULT_UI_VALUES["font_size"])
+            )
             chat_bubble_max_width_str = self.config.get(
-                "UI", "chat_bubble_max_width", fallback=str(DEFAULT_UI_VALUES["chat_bubble_max_width"])
+                "UI",
+                "chat_bubble_max_width",
+                fallback=str(DEFAULT_UI_VALUES["chat_bubble_max_width"]),
             )
 
             # 폰트 크기 파싱 및 검증
             try:
                 font_size = int(font_size_str)
                 if font_size <= 0:
-                    logger.warning(
-                        "잘못된 폰트 크기 값: %s, 기본값 사용", font_size_str
-                    )
+                    logger.warning("잘못된 폰트 크기 값: %s, 기본값 사용", font_size_str)
                     font_size = DEFAULT_UI_VALUES["font_size"]
             except (ValueError, TypeError):
-                logger.warning(
-                    "폰트 크기 변환 실패: %s, 기본값 사용", font_size_str
-                )
+                logger.warning("폰트 크기 변환 실패: %s, 기본값 사용", font_size_str)
                 font_size = DEFAULT_UI_VALUES["font_size"]
 
             # 채팅 버블 너비 파싱 및 검증
@@ -163,7 +160,9 @@ class AppConfigManager:
                 ),
                 "font_size": font_size,
                 "chat_bubble_max_width": chat_bubble_max_width,
-                "window_theme": self.config.get("UI", "window_theme", fallback=DEFAULT_UI_VALUES["window_theme"]),
+                "window_theme": self.config.get(
+                    "UI", "window_theme", fallback=DEFAULT_UI_VALUES["window_theme"]
+                ),
             }
         except Exception as exception:
             logger.error("UI 설정 가져오기 실패: %s", exception)
@@ -192,7 +191,7 @@ class AppConfigManager:
                 logger.warning(
                     "알 수 없는 테마: %s, 기본값 '%s' 사용",
                     window_theme,
-                    DEFAULT_UI_VALUES["window_theme"]
+                    DEFAULT_UI_VALUES["window_theme"],
                 )
                 window_theme = DEFAULT_UI_VALUES["window_theme"]
 
@@ -201,8 +200,7 @@ class AppConfigManager:
 
             self.config["UI"]["font_family"] = font_family
             self.config["UI"]["font_size"] = str(font_size)
-            self.config["UI"]["chat_bubble_max_width"] = str(
-                chat_bubble_max_width)
+            self.config["UI"]["chat_bubble_max_width"] = str(chat_bubble_max_width)
             self.config["UI"]["window_theme"] = window_theme
             self.save_config()
             logger.info("UI 설정 저장 완료")
@@ -221,18 +219,15 @@ class AppConfigManager:
         """
         try:
             # 필수 필드 검증 및 기본값 적용
-            font_family = ui_config.get(
-                "font_family", DEFAULT_UI_VALUES["font_family"])
-            font_size = int(ui_config.get(
-                "font_size", DEFAULT_UI_VALUES["font_size"]))
-            chat_bubble_max_width = int(ui_config.get(
-                "chat_bubble_max_width", DEFAULT_UI_VALUES["chat_bubble_max_width"]))
-            window_theme = ui_config.get(
-                "window_theme", DEFAULT_UI_VALUES["window_theme"])
+            font_family = ui_config.get("font_family", DEFAULT_UI_VALUES["font_family"])
+            font_size = int(ui_config.get("font_size", DEFAULT_UI_VALUES["font_size"]))
+            chat_bubble_max_width = int(
+                ui_config.get("chat_bubble_max_width", DEFAULT_UI_VALUES["chat_bubble_max_width"])
+            )
+            window_theme = ui_config.get("window_theme", DEFAULT_UI_VALUES["window_theme"])
 
             # 기존 메서드 활용
-            self.set_ui_config(font_family, font_size,
-                               chat_bubble_max_width, window_theme)
+            self.set_ui_config(font_family, font_size, chat_bubble_max_width, window_theme)
         except (ValueError, TypeError) as exception:
             logger.error(f"UI 설정 딕셔너리 변환 실패: {exception}")
             raise
@@ -253,9 +248,7 @@ class AppConfigManager:
             logger.warning("설정 값 없음 [%s.%s]: %s", section, key, exception)
             return fallback
         except Exception as exception:
-            logger.error(
-                "설정 값 가져오기 실패 [%s.%s]: %s", section, key, exception
-            )
+            logger.error("설정 값 가져오기 실패 [%s.%s]: %s", section, key, exception)
             return fallback
 
     def set_config_value(self, section: str, key: str, value: str) -> None:
@@ -283,8 +276,7 @@ class AppConfigManager:
     def get_github_repositories(self) -> List[str]:
         """GitHub 저장소 목록 반환"""
         try:
-            repositories_str = self.config.get(
-                "GITHUB", "repositories", fallback="")
+            repositories_str = self.config.get("GITHUB", "repositories", fallback="")
             if repositories_str:
                 # 콤마로 구분된 문자열을 리스트로 변환
                 repositories = [
@@ -314,10 +306,8 @@ class AppConfigManager:
     def get_github_config(self) -> Dict[str, Any]:
         """GitHub 설정 반환"""
         try:
-            webhook_enabled_str = self.config.get(
-                "GITHUB", "webhook_enabled", fallback="false")
-            webhook_port_str = self.config.get(
-                "GITHUB", "webhook_port", fallback="8000")
+            webhook_enabled_str = self.config.get("GITHUB", "webhook_enabled", fallback="false")
+            webhook_port_str = self.config.get("GITHUB", "webhook_port", fallback="8000")
 
             # Boolean 변환
             webhook_enabled = webhook_enabled_str.lower() in ("true", "1", "yes", "on")
@@ -326,8 +316,7 @@ class AppConfigManager:
             try:
                 webhook_port = int(webhook_port_str)
                 if webhook_port <= 0 or webhook_port > 65535:
-                    logger.warning(
-                        f"잘못된 포트 번호: {webhook_port_str}, 기본값 8000 사용")
+                    logger.warning(f"잘못된 포트 번호: {webhook_port_str}, 기본값 8000 사용")
                     webhook_port = 8000
             except (ValueError, TypeError):
                 logger.warning(f"포트 번호 변환 실패: {webhook_port_str}, 기본값 8000 사용")
@@ -359,7 +348,8 @@ class AppConfigManager:
             # 웹훅 설정
             if "webhook_enabled" in github_config:
                 self.config["GITHUB"]["webhook_enabled"] = str(
-                    github_config["webhook_enabled"]).lower()
+                    github_config["webhook_enabled"]
+                ).lower()
 
             if "webhook_port" in github_config:
                 port = int(github_config["webhook_port"])

@@ -7,14 +7,10 @@ class NotificationSignals(QObject):
 
     # 새로운 알림 시그널들 (다양한 알림 타입용)
     show_system_notification = Signal(str, str, str)  # title, message, icon_path
-    show_dialog_notification = Signal(
-        dict
-    )  # notification_data - TrayNotificationDialog용
+    show_dialog_notification = Signal(dict)  # notification_data - TrayNotificationDialog용
 
     # 채팅 메시지 관련 시그널
-    add_api_message = Signal(
-        str, str
-    )  # message_type, content - API로 받은 메시지를 대화창에 추가
+    add_api_message = Signal(str, str)  # message_type, content - API로 받은 메시지를 대화창에 추가
     add_user_message = Signal(str)  # content - 사용자 메시지를 대화창에 추가
     trigger_llm_response = Signal(str)  # prompt - LLM 응답 요청
 

@@ -36,10 +36,10 @@ class HttpClient(IHttpClient):
             raise HttpClientError(url, message=str(e))
 
     async def post(
-        self, 
-        url: str, 
+        self,
+        url: str,
         data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """POST 요청을 수행합니다."""
         try:
@@ -51,10 +51,10 @@ class HttpClient(IHttpClient):
             raise HttpClientError(url, message=str(e))
 
     async def put(
-        self, 
-        url: str, 
+        self,
+        url: str,
         data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """PUT 요청을 수행합니다."""
         try:
@@ -83,13 +83,13 @@ class HttpClient(IHttpClient):
                 raise HttpClientError(url, response.status, error_text)
 
             # JSON 응답인지 확인
-            content_type = response.headers.get('content-type', '')
-            if 'application/json' in content_type:
+            content_type = response.headers.get("content-type", "")
+            if "application/json" in content_type:
                 return cast(Dict[str, Any], await response.json())
             else:
                 text = await response.text()
                 return {"text": text, "status": response.status}
-                
+
         except aiohttp.ContentTypeError:
             # JSON 파싱 실패 시 텍스트로 반환
             text = await response.text()
@@ -99,4 +99,4 @@ class HttpClient(IHttpClient):
         """HTTP 클라이언트를 종료합니다."""
         if self._session and not self._session.closed:
             await self._session.close()
-            logger.debug("HTTP 클라이언트 세션 종료") 
+            logger.debug("HTTP 클라이언트 세션 종료")

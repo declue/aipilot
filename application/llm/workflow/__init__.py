@@ -35,7 +35,9 @@ class SequentialWorkflow(BaseWorkflow):
 
 
 async def _basic_chat_step(agent, msg, streaming_cb=None):
-    return await agent._generate_basic_response(msg, streaming_cb)  # pylint: disable=protected-access
+    return await agent._generate_basic_response(
+        msg, streaming_cb
+    )  # pylint: disable=protected-access
 
 
 class BasicChatWorkflow(SequentialWorkflow):
@@ -60,4 +62,4 @@ __all__ = [
     "BasicChatWorkflow",
     "register_workflow",
     "get_workflow",
-] 
+]

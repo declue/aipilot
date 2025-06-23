@@ -19,33 +19,30 @@ class TaskManager:
         task_configuration: Optional[ITaskConfiguration] = None,
         task_scheduler: Optional[ITaskScheduler] = None,
         http_client_timeout: int = 30,
-        max_workers: int = 5
+        max_workers: int = 5,
     ) -> None:
         # 의존성 주입을 통한 구성 요소 설정
         self.task_configuration = task_configuration or TaskConfiguration(config_file)
-        
+
         # HTTP 클라이언트 및 작업 실행자 생성
         self.http_client = HttpClient(timeout=http_client_timeout)
         self.task_executor = TaskExecutor(self.http_client)
-        
+
         # 설정 로드
         settings = self.task_configuration.load_settings()
-        
+
         # 스케줄러 생성
         self.task_scheduler = task_scheduler or TaskScheduler(
-            task_executor=self.task_executor,
-            settings=settings,
-            max_workers=max_workers
+            task_executor=self.task_executor, settings=settings, max_workers=max_workers
         )
 
         # 작업 실행 콜백
         self.on_task_executed: Optional[Callable[[str, object], None]] = None
         self.on_task_error: Optional[Callable[[str, object], None]] = None
-        
+
         # 콜백 설정
         self.task_scheduler.set_job_listener(
-            on_executed=self._on_task_executed,
-            on_error=self._on_task_error
+            on_executed=self._on_task_executed, on_error=self._on_task_error
         )
 
     def _on_task_executed(self, task_id: str, event: object) -> None:
@@ -124,11 +121,11 @@ class TaskManager:
         try:
             # 설정 업데이트
             success = self.task_configuration.add_task(task)  # 동일 ID로 덮어쓰기
-            
+
             if success and self.is_running:
                 # 스케줄러에서 업데이트
                 self.task_scheduler.update_job(task)
-                
+
             logger.info(f"작업 수정 완료: {task.name}")
             return success
         except Exception as e:

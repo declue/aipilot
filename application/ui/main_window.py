@@ -36,7 +36,12 @@ logger: logging.Logger = setup_logger("main_window") or logging.getLogger("main_
 class MainWindow(QMainWindow):
     """ChatGPT 스타일 메인 창"""
 
-    def __init__(self, mcp_manager: MCPManager, mcp_tool_manager: MCPToolManager, app_instance: Optional[Any] = None):
+    def __init__(
+        self,
+        mcp_manager: MCPManager,
+        mcp_tool_manager: MCPToolManager,
+        app_instance: Optional[Any] = None,
+    ):
         super().__init__()
         self.config_manager = ConfigManager()
         self.mcp_manager = mcp_manager
@@ -50,14 +55,16 @@ class MainWindow(QMainWindow):
         # 테마 관리자 초기화
         self.theme_manager = ThemeManager(self.config_manager)
         StyleManager.set_theme_manager(self.theme_manager)
-        
+
         # 테마 변경 시그널 연결
         self.theme_manager.theme_changed.connect(self.on_theme_changed)
 
         # 스크롤 관련 속성
         self.auto_scroll_enabled = True  # 자동 스크롤 활성화 여부
-        self.new_message_notification: Optional[NewMessageNotification] = None  # 새 메시지 알림 위젯
-        
+        self.new_message_notification: Optional[NewMessageNotification] = (
+            None  # 새 메시지 알림 위젯
+        )
+
         # UI 컴포넌트들 (UISetupManager에서 설정됨)
         self.input_text: Any = None
         self.send_button: Any = None
@@ -129,9 +136,9 @@ class MainWindow(QMainWindow):
 
         # 초기 테마 적용
         self.apply_current_theme()
-        
+
         # 테마 토글 버튼 업데이트
-        if hasattr(self, 'theme_toggle_button'):
+        if hasattr(self, "theme_toggle_button"):
             self.update_theme_toggle_button()
 
         # TaskThread 초기화 및 시작
@@ -229,9 +236,7 @@ class MainWindow(QMainWindow):
                 new_config = self.config_manager.get_llm_config()
                 api_key = new_config.get("api_key", "")
                 api_key_preview = (
-                    api_key[:10] + "..."
-                    if api_key and len(api_key) > 10
-                    else "설정되지 않음"
+                    api_key[:10] + "..." if api_key and len(api_key) > 10 else "설정되지 않음"
                 )
                 logger.info(
                     f"새 프로필 설정 확인: 모델={new_config.get('model')}, API 키={api_key_preview}, base_url={new_config.get('base_url')}"
@@ -252,7 +257,9 @@ class MainWindow(QMainWindow):
 
                 # 5. 모델 변경 알림만 표시 (대화 맥락은 유지)
                 if hasattr(self, "message_manager") and self.message_manager is not None:
-                    current_text = self.model_selector.currentText() if self.model_selector else "알 수 없음"
+                    current_text = (
+                        self.model_selector.currentText() if self.model_selector else "알 수 없음"
+                    )
                     QTimer.singleShot(
                         100,
                         lambda: self.add_system_message(
@@ -319,7 +326,7 @@ class MainWindow(QMainWindow):
                     font-family: '{self.ui_config['font_family']}';
                 }}
             """
-            )        # 상태 라벨 업데이트
+            )  # 상태 라벨 업데이트
         if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setStyleSheet(
                 f"""
@@ -472,7 +479,7 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "model_label") or self.model_label is None:
             logger.debug("model_label이 아직 초기화되지 않았습니다. 건너뜁니다.")
             return
-            
+
         try:
             llm_config = self.config_manager.get_llm_config()
             model = llm_config.get("model", "설정 필요")
@@ -484,8 +491,9 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj: Any, event: Any) -> bool:
         """이벤트 필터 - 입력창 키 이벤트 처리"""
-        if obj == self.input_text and hasattr(event, 'type'):
+        if obj == self.input_text and hasattr(event, "type"):
             from PySide6.QtCore import QEvent
+
             if event.type() == QEvent.Type.KeyPress:
                 if event.key() == Qt.Key.Key_Return:
                     if event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
@@ -581,11 +589,7 @@ class MainWindow(QMainWindow):
 
     def scroll_to_bottom(self) -> None:
         """스크롤을 맨 아래로 이동 (자동 스크롤 활성화 시에만)"""
-        if (
-            self.auto_scroll_enabled
-            and hasattr(self, "scroll_area")
-            and self.scroll_area
-        ):
+        if self.auto_scroll_enabled and hasattr(self, "scroll_area") and self.scroll_area:
             # 약간의 지연을 두고 스크롤 (레이아웃 업데이트 후)
             QTimer.singleShot(50, self._do_scroll_to_bottom)
 
@@ -609,7 +613,7 @@ class MainWindow(QMainWindow):
 
     def stop_ai_response(self) -> None:
         """AI 응답 중단"""
-        self.streaming_manager.stop_streaming()        # UI 상태 복원
+        self.streaming_manager.stop_streaming()  # UI 상태 복원
         if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("중단됨")
             self.status_label.setStyleSheet(
@@ -637,7 +641,7 @@ class MainWindow(QMainWindow):
         # 이전 워커가 실행 중이면 중지
         current_worker = self.streaming_manager.current_worker()
         if current_worker and hasattr(current_worker, "stop"):
-            current_worker.stop()        # UI 상태 업데이트
+            current_worker.stop()  # UI 상태 업데이트
         if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("생각 중...")
             self.status_label.setStyleSheet(
@@ -666,7 +670,7 @@ class MainWindow(QMainWindow):
             self.llm_agent,  # LLM Agent 인스턴스
             self.handle_ai_response,  # 콜백
         )
-        
+
         # StreamingState에 current_worker 저장
         self.streaming_manager.state.current_worker = worker
 
@@ -695,7 +699,7 @@ class MainWindow(QMainWindow):
             return
 
         # StreamingManager의 스트리밍 완료 처리 호출
-        self.streaming_manager.on_streaming_finished()        # UI 상태 복원
+        self.streaming_manager.on_streaming_finished()  # UI 상태 복원
         if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("준비됨")
             self.status_label.setStyleSheet(
@@ -815,12 +819,7 @@ class MainWindow(QMainWindow):
             )
 
             # 윈도우가 복원되거나 활성화되면 트레이 깜박임 중지
-            if (
-                not is_minimized
-                and is_active
-                and hasattr(self, "tray_app")
-                and self.tray_app
-            ):
+            if not is_minimized and is_active and hasattr(self, "tray_app") and self.tray_app:
                 self.tray_app.on_window_activated()
                 logger.debug("윈도우 복원/활성화 - 트레이 깜박임 중지")
 
@@ -852,10 +851,10 @@ class MainWindow(QMainWindow):
             self.webhook_status_timer = QTimer()
             self.webhook_status_timer.timeout.connect(self.check_webhook_status)
             self.webhook_status_timer.start(30000)  # 30초마다 체크
-            
+
             # 초기 상태 체크
             QTimer.singleShot(2000, self.check_webhook_status)  # 2초 후 첫 체크
-            
+
             logger.info("Webhook 상태 체크 타이머 초기화 완료")
         except Exception as e:
             logger.error(f"Webhook 상태 체크 타이머 초기화 실패: {e}")
@@ -865,15 +864,17 @@ class MainWindow(QMainWindow):
         try:
             logger.info("=== Webhook 상태 체크 시작 ===")
             logger.info(f"self._app 존재 여부: {hasattr(self, '_app')}")
-            logger.info(f"self._app이 None이 아님: {hasattr(self, '_app') and self._app is not None}")
-            
+            logger.info(
+                f"self._app이 None이 아님: {hasattr(self, '_app') and self._app is not None}"
+            )
+
             # App 인스턴스에서 webhook_client 가져오기
-            if hasattr(self, '_app') and self._app and hasattr(self._app, 'webhook_client'):
+            if hasattr(self, "_app") and self._app and hasattr(self._app, "webhook_client"):
                 webhook_client = self._app.webhook_client
                 logger.info(f"App 인스턴스에서 webhook_client 확인: {webhook_client is not None}")
-                
+
                 if webhook_client:
-                    client_id = getattr(webhook_client, 'client_id', 'None')
+                    client_id = getattr(webhook_client, "client_id", "None")
                     logger.info(f"✅ Webhook client 발견! client_id={client_id}")
                     self.update_webhook_status_connected(webhook_client)
                 else:
@@ -883,39 +884,50 @@ class MainWindow(QMainWindow):
                 logger.info(f"❌ App 인스턴스 체크 실패:")
                 logger.info(f"  - hasattr(self, '_app'): {hasattr(self, '_app')}")
                 logger.info(f"  - self._app: {getattr(self, '_app', 'NOT_SET')}")
-                logger.info(f"  - hasattr(self._app, 'webhook_client'): {hasattr(getattr(self, '_app', None), 'webhook_client') if hasattr(self, '_app') else 'N/A'}")
-                
+                logger.info(
+                    f"  - hasattr(self._app, 'webhook_client'): {hasattr(getattr(self, '_app', None), 'webhook_client') if hasattr(self, '_app') else 'N/A'}"
+                )
+
                 # App 인스턴스가 없는 경우 설정에서 직접 확인
-                webhook_enabled_str = self.config_manager.get_config_value("WEBHOOK", "enabled", "false")
-                webhook_enabled = webhook_enabled_str.lower() == "true" if webhook_enabled_str else False
+                webhook_enabled_str = self.config_manager.get_config_value(
+                    "WEBHOOK", "enabled", "false"
+                )
+                webhook_enabled = (
+                    webhook_enabled_str.lower() == "true" if webhook_enabled_str else False
+                )
                 logger.info(f"설정에서 Webhook 활성화 상태: {webhook_enabled}")
-                
+
                 if webhook_enabled:
                     logger.info("⚠️ Webhook이 활성화되어 있지만 연결되지 않음")
                     self.update_webhook_status_disconnected()
                 else:
                     logger.info("⚫ Webhook이 비활성화됨")
                     self.update_webhook_status_disabled()
-                    
+
             logger.info("=== Webhook 상태 체크 완료 ===")
         except Exception as e:
             logger.error(f"❌ Webhook 상태 체크 실패: {e}")
             import traceback
+
             logger.error(f"상세 오류: {traceback.format_exc()}")
             self.update_webhook_status_error()
 
     def update_webhook_status_connected(self, webhook_client: Any) -> None:
         """Webhook 연결됨 상태로 UI 업데이트"""
-        if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+        if not hasattr(self, "webhook_status_label") or not self.webhook_status_label:
             logger.debug("webhook_status_label이 없어서 상태 업데이트 건너뜀")
             return
-            
+
         try:
-            logger.debug(f"Webhook 연결 상태 업데이트 시도: client_id={getattr(webhook_client, 'client_id', 'None')}")
-            
+            logger.debug(
+                f"Webhook 연결 상태 업데이트 시도: client_id={getattr(webhook_client, 'client_id', 'None')}"
+            )
+
             # 클라이언트 ID가 있으면 연결된 것으로 간주
-            if hasattr(webhook_client, 'client_id') and webhook_client.client_id:
-                logger.info(f"Webhook 연결됨 - UI를 초록색으로 업데이트: client_id={webhook_client.client_id}")
+            if hasattr(webhook_client, "client_id") and webhook_client.client_id:
+                logger.info(
+                    f"Webhook 연결됨 - UI를 초록색으로 업데이트: client_id={webhook_client.client_id}"
+                )
                 self.webhook_status_label.setText("🟢")
                 self.webhook_status_label.setStyleSheet(
                     """
@@ -929,7 +941,7 @@ class MainWindow(QMainWindow):
                     }
                     """
                 )
-                webhook_server_url = getattr(webhook_client, 'webhook_server_url', '알 수 없음')
+                webhook_server_url = getattr(webhook_client, "webhook_server_url", "알 수 없음")
                 self.webhook_status_label.setToolTip(
                     f"Webhook 서버 연결됨\n"
                     f"클라이언트 ID: {webhook_client.client_id}\n"
@@ -941,14 +953,15 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Webhook 연결 상태 업데이트 실패: {e}")
             import traceback
+
             logger.error(f"상세 오류: {traceback.format_exc()}")
             self.update_webhook_status_error()
 
     def update_webhook_status_disconnected(self) -> None:
         """Webhook 연결 안됨 상태로 UI 업데이트"""
-        if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+        if not hasattr(self, "webhook_status_label") or not self.webhook_status_label:
             return
-            
+
         self.webhook_status_label.setText("🔴")
         self.webhook_status_label.setStyleSheet(
             """
@@ -964,16 +977,14 @@ class MainWindow(QMainWindow):
         )
         webhook_url = self.config_manager.get_config_value("WEBHOOK", "server_url", "설정되지 않음")
         self.webhook_status_label.setToolTip(
-            f"Webhook 서버 연결 안됨\n"
-            f"서버: {webhook_url}\n"
-            f"서버가 실행 중인지 확인하세요"
+            f"Webhook 서버 연결 안됨\n" f"서버: {webhook_url}\n" f"서버가 실행 중인지 확인하세요"
         )
 
     def update_webhook_status_disabled(self) -> None:
         """Webhook 비활성화 상태로 UI 업데이트"""
-        if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+        if not hasattr(self, "webhook_status_label") or not self.webhook_status_label:
             return
-            
+
         self.webhook_status_label.setText("⚫")
         self.webhook_status_label.setStyleSheet(
             """
@@ -988,15 +999,14 @@ class MainWindow(QMainWindow):
             """
         )
         self.webhook_status_label.setToolTip(
-            "Webhook 기능 비활성화됨\n"
-            "설정에서 Webhook을 활성화할 수 있습니다"
+            "Webhook 기능 비활성화됨\n" "설정에서 Webhook을 활성화할 수 있습니다"
         )
 
     def update_webhook_status_error(self) -> None:
         """Webhook 오류 상태로 UI 업데이트"""
-        if not hasattr(self, 'webhook_status_label') or not self.webhook_status_label:
+        if not hasattr(self, "webhook_status_label") or not self.webhook_status_label:
             return
-            
+
         self.webhook_status_label.setText("⚠️")
         self.webhook_status_label.setStyleSheet(
             """
@@ -1011,8 +1021,7 @@ class MainWindow(QMainWindow):
             """
         )
         self.webhook_status_label.setToolTip(
-            "Webhook 상태 확인 중 오류 발생\n"
-            "연결 상태를 확인할 수 없습니다"
+            "Webhook 상태 확인 중 오류 발생\n" "연결 상태를 확인할 수 없습니다"
         )
 
     def set_app_reference(self, app_instance: Any) -> None:
@@ -1037,13 +1046,13 @@ class MainWindow(QMainWindow):
                 self.config_manager, self, self.mcp_manager, self.mcp_tool_manager
             )
             self.settings_window.settings_changed.connect(self.on_settings_changed)
-            
+
             # TaskThread를 TaskTabManager에 전달
             if self.task_thread and hasattr(self.settings_window, "task_tab_manager"):
                 self.settings_window.task_tab_manager.set_task_thread(self.task_thread)
-            
+
             # 현재 테마를 설정창에 적용
-            if hasattr(self.settings_window, 'update_theme'):
+            if hasattr(self.settings_window, "update_theme"):
                 self.settings_window.update_theme()
 
         self.settings_window.show()
@@ -1055,7 +1064,7 @@ class MainWindow(QMainWindow):
         # message_manager가 초기화되지 않았으면 리턴
         if not hasattr(self, "message_manager") or self.message_manager is None:
             return
-            
+
         # 대화 히스토리 초기화
         self.conversation_manager.clear_history()
 
@@ -1131,7 +1140,8 @@ class MainWindow(QMainWindow):
             "워크플로우",
             "workflow",
             "GitHub Actions",
-            "체크",            "check",
+            "체크",
+            "check",
         ]
 
         # 메시지 내용에 GitHub 관련 키워드가 포함되어 있는지 확인
@@ -1173,7 +1183,7 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "model_selector") or self.model_selector is None:
             logger.debug("model_selector가 아직 초기화되지 않았습니다. 건너뜁니다.")
             return
-            
+
         try:
             profiles = self.config_manager.get_llm_profiles()
             current_profile = self.config_manager.get_current_profile_name()
@@ -1215,7 +1225,7 @@ class MainWindow(QMainWindow):
         try:
             # 테마 색상 가져오기
             colors = self.theme_manager.get_theme_colors()
-            
+
             # 메인 윈도우 전체 스타일 적용
             main_window_style = f"""
             QMainWindow {{
@@ -1269,25 +1279,25 @@ class MainWindow(QMainWindow):
                 background-color: {colors['scrollbar_hover']};
             }}
             """
-            
+
             self.setStyleSheet(main_window_style)
-            
+
             # UI 컴포넌트 개별 업데이트
             self.update_header_theme()
             self.update_input_area_theme()
-            
+
             # 컨테이너 테마 업데이트
             self.update_container_themes()
-            
+
             # 기존 채팅 메시지들에도 테마 적용
             self.update_existing_messages_theme()
-            
+
             # 설정창이 열려있으면 테마 업데이트
             self.update_settings_window_theme()
-            
+
             # Webhook 상태 업데이트 (현재 상태 유지하면서 테마만 변경)
             self.check_webhook_status()
-            
+
             logger.info(f"테마 적용 완료: {self.theme_manager.get_current_theme().value}")
         except Exception as e:
             logger.error(f"테마 적용 실패: {e}")
@@ -1296,27 +1306,30 @@ class MainWindow(QMainWindow):
         """헤더 컴포넌트의 테마를 업데이트합니다."""
         try:
             colors = self.theme_manager.get_theme_colors()
-            
+
             # 헤더 프레임 찾기
             header_frame = self.findChild(QFrame, "header_frame")
             if header_frame:
-                header_frame.setStyleSheet(f"""
+                header_frame.setStyleSheet(
+                    f"""
                     QFrame {{
                         background-color: {colors['header_background']};
                         border: none;
                         border-bottom: 1px solid {colors['border']};
                         padding: 0;
                     }}
-                """)
-                
+                """
+                )
+
             # 모든 QPushButton 찾아서 업데이트
             buttons = self.findChildren(QPushButton)
             for button in buttons:
                 button_text = button.text()
-                
+
                 if "새 대화" in button_text:
                     # 새 대화 버튼
-                    button.setStyleSheet(f"""
+                    button.setStyleSheet(
+                        f"""
                         QPushButton {{
                             background-color: {colors['success']};
                             color: white;
@@ -1334,10 +1347,12 @@ class MainWindow(QMainWindow):
                             background-color: {colors['success_pressed']};
                             border-color: {colors['success_pressed']};
                         }}
-                    """)
+                    """
+                    )
                 elif "설정" in button_text:
                     # 설정 버튼
-                    button.setStyleSheet(f"""
+                    button.setStyleSheet(
+                        f"""
                         QPushButton {{
                             background-color: {colors['button_background']};
                             color: {colors['text']};
@@ -1355,14 +1370,16 @@ class MainWindow(QMainWindow):
                             background-color: {colors['button_pressed']};
                             border-color: {colors['border']};
                         }}
-                    """)
-                    
+                    """
+                    )
+
             # 모든 QLabel 업데이트
             labels = self.findChildren(QLabel)
             for label in labels:
                 if "DS Pilot" in label.text():
                     # 타이틀 라벨
-                    label.setStyleSheet(f"""
+                    label.setStyleSheet(
+                        f"""
                         QLabel {{
                             color: {colors['text']};
                             font-size: 20px;
@@ -1370,19 +1387,23 @@ class MainWindow(QMainWindow):
                             font-family: '{self.ui_config['font_family']}';
                             background-color: transparent;
                         }}
-                    """)
+                    """
+                    )
                 else:
                     # 일반 라벨
-                    label.setStyleSheet(f"""
+                    label.setStyleSheet(
+                        f"""
                         QLabel {{
                             color: {colors['text']};
                             background-color: transparent;
                         }}
-                    """)
-                    
+                    """
+                    )
+
             # 모델 선택 ComboBox 업데이트
-            if hasattr(self, 'model_selector') and self.model_selector:
-                self.model_selector.setStyleSheet(f"""
+            if hasattr(self, "model_selector") and self.model_selector:
+                self.model_selector.setStyleSheet(
+                    f"""
                     QComboBox {{
                         background-color: {colors['input_background']};
                         border: none;
@@ -1424,8 +1445,9 @@ class MainWindow(QMainWindow):
                         background-color: {colors['primary']};
                         color: white;
                     }}
-                """)
-                    
+                """
+                )
+
         except Exception as e:
             logger.error(f"헤더 테마 업데이트 실패: {e}")
 
@@ -1433,10 +1455,11 @@ class MainWindow(QMainWindow):
         """입력 영역의 테마를 업데이트합니다."""
         try:
             colors = self.theme_manager.get_theme_colors()
-            
+
             # 입력 텍스트 영역 업데이트
-            if hasattr(self, 'input_text') and self.input_text:
-                self.input_text.setStyleSheet(f"""
+            if hasattr(self, "input_text") and self.input_text:
+                self.input_text.setStyleSheet(
+                    f"""
                     QTextEdit {{
                         background-color: {colors['input_background']};
                         color: {colors['text']};
@@ -1449,11 +1472,13 @@ class MainWindow(QMainWindow):
                     QTextEdit:focus {{
                         border-color: {colors['primary']};
                     }}
-                """)
-            
+                """
+                )
+
             # 전송 버튼 업데이트
-            if hasattr(self, 'send_button') and self.send_button:
-                self.send_button.setStyleSheet(f"""
+            if hasattr(self, "send_button") and self.send_button:
+                self.send_button.setStyleSheet(
+                    f"""
                     QPushButton {{
                         background-color: {colors['primary']};
                         color: white;
@@ -1473,11 +1498,13 @@ class MainWindow(QMainWindow):
                         background-color: {colors['text_secondary']};
                         color: {colors['text']};
                     }}
-                """)
-            
+                """
+                )
+
             # 중단 버튼 업데이트
-            if hasattr(self, 'stop_button') and self.stop_button:
-                self.stop_button.setStyleSheet(f"""
+            if hasattr(self, "stop_button") and self.stop_button:
+                self.stop_button.setStyleSheet(
+                    f"""
                     QPushButton {{
                         background-color: {colors['danger']};
                         color: white;
@@ -1493,22 +1520,23 @@ class MainWindow(QMainWindow):
                     QPushButton:pressed {{
                         background-color: #B91C1C;
                     }}
-                """)
-                
+                """
+                )
+
         except Exception as e:
             logger.error(f"입력 영역 테마 업데이트 실패: {e}")
 
     def update_theme_toggle_button(self) -> None:
         """테마 토글 버튼 업데이트"""
         try:
-            if hasattr(self, 'theme_toggle_button') and self.theme_toggle_button:
+            if hasattr(self, "theme_toggle_button") and self.theme_toggle_button:
                 colors = self.theme_manager.get_theme_colors()
                 current_theme = self.theme_manager.get_current_theme()
-                
+
                 # 테마에 따른 아이콘 선택
                 icon = "🌙" if current_theme == ThemeMode.LIGHT else "☀️"
                 self.theme_toggle_button.setText(icon)
-                
+
                 # 테마별 스타일 적용
                 style = f"""
                     QPushButton {{
@@ -1531,48 +1559,50 @@ class MainWindow(QMainWindow):
                     }}
                 """
                 self.theme_toggle_button.setStyleSheet(style)
-                
+
                 # 툴팁 업데이트
-                tooltip = "라이트 모드로 전환" if current_theme == ThemeMode.DARK else "다크 모드로 전환"
+                tooltip = (
+                    "라이트 모드로 전환" if current_theme == ThemeMode.DARK else "다크 모드로 전환"
+                )
                 self.theme_toggle_button.setToolTip(tooltip)
-                
+
                 logger.debug(f"테마 토글 버튼 업데이트 완료: {icon}")
-                
+
         except Exception as e:
             logger.error(f"테마 토글 버튼 업데이트 실패: {e}")
 
     def update_existing_messages_theme(self) -> None:
         """기존 채팅 메시지들에 새 테마를 적용합니다."""
         try:
-            if not hasattr(self, 'message_manager') or not self.message_manager:
+            if not hasattr(self, "message_manager") or not self.message_manager:
                 return
-                
+
             # MessageManager를 통해 모든 채팅 버블의 테마 업데이트
-            if hasattr(self.message_manager, 'update_all_message_styles'):
+            if hasattr(self.message_manager, "update_all_message_styles"):
                 # UI 설정도 테마에 맞게 업데이트
                 self.ui_config = self.config_manager.get_ui_config()
                 self.message_manager.ui_config = self.ui_config
                 self.message_manager.update_all_message_styles()
                 logger.debug("기존 메시지들에 테마 적용 완료")
-            
+
             # 채팅 영역 강제 업데이트
-            if hasattr(self, 'chat_layout') and self.chat_layout:
+            if hasattr(self, "chat_layout") and self.chat_layout:
                 for i in range(self.chat_layout.count()):
                     item = self.chat_layout.itemAt(i)
                     if item and item.widget():
                         widget = item.widget()
                         # 위젯이 테마 업데이트를 지원하는 경우
-                        if hasattr(widget, 'apply_theme'):
+                        if hasattr(widget, "apply_theme"):
                             try:
                                 widget.apply_theme(self.theme_manager)
                             except Exception as e:
                                 logger.debug(f"위젯 테마 적용 실패: {e}")
-                        
+
                         # 위젯 강제 업데이트
                         widget.update()
-                        if hasattr(widget, 'repaint'):
+                        if hasattr(widget, "repaint"):
                             widget.repaint()
-                            
+
         except Exception as e:
             logger.error(f"기존 메시지 테마 업데이트 실패: {e}")
 
@@ -1580,14 +1610,15 @@ class MainWindow(QMainWindow):
         """UI 컨테이너들의 테마를 업데이트합니다."""
         try:
             # UI 설정 매니저를 찾아서 컨테이너 테마 업데이트
-            if hasattr(self, '_ui_setup_manager'):
+            if hasattr(self, "_ui_setup_manager"):
                 self._ui_setup_manager.update_container_themes()
             else:
                 # UI 설정 매니저가 없으면 직접 업데이트
                 from application.ui.managers.ui_setup_manager import UISetupManager
+
                 ui_manager = UISetupManager(self)
                 ui_manager.update_container_themes()
-                
+
         except Exception as e:
             logger.error(f"컨테이너 테마 업데이트 실패: {e}")
 
@@ -1595,9 +1626,9 @@ class MainWindow(QMainWindow):
         """설정창의 테마를 업데이트합니다."""
         try:
             # 설정창이 존재하고 표시 중인 경우 테마 업데이트
-            if hasattr(self, '_settings_window') and self._settings_window is not None:
-                if hasattr(self._settings_window, 'update_theme'):
+            if hasattr(self, "_settings_window") and self._settings_window is not None:
+                if hasattr(self._settings_window, "update_theme"):
                     self._settings_window.update_theme()
-                    
+
         except Exception as e:
             logger.error(f"설정창 테마 업데이트 실패: {e}")

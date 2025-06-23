@@ -10,4 +10,4 @@ from application.ui.presentation.base_chat_bubble import ChatBubble as _ChatBubb
 
 ChatBubble = _ChatBubble  # re-export
 
-__all__: list[str] = ["ChatBubble"] 
+__all__: list[str] = ["ChatBubble"]

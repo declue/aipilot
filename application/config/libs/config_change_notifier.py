@@ -10,9 +10,7 @@ from watchdog.observers import Observer
 
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("config") or logging.getLogger(
-    "config"
-)
+logger: logging.Logger = setup_logger("config") or logging.getLogger("config")
 
 # 콜백 함수 타입 정의
 ConfigChangeCallback = Callable[[str, str], None]  # (file_path, change_type)
@@ -34,8 +32,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
         # 초기 수정 시간 기록
         for file_path in watched_files:
             if os.path.exists(file_path):
-                self.last_modified_times[file_path] = os.path.getmtime(
-                    file_path)
+                self.last_modified_times[file_path] = os.path.getmtime(file_path)
 
     def on_modified(self, event: FileSystemEvent) -> None:
         """파일 수정 이벤트 처리"""
@@ -53,7 +50,8 @@ class ConfigFileWatcher(FileSystemEventHandler):
                 self.last_modified_times[file_path] = current_time
                 logger.debug(f"파일 변경 감지: {file_path}")
                 self.notifier._notify_change(  # pylint: disable=protected-access
-                    file_path, "modified")
+                    file_path, "modified"
+                )
 
     def on_created(self, event: FileSystemEvent) -> None:
         """파일 생성 이벤트 처리"""
@@ -64,8 +62,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
 
         if file_path in self.watched_files:
             logger.debug(f"파일 생성 감지: {file_path}")
-            self.notifier._notify_change(# pylint: disable=protected-access
-                file_path, "created")  
+            self.notifier._notify_change(file_path, "created")  # pylint: disable=protected-access
 
     def on_deleted(self, event: FileSystemEvent) -> None:
         """파일 삭제 이벤트 처리"""
@@ -76,8 +73,7 @@ class ConfigFileWatcher(FileSystemEventHandler):
 
         if file_path in self.watched_files:
             logger.debug(f"파일 삭제 감지: {file_path}")
-            self.notifier._notify_change(  # pylint: disable=protected-access
-                file_path, "deleted")
+            self.notifier._notify_change(file_path, "deleted")  # pylint: disable=protected-access
 
 
 class ConfigChangeNotifier:
@@ -174,9 +170,7 @@ class ConfigChangeNotifier:
             # 디렉토리 감시 추가
             if self._observer and os.path.exists(directory):
                 self._observer.schedule(
-                    ConfigFileWatcher(self._watched_files, self),
-                    directory,
-                    recursive=False
+                    ConfigFileWatcher(self._watched_files, self), directory, recursive=False
                 )
                 logger.debug(f"디렉토리 감시 시작: {directory}")
 
@@ -186,9 +180,7 @@ class ConfigChangeNotifier:
 
         # 해당 디렉토리의 다른 파일들도 확인
         directory = os.path.dirname(file_path)
-        has_other_files = any(
-            os.path.dirname(f) == directory for f in self._watched_files
-        )
+        has_other_files = any(os.path.dirname(f) == directory for f in self._watched_files)
 
         if not has_other_files:
             self._watched_directories.discard(directory)

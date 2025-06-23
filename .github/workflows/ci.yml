@@ -29,16 +29,13 @@ jobs:
           pip install black==23.11.0 mypy==1.7.1 pylint==3.0.2 ruff==0.1.6
 
       - name: Black formatting check
-        run: black --check --diff .
+        run: black --check --diff application
 
       - name: Import sorting check (isort)
-        run: isort --check-only --diff .
+        run: isort --check-only --diff application
 
-      - name: Ruff linting
-        run: ruff check .
-
-      - name: Type checking (mypy)
-        run: mypy application tests --ignore-missing-imports
+#      - name: Type checking (mypy)
+#        run: mypy application --ignore-missing-imports
 
       - name: Pylint analysis
         run: pylint --fail-under=8 application

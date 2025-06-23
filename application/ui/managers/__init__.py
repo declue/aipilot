@@ -27,5 +27,5 @@ __all__ = [
     "MCPToolsManager",
     "MCPLogManager",
     "GitHubTabManager",
-    "TaskTabManager"
+    "TaskTabManager",
 ]

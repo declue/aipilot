@@ -127,9 +127,7 @@ class UserChatBubble(ChatBubble):
             if html_content.strip() == simple_html:
                 html_content = self.message.replace("\n", "<br>")
             font_family, font_size = self.get_font_config()
-            styled_html = (
-                f"<div style=\"font-family:'{font_family}';font-size:{font_size}px;line-height:1.6;color:#FFFFFF;\">{html_content}</div>"
-            )
+            styled_html = f"<div style=\"font-family:'{font_family}';font-size:{font_size}px;line-height:1.6;color:#FFFFFF;\">{html_content}</div>"
             text_browser.setHtml(styled_html)
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("Markdown conversion failed: %s", exc)
@@ -138,8 +136,7 @@ class UserChatBubble(ChatBubble):
     def _get_user_stylesheet(self) -> str:
         font_family, font_size = self.get_font_config()
         code_font: int = max(font_size - 1, 12)
-        return (
-            f"""
+        return f"""
             QTextBrowser {{
                 background-color: transparent;
                 border: none;
@@ -154,7 +151,6 @@ class UserChatBubble(ChatBubble):
                 font-size: {code_font}px;
             }}
         """
-        )
 
     # ------------------------------------------------------------------
     # Actions
@@ -196,13 +192,13 @@ class UserChatBubble(ChatBubble):
     def update_theme_styles(self) -> None:
         """테마에 맞는 스타일을 적용합니다."""
         try:
-            if hasattr(self, 'bubble_frame'):
+            if hasattr(self, "bubble_frame"):
                 self._update_bubble_theme()
-            if hasattr(self, 'text_browser'):
+            if hasattr(self, "text_browser"):
                 self._update_text_browser_theme()
-            if hasattr(self, 'copy_button'):
+            if hasattr(self, "copy_button"):
                 self._update_button_theme()
-            if hasattr(self, 'toggle_button'):
+            if hasattr(self, "toggle_button"):
                 self._update_button_theme()
         except Exception as e:
             logger.error(f"사용자 버블 테마 업데이트 실패: {e}")
@@ -210,17 +206,19 @@ class UserChatBubble(ChatBubble):
     def _update_bubble_theme(self) -> None:
         """버블 프레임의 테마를 업데이트합니다."""
         colors = self.get_theme_colors()
-        if hasattr(self, 'bubble_frame'):
-            self.bubble_frame.setStyleSheet(f"""
+        if hasattr(self, "bubble_frame"):
+            self.bubble_frame.setStyleSheet(
+                f"""
                 QFrame {{
                     background-color: {colors.get('primary', '#2563EB')};
                     border-radius: 20px;
                 }}
-            """)
+            """
+            )
 
     def _update_text_browser_theme(self) -> None:
         """텍스트 브라우저의 테마를 업데이트합니다."""
-        if hasattr(self, 'text_browser'):
+        if hasattr(self, "text_browser"):
             self.text_browser.setStyleSheet(self._get_user_stylesheet())
 
     def _update_button_theme(self) -> None:
@@ -239,11 +237,11 @@ class UserChatBubble(ChatBubble):
                 background-color: rgba(255,255,255,0.3);
             }
         """
-        
-        if hasattr(self, 'copy_button'):
+
+        if hasattr(self, "copy_button"):
             self.copy_button.setStyleSheet(button_style)
-        if hasattr(self, 'toggle_button'):
+        if hasattr(self, "toggle_button"):
             self.toggle_button.setStyleSheet(button_style)
 
 
-__all__: list[str] = ["UserChatBubble"] 
+__all__: list[str] = ["UserChatBubble"]

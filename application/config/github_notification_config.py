@@ -184,24 +184,15 @@ class GitHubNotificationConfig:
     """GitHub 알림 통합 설정"""
 
     enabled: bool = True
-    push: PushNotificationConfig = field(
-        default_factory=PushNotificationConfig)
+    push: PushNotificationConfig = field(default_factory=PushNotificationConfig)
     pull_request: PullRequestNotificationConfig = field(
         default_factory=PullRequestNotificationConfig
     )
-    issues: IssuesNotificationConfig = field(
-        default_factory=IssuesNotificationConfig)
-    release: ReleaseNotificationConfig = field(
-        default_factory=ReleaseNotificationConfig
-    )
-    workflow: WorkflowNotificationConfig = field(
-        default_factory=WorkflowNotificationConfig
-    )
-    repository: RepositoryNotificationConfig = field(
-        default_factory=RepositoryNotificationConfig
-    )
-    check: CheckNotificationConfig = field(
-        default_factory=CheckNotificationConfig)
+    issues: IssuesNotificationConfig = field(default_factory=IssuesNotificationConfig)
+    release: ReleaseNotificationConfig = field(default_factory=ReleaseNotificationConfig)
+    workflow: WorkflowNotificationConfig = field(default_factory=WorkflowNotificationConfig)
+    repository: RepositoryNotificationConfig = field(default_factory=RepositoryNotificationConfig)
+    check: CheckNotificationConfig = field(default_factory=CheckNotificationConfig)
 
     # 전역 설정
     summary_enabled: bool = True  # 여러 이벤트 요약 기능
@@ -238,24 +229,13 @@ class GitHubNotificationConfig:
             return config_class(**field_values)
 
         # 각 서브 설정 생성
-        push_config = create_config(
-            PushNotificationConfig, data.get("push", {}))
-        pr_config = create_config(
-            PullRequestNotificationConfig, data.get("pull_request", {})
-        )
-        issues_config = create_config(
-            IssuesNotificationConfig, data.get("issues", {}))
-        release_config = create_config(
-            ReleaseNotificationConfig, data.get("release", {})
-        )
-        workflow_config = create_config(
-            WorkflowNotificationConfig, data.get("workflow", {})
-        )
-        repository_config = create_config(
-            RepositoryNotificationConfig, data.get("repository", {})
-        )
-        check_config = create_config(
-            CheckNotificationConfig, data.get("check", {}))
+        push_config = create_config(PushNotificationConfig, data.get("push", {}))
+        pr_config = create_config(PullRequestNotificationConfig, data.get("pull_request", {}))
+        issues_config = create_config(IssuesNotificationConfig, data.get("issues", {}))
+        release_config = create_config(ReleaseNotificationConfig, data.get("release", {}))
+        workflow_config = create_config(WorkflowNotificationConfig, data.get("workflow", {}))
+        repository_config = create_config(RepositoryNotificationConfig, data.get("repository", {}))
+        check_config = create_config(CheckNotificationConfig, data.get("check", {}))
 
         # 메인 설정 생성
         main_fields = {
@@ -315,23 +295,14 @@ class GitHubNotificationConfig:
             # 커밋 수 확인
             commits = kwargs.get("commits", [])
             commit_count = len(commits) if commits else 1
-            if (
-                commit_count < event_config.min_commits
-                or commit_count > event_config.max_commits
-            ):
+            if commit_count < event_config.min_commits or commit_count > event_config.max_commits:
                 return False, False
 
             # 브랜치 확인
             branch = kwargs.get("branch", "")
-            if (
-                event_config.exclude_branches
-                and branch in event_config.exclude_branches
-            ):
+            if event_config.exclude_branches and branch in event_config.exclude_branches:
                 return False, False
-            if (
-                event_config.include_branches
-                and branch not in event_config.include_branches
-            ):
+            if event_config.include_branches and branch not in event_config.include_branches:
                 return False, False
 
         elif event_type == "pull_request":

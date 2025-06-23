@@ -65,4 +65,4 @@ class PollingManager:  # pylint: disable=too-few-public-methods
                 time.sleep(self._poll_interval)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.error("Polling loop error: %s", exc)
-                time.sleep(self._poll_interval) 
+                time.sleep(self._poll_interval)

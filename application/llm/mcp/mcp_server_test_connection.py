@@ -22,10 +22,7 @@ async def test_mcp_server(server: MCPServer) -> MCPServerStatus:
             return MCPServerStatus(
                 name=server_name,
                 connected=True,
-                tools=[
-                    {"name": tool.name, "description": tool.description}
-                    for tool in tools
-                ],
+                tools=[{"name": tool.name, "description": tool.description} for tool in tools],
             )
     except McpError as e:
         return MCPServerStatus(

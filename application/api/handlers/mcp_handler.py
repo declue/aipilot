@@ -69,9 +69,7 @@ class MCPHandler(BaseHandler):
                 },
             )
         except Exception as exception:
-            return self._create_error_response(
-                "MCP 서버 도구 목록 조회 실패", exception
-            )
+            return self._create_error_response("MCP 서버 도구 목록 조회 실패", exception)
 
     async def get_enabled_mcp_servers(self) -> Dict[str, Any]:
         """활성화된 MCP 서버들만 반환"""

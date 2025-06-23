@@ -128,7 +128,9 @@ class WebhookClient:
 
         return orgs, repos
 
-    def _group_messages_by_type(self, messages: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    def _group_messages_by_type(
+        self, messages: List[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """이벤트 타입별로 메시지를 그룹핑"""
         grouped = defaultdict(list)
 
@@ -167,7 +169,9 @@ class WebhookClient:
                     repos.add(msg.get("repo_name", ""))
 
                 action_summary = ", ".join([f"{action} {cnt}개" for action, cnt in actions.items()])
-                summary_parts.append(f"📝 Pull Request: {action_summary} (저장소: {', '.join(repos)})")
+                summary_parts.append(
+                    f"📝 Pull Request: {action_summary} (저장소: {', '.join(repos)})"
+                )
 
             elif event_type == "issues":
                 issue_actions: defaultdict[str, int] = defaultdict(int)
@@ -177,7 +181,9 @@ class WebhookClient:
                     issue_actions[action] += 1
                     repos.add(msg.get("repo_name", ""))
 
-                action_summary = ", ".join([f"{action} {cnt}개" for action, cnt in issue_actions.items()])
+                action_summary = ", ".join(
+                    [f"{action} {cnt}개" for action, cnt in issue_actions.items()]
+                )
                 summary_parts.append(f"🐛 Issues: {action_summary} (저장소: {', '.join(repos)})")
 
             else:
@@ -188,7 +194,9 @@ class WebhookClient:
 
     def _summarize_workflow_events(self, messages: List[Dict[str, Any]]) -> str:
         """GitHub Actions 워크플로우 이벤트들을 요약"""
-        workflows: defaultdict[str, dict[str, int]] = defaultdict(lambda: {"success": 0, "failure": 0, "in_progress": 0})
+        workflows: defaultdict[str, dict[str, int]] = defaultdict(
+            lambda: {"success": 0, "failure": 0, "in_progress": 0}
+        )
         repos = set()
 
         for msg in messages:
@@ -248,7 +256,9 @@ class WebhookClient:
                 if event_type == "push":
                     commits = payload.get("commits", [])
                     commit_count = len(commits)
-                    message_details.append(f"{i}. Push 이벤트 - {repo_name} (커밋 {commit_count}개)")
+                    message_details.append(
+                        f"{i}. Push 이벤트 - {repo_name} (커밋 {commit_count}개)"
+                    )
 
                 elif event_type == "pull_request":
                     action = payload.get("action", "unknown")
@@ -265,19 +275,27 @@ class WebhookClient:
                         workflow_run = payload.get("workflow_run", {})
                         workflow_name = workflow_run.get("name", "Unknown")
                         conclusion = workflow_run.get("conclusion", "진행중")
-                        message_details.append(f"{i}. GitHub Actions 워크플로우 - {repo_name}: {workflow_name} ({conclusion})")
+                        message_details.append(
+                            f"{i}. GitHub Actions 워크플로우 - {repo_name}: {workflow_name} ({conclusion})"
+                        )
                     elif event_type == "workflow_job":
                         job = payload.get("workflow_job", {})
                         job_name = job.get("name", "Unknown")
                         conclusion = job.get("conclusion", "진행중")
-                        message_details.append(f"{i}. GitHub Actions 잡 - {repo_name}: {job_name} ({conclusion})")
+                        message_details.append(
+                            f"{i}. GitHub Actions 잡 - {repo_name}: {job_name} ({conclusion})"
+                        )
                     elif event_type == "check_run":
                         check_run = payload.get("check_run", {})
                         check_name = check_run.get("name", "Unknown")
                         conclusion = check_run.get("conclusion", "진행중")
-                        message_details.append(f"{i}. GitHub 체크 - {repo_name}: {check_name} ({conclusion})")
+                        message_details.append(
+                            f"{i}. GitHub 체크 - {repo_name}: {check_name} ({conclusion})"
+                        )
                     else:
-                        message_details.append(f"{i}. GitHub Actions 이벤트 - {repo_name}: {event_type}")
+                        message_details.append(
+                            f"{i}. GitHub Actions 이벤트 - {repo_name}: {event_type}"
+                        )
 
                 elif event_type == "release":
                     release = payload.get("release", {})
@@ -311,7 +329,7 @@ class WebhookClient:
             response = await llm_agent.generate_response(prompt)
 
             # 응답에서 제목과 내용 분리
-            lines = response.strip().split('\n')
+            lines = response.strip().split("\n")
             title = "📬 GitHub 활동 요약"
             content = response
 
@@ -322,7 +340,7 @@ class WebhookClient:
                     # 내용 부분만 추출
                     content_start = response.find("내용:")
                     if content_start >= 0:
-                        content = response[content_start + 3:].strip()
+                        content = response[content_start + 3 :].strip()
                     break
 
             return title, content
@@ -335,7 +353,7 @@ class WebhookClient:
 
             return (
                 f"📬 GitHub 활동 요약 ({len(messages)}개 이벤트)",
-                f"최근 GitHub에서 {len(messages)}개의 이벤트가 발생했어요!\n\n{basic_summary}\n\n* LLM 요약을 사용할 수 없어 기본 요약을 제공했습니다."
+                f"최근 GitHub에서 {len(messages)}개의 이벤트가 발생했어요!\n\n{basic_summary}\n\n* LLM 요약을 사용할 수 없어 기본 요약을 제공했습니다.",
             )
 
     def _send_pr_html_dialog(self, message: Dict[str, Any]) -> bool:
@@ -360,20 +378,22 @@ class WebhookClient:
             pr_body = pr.get("body") or "" if pr else ""
             pr_url = pr.get("html_url", "") if pr else ""
 
-            logger.info(f"추출된 정보 - 제목: '{pr_title}', 번호: '{pr_number}', 작성자: '{pr_author}', URL: '{pr_url}'")
-            
+            logger.info(
+                f"추출된 정보 - 제목: '{pr_title}', 번호: '{pr_number}', 작성자: '{pr_author}', URL: '{pr_url}'"
+            )
+
             # 브랜치 정보 (안전하게)
             base_branch = pr.get("base", {}).get("ref", "main") if pr else "main"
             head_branch = pr.get("head", {}).get("ref", "feature") if pr else "feature"
-            
+
             # 변경 통계 (안전하게)
             additions = pr.get("additions", 0) if pr else 0
             deletions = pr.get("deletions", 0) if pr else 0
             changed_files = pr.get("changed_files", 0) if pr else 0
-            
+
             # PR 작성자 아바타
             author_avatar = pr.get("user", {}).get("avatar_url", "") if pr else ""
-            
+
             # 라벨 정보
             labels = pr.get("labels", []) if pr else []
             label_html = ""
@@ -383,20 +403,27 @@ class WebhookClient:
                     label_name = label.get("name", "")
                     label_color = label.get("color", "666666")
                     if label_name:  # 라벨 이름이 있을 때만 추가
-                        label_items.append(f'<span class="label" style="background-color: #{label_color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">{label_name}</span>')
+                        label_items.append(
+                            f'<span class="label" style="background-color: #{label_color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">{label_name}</span>'
+                        )
                 if label_items:
-                    label_html = '<div style="margin: 8px 0;">' + ''.join(label_items) + '</div>'
+                    label_html = '<div style="margin: 8px 0;">' + "".join(label_items) + "</div>"
 
             # PR 본문 미리보기 (최대 150자로 줄임)
             body_preview = ""
             if pr_body and pr_body.strip():
-                clean_body = pr_body.replace('\r\n', '\n').replace('\r', '\n').strip()
+                clean_body = pr_body.replace("\r\n", "\n").replace("\r", "\n").strip()
                 if len(clean_body) > 150:
                     body_preview = clean_body[:150] + "..."
                 else:
                     body_preview = clean_body
                 # HTML 이스케이프
-                body_preview = body_preview.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+                body_preview = (
+                    body_preview.replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                    .replace("\n", "<br>")
+                )
 
             # 디버그 로그
             logger.debug(f"PR 정보 - 제목: {pr_title}, 번호: {pr_number}, URL: {pr_url}")
@@ -414,24 +441,37 @@ class WebhookClient:
                         "duration": 5000,
                         "priority": "normal",
                     }
-                    response = self.session.post(url, json=notification_data, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
+                    response = self.session.post(
+                        url,
+                        json=notification_data,
+                        timeout=SESSION_SOCKET_TIMEOUT,
+                        verify=SESSION_VERIFY,
+                    )
                     response.raise_for_status()
                     logger.info(f"기본 알림으로 전송 완료: {title}")
                 return True
 
             # HTML 다이얼로그 생성 (더 컴팩트하게)
             # 아바타 이미지 HTML 생성
-            avatar_html = f'<img src="{author_avatar}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);" onerror="this.style.display=\'none\'" />' if author_avatar else '<div style="width: 32px; height: 32px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">👤</div>'
-            
+            avatar_html = (
+                f'<img src="{author_avatar}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);" onerror="this.style.display=\'none\'" />'
+                if author_avatar
+                else '<div style="width: 32px; height: 32px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">👤</div>'
+            )
+
             # PR 설명 섹션 HTML 생성
-            description_html = f'''
+            description_html = (
+                f"""
                 <!-- PR 설명 -->
                 <div style="background: #f9fafb; border-radius: 6px; padding: 12px; margin-bottom: 16px; border-left: 3px solid #3b82f6;">
                     <h4 style="margin: 0 0 6px 0; color: #374151; font-size: 13px; font-weight: 600;">📝 설명</h4>
                     <div style="color: #6b7280; font-size: 12px; line-height: 1.4;">{body_preview}</div>
                 </div>
-                ''' if body_preview else ''
-            
+                """
+                if body_preview
+                else ""
+            )
+
             html_content = f"""
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 12px; max-width: 520px;">
                 <!-- 헤더 -->
@@ -555,7 +595,9 @@ class WebhookClient:
                     "height": 380 if body_preview else 340,
                     "duration": 0,
                 }
-                self.session.post(url, json=dialog_data, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
+                self.session.post(
+                    url, json=dialog_data, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY
+                )
 
             logger.info(f"PR HTML 다이얼로그 전송 성공: {pr_title} (#{pr_number}) - URL: {pr_url}")
             logger.info(f"=== PR HTML 다이얼로그 디버그 종료 ===")
@@ -577,15 +619,15 @@ class WebhookClient:
                 "interested_repos": self.interested_repos,
             }
 
-            response = self.session.post(url, json=data, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
+            response = self.session.post(
+                url, json=data, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY
+            )
             response.raise_for_status()
 
             result = response.json()
             self.client_id = result.get("id")
 
-            logger.info(
-                f"Webhook 클라이언트 등록 성공: {self.client_name} (ID: {self.client_id})"
-            )
+            logger.info(f"Webhook 클라이언트 등록 성공: {self.client_name} (ID: {self.client_id})")
             return True
 
         except requests.exceptions.RequestException as e:
@@ -632,18 +674,18 @@ class WebhookClient:
             commit_count = len(commits)
             branch = payload.get("ref", "").replace("refs/heads/", "")
             pusher = payload.get("pusher", {}).get("name", sender)
-            
+
             # 푸시 정보
             head_commit = payload.get("head_commit", {})
             before = payload.get("before", "")
             after = payload.get("after", "")
             compare_url = payload.get("compare", "")
-            
+
             # 푸시 통계 (head_commit에서 추출)
             added_files = head_commit.get("added", []) if head_commit else []
             removed_files = head_commit.get("removed", []) if head_commit else []
             modified_files = head_commit.get("modified", []) if head_commit else []
-            
+
             # 파일 변경 통계
             files_stats = []
             if added_files:
@@ -652,9 +694,9 @@ class WebhookClient:
                 files_stats.append(f"수정 {len(modified_files)}개")
             if removed_files:
                 files_stats.append(f"삭제 {len(removed_files)}개")
-            
+
             files_stats_text = f"파일: {', '.join(files_stats)}" if files_stats else ""
-            
+
             # 강제 푸시 여부 확인
             is_force_push = payload.get("forced", False)
             force_text = " (강제 푸시)" if is_force_push else ""
@@ -666,21 +708,21 @@ class WebhookClient:
                 commit_author = commit.get("author", {}).get("name", "")
                 commit_id = commit.get("id", "")
                 commit_short = commit_id[:7] if commit_id else ""
-                
+
                 if commit_author:
                     commit_authors.add(commit_author)
-                
+
                 commit_line = f"- {commit_msg}"
                 if commit_short:
                     commit_line += f" ({commit_short})"
                 if commit_author and commit_author != pusher:
                     commit_line += f" by {commit_author}"
-                
+
                 commit_messages.append(commit_line)
 
             if len(commits) > 3:
                 commit_messages.append(f"- ... 그 외 {len(commits) - 3}개 커밋")
-                
+
             # 다중 작성자 정보
             authors_text = ""
             if len(commit_authors) > 1:
@@ -690,20 +732,24 @@ class WebhookClient:
                 f"🚀 {pusher}님이 {branch} 브랜치에 푸시했어요!{force_text}",
                 f"📦 {branch} 브랜치에 {commit_count}개의 새 커밋!{force_text}",
                 f"✨ {pusher}님의 {commit_count}개 커밋이 도착했어요!{force_text}",
-                f"🎯 {branch} 브랜치가 업데이트 됐어요!{force_text}"
+                f"🎯 {branch} 브랜치가 업데이트 됐어요!{force_text}",
             ]
             messages = [
-                f"{pusher}님이 {repo_name}의 {branch} 브랜치에 {commit_count}개의 새 커밋을 올렸어요!{force_text} 🤔{authors_text}" + (f"\n{files_stats_text}" if files_stats_text else ""),
-                f"따끈따끈한 {commit_count}개의 새 코드가 {repo_name}의 {branch} 브랜치에 도착했습니다!{force_text} 👀{authors_text}" + (f"\n{files_stats_text}" if files_stats_text else ""),
-                f"{repo_name}의 {branch} 브랜치가 {pusher}님에 의해 업데이트 됐어요~{force_text} 확인해보실래요? 😊{authors_text}" + (f"\n{files_stats_text}" if files_stats_text else ""),
-                f"{pusher}님이 {repo_name}의 {branch} 브랜치에 열심히 코딩한 흔적을 남겼어요!{force_text} 💪{authors_text}" + (f"\n{files_stats_text}" if files_stats_text else "")
+                f"{pusher}님이 {repo_name}의 {branch} 브랜치에 {commit_count}개의 새 커밋을 올렸어요!{force_text} 🤔{authors_text}"
+                + (f"\n{files_stats_text}" if files_stats_text else ""),
+                f"따끈따끈한 {commit_count}개의 새 코드가 {repo_name}의 {branch} 브랜치에 도착했습니다!{force_text} 👀{authors_text}"
+                + (f"\n{files_stats_text}" if files_stats_text else ""),
+                f"{repo_name}의 {branch} 브랜치가 {pusher}님에 의해 업데이트 됐어요~{force_text} 확인해보실래요? 😊{authors_text}"
+                + (f"\n{files_stats_text}" if files_stats_text else ""),
+                f"{pusher}님이 {repo_name}의 {branch} 브랜치에 열심히 코딩한 흔적을 남겼어요!{force_text} 💪{authors_text}"
+                + (f"\n{files_stats_text}" if files_stats_text else ""),
             ]
 
             # 커밋 메시지가 있으면 추가
             if commit_messages:
                 for i in range(len(messages)):
                     messages[i] += "\n\n📝 커밋 내용:\n" + "\n".join(commit_messages)
-                    
+
             # 비교 URL이 있으면 추가
             if compare_url:
                 for i in range(len(messages)):
@@ -732,13 +778,13 @@ class WebhookClient:
                     f"🔥 {pr_author}님이 새 PR을 열었어요: {pr_title}",
                     f"📝 리뷰 요청: {pr_title}",
                     f"🎉 새 PR #{pr_number}: {pr_title}",
-                    f"👥 {pr_author}님의 코드 리뷰 요청: {pr_title}"
+                    f"👥 {pr_author}님의 코드 리뷰 요청: {pr_title}",
                 ]
                 messages = [
-                    f"와! {pr_author}님이 {repo_name}에 새로운 PR을 올렸어요! 제목: \"{pr_title}\" 🙋‍♂️\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})",
-                    f"{pr_author}님이 {repo_name}에 멋진 코드를 들고 나타났습니다! PR #{pr_number}: \"{pr_title}\" 👨‍💻\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})",
-                    f"{repo_name}에서 {pr_author}님의 PR \"{pr_title}\"에 대한 코드 리뷰가 필요해요~ 함께 봐주실래요? 🤝\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})",
-                    f"새로운 PR #{pr_number}이 {repo_name}에서 여러분을 기다리고 있어요! {pr_author}님이 작성한 \"{pr_title}\" 😎\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})"
+                    f'와! {pr_author}님이 {repo_name}에 새로운 PR을 올렸어요! 제목: "{pr_title}" 🙋‍♂️\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})',
+                    f'{pr_author}님이 {repo_name}에 멋진 코드를 들고 나타났습니다! PR #{pr_number}: "{pr_title}" 👨‍💻\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})',
+                    f'{repo_name}에서 {pr_author}님의 PR "{pr_title}"에 대한 코드 리뷰가 필요해요~ 함께 봐주실래요? 🤝\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})',
+                    f'새로운 PR #{pr_number}이 {repo_name}에서 여러분을 기다리고 있어요! {pr_author}님이 작성한 "{pr_title}" 😎\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})',
                 ]
 
                 # PR 설명이 있으면 추가
@@ -755,30 +801,32 @@ class WebhookClient:
                         f"✅ PR 머지 완료: {pr_title}",
                         f"🎊 {pr_author}님의 PR이 머지됐어요!",
                         f"🏆 PR #{pr_number} 머지 성공!",
-                        f"📋 {pr_title} - 코드베이스에 합류!"
+                        f"📋 {pr_title} - 코드베이스에 합류!",
                     ]
                     messages = [
-                        f"축하해요! {pr_author}님의 PR \"{pr_title}\"이 {repo_name}에 성공적으로 머지됐어요! 🎉\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})",
-                        f"또 하나의 멋진 작업이 {repo_name}에 합류했어요! {pr_author}님의 \"{pr_title}\" PR이 머지됐습니다! 👏\n\n{base_branch} ← {head_branch}",
-                        f"{repo_name}의 {base_branch} 브랜치가 {pr_author}님의 코드로 한층 더 발전했어요! PR \"{pr_title}\" 머지 완료! 💪",
-                        f"PR 머지 완료! {pr_author}님의 \"{pr_title}\"이 {repo_name}의 {base_branch} 브랜치에 반영됐어요! ✨"
+                        f'축하해요! {pr_author}님의 PR "{pr_title}"이 {repo_name}에 성공적으로 머지됐어요! 🎉\n\n{base_branch} ← {head_branch} | 파일 {changed_files}개 변경 (+{additions}, -{deletions})',
+                        f'또 하나의 멋진 작업이 {repo_name}에 합류했어요! {pr_author}님의 "{pr_title}" PR이 머지됐습니다! 👏\n\n{base_branch} ← {head_branch}',
+                        f'{repo_name}의 {base_branch} 브랜치가 {pr_author}님의 코드로 한층 더 발전했어요! PR "{pr_title}" 머지 완료! 💪',
+                        f'PR 머지 완료! {pr_author}님의 "{pr_title}"이 {repo_name}의 {base_branch} 브랜치에 반영됐어요! ✨',
                     ]
                 else:
                     titles = [
                         f"❌ PR 닫힘: {pr_title}",
                         f"🚫 PR #{pr_number} 종료",
                         f"📕 {pr_author}님의 PR이 닫혔어요",
-                        f"🔒 PR 닫힘: {pr_title}"
+                        f"🔒 PR 닫힘: {pr_title}",
                     ]
                     messages = [
-                        f"{repo_name}의 PR \"{pr_title}\"이 머지 없이 닫혔어요. 다음 기회에! 🤔",
+                        f'{repo_name}의 PR "{pr_title}"이 머지 없이 닫혔어요. 다음 기회에! 🤔',
                         f"{pr_author}님의 PR #{pr_number}이 {repo_name}에서 종료됐어요. 머지되지 않았습니다. 👀",
-                        f"{repo_name}에서 PR \"{pr_title}\"이 닫혔어요. 머지 없이 종료되었습니다. 🙏",
-                        f"PR 닫힘 알림! {pr_author}님의 \"{pr_title}\"이 머지 없이 종료됐어요. 💻"
+                        f'{repo_name}에서 PR "{pr_title}"이 닫혔어요. 머지 없이 종료되었습니다. 🙏',
+                        f'PR 닫힘 알림! {pr_author}님의 "{pr_title}"이 머지 없이 종료됐어요. 💻',
                     ]
             else:
                 titles = [f"📌 PR #{pr_number} 업데이트: {action}"]
-                messages = [f"{repo_name}의 PR \"{pr_title}\"에 {action} 액션이 일어났어요! {pr_author}님의 PR #{pr_number}입니다."]
+                messages = [
+                    f'{repo_name}의 PR "{pr_title}"에 {action} 액션이 일어났어요! {pr_author}님의 PR #{pr_number}입니다.'
+                ]
 
         elif event_type == "issues":
             # 이슈 정보 추출
@@ -787,7 +835,9 @@ class WebhookClient:
             issue_number = issue.get("number", "")
             issue_author = issue.get("user", {}).get("login", sender)
             issue_body = issue.get("body", "")
-            issue_body_preview = issue_body[:100] + "..." if issue_body and len(issue_body) > 100 else issue_body
+            issue_body_preview = (
+                issue_body[:100] + "..." if issue_body and len(issue_body) > 100 else issue_body
+            )
 
             # 라벨 정보
             labels = issue.get("labels", [])
@@ -804,13 +854,13 @@ class WebhookClient:
                     f"🐛 새 이슈 #{issue_number}: {issue_title}",
                     f"❗ {issue_author}님의 이슈 리포트: {issue_title}",
                     f"🚨 새 이슈 등록: {issue_title}",
-                    f"📋 #{issue_number} 이슈가 생성됐어요!"
+                    f"📋 #{issue_number} 이슈가 생성됐어요!",
                 ]
                 messages = [
-                    f"어라? {issue_author}님이 {repo_name}에 새로운 이슈를 등록했어요! 🔍\n\n제목: \"{issue_title}\" (#{issue_number})",
-                    f"{issue_author}님이 {repo_name}에서 문제를 발견했나봐요~ 확인해보세요! 👀\n\n\"{issue_title}\" (#{issue_number})",
-                    f"{repo_name}에 {issue_author}님이 새 이슈를 올렸어요. 개발자님의 도움이 필요해요! 🙏\n\n\"{issue_title}\" (#{issue_number})",
-                    f"이슈 알림! {issue_author}님이 등록한 \"{issue_title}\"이 {repo_name}에서 여러분을 기다리고 있어요! 💻 (#{issue_number})"
+                    f'어라? {issue_author}님이 {repo_name}에 새로운 이슈를 등록했어요! 🔍\n\n제목: "{issue_title}" (#{issue_number})',
+                    f'{issue_author}님이 {repo_name}에서 문제를 발견했나봐요~ 확인해보세요! 👀\n\n"{issue_title}" (#{issue_number})',
+                    f'{repo_name}에 {issue_author}님이 새 이슈를 올렸어요. 개발자님의 도움이 필요해요! 🙏\n\n"{issue_title}" (#{issue_number})',
+                    f'이슈 알림! {issue_author}님이 등록한 "{issue_title}"이 {repo_name}에서 여러분을 기다리고 있어요! 💻 (#{issue_number})',
                 ]
 
                 # 이슈 본문이 있으면 추가
@@ -837,13 +887,13 @@ class WebhookClient:
                     f"🎯 이슈 해결 완료: #{issue_number}",
                     f"✨ {closer}님이 이슈를 해결했어요!",
                     f"🏅 이슈 #{issue_number} 종료: {issue_title}",
-                    f"📝 이슈 클리어: {issue_title}"
+                    f"📝 이슈 클리어: {issue_title}",
                 ]
                 messages = [
-                    f"대단해요! {repo_name}의 이슈 \"{issue_title}\"이 {closer}님에 의해 깔끔하게 해결됐어요! 🎉 (#{issue_number})",
-                    f"또 하나의 문제가 {repo_name}에서 사라졌네요! {closer}님이 \"{issue_title}\" 이슈를 닫았습니다. 👍",
-                    f"{repo_name}가 더 안정적이 됐어요! {closer}님이 이슈 #{issue_number} \"{issue_title}\"을 해결했습니다! 🙌",
-                    f"이슈 해결 완료! {closer}님 덕분에 {repo_name}의 \"{issue_title}\" 문제가 해결됐어요! ⭐"
+                    f'대단해요! {repo_name}의 이슈 "{issue_title}"이 {closer}님에 의해 깔끔하게 해결됐어요! 🎉 (#{issue_number})',
+                    f'또 하나의 문제가 {repo_name}에서 사라졌네요! {closer}님이 "{issue_title}" 이슈를 닫았습니다. 👍',
+                    f'{repo_name}가 더 안정적이 됐어요! {closer}님이 이슈 #{issue_number} "{issue_title}"을 해결했습니다! 🙌',
+                    f'이슈 해결 완료! {closer}님 덕분에 {repo_name}의 "{issue_title}" 문제가 해결됐어요! ⭐',
                 ]
 
                 # 라벨 정보가 있으면 추가
@@ -853,7 +903,9 @@ class WebhookClient:
 
             else:
                 titles = [f"🔄 이슈 #{issue_number} 업데이트: {action}"]
-                messages = [f"{repo_name}의 이슈 \"{issue_title}\"에 {action} 액션이 일어났어요! {issue_author}님이 작성한 이슈 #{issue_number}입니다."]
+                messages = [
+                    f'{repo_name}의 이슈 "{issue_title}"에 {action} 액션이 일어났어요! {issue_author}님이 작성한 이슈 #{issue_number}입니다.'
+                ]
 
                 # 라벨이나 담당자 변경 시 추가 정보
                 if action == "labeled" or action == "unlabeled":
@@ -869,7 +921,7 @@ class WebhookClient:
                         messages[0] += f"\n\n👤 {assignee_action} 담당자: {assignee}"
                         if assignee_names:
                             messages[0] += f"\n현재 담당자: {', '.join(assignee_names)}"
-                            
+
                 # 마일스톤 변경 시 추가 정보
                 elif action == "milestoned" or action == "demilestoned":
                     milestone = payload.get("milestone", {})
@@ -886,21 +938,21 @@ class WebhookClient:
             review_state = review.get("state", "")
             reviewer = review.get("user", {}).get("login", sender)
             review_html_url = review.get("html_url", "")
-            
+
             # PR 정보
             pr_title = pr.get("title", "")
             pr_number = pr.get("number", "")
             pr_author = pr.get("user", {}).get("login", "")
-            
+
             # 브랜치 정보
             base_branch = pr.get("base", {}).get("ref", "")
             head_branch = pr.get("head", {}).get("ref", "")
-            
+
             # PR 통계
             additions = pr.get("additions", 0)
             deletions = pr.get("deletions", 0)
             changed_files = pr.get("changed_files", 0)
-            
+
             # 리뷰 상태별 이모지와 텍스트
             if review_state == "approved":
                 state_emoji = "✅"
@@ -922,7 +974,7 @@ class WebhookClient:
             # 리뷰 본문 미리보기
             review_preview = ""
             if review_body and review_body.strip():
-                clean_review = review_body.replace('\r\n', '\n').replace('\r', '\n').strip()
+                clean_review = review_body.replace("\r\n", "\n").replace("\r", "\n").strip()
                 if len(clean_review) > 120:
                     review_preview = clean_review[:120] + "..."
                 else:
@@ -932,24 +984,36 @@ class WebhookClient:
                 f"{state_emoji} {reviewer}님의 PR 리뷰: {state_text}",
                 f"📋 PR #{pr_number} 리뷰 완료: {state_text}",
                 f"{state_emoji} {pr_title} - 리뷰 {state_text}",
-                f"👀 {reviewer}님이 코드 리뷰를 완료했어요!"
+                f"👀 {reviewer}님이 코드 리뷰를 완료했어요!",
             ]
-            
+
             branch_info = f"{base_branch} ← {head_branch}" if base_branch and head_branch else ""
-            stats_info = f"파일 {changed_files}개 변경 (+{additions}, -{deletions})" if changed_files > 0 else ""
-            
+            stats_info = (
+                f"파일 {changed_files}개 변경 (+{additions}, -{deletions})"
+                if changed_files > 0
+                else ""
+            )
+
             messages = [
-                f"{reviewer}님이 {repo_name}의 PR #{pr_number}에 {state_text} 리뷰를 남겼어요! {state_emoji}\n\nPR: {pr_title}\n작성자: {pr_author}\n{state_description}" + (f"\n\n{branch_info}" if branch_info else "") + (f"\n{stats_info}" if stats_info else ""),
-                f"코드 리뷰 완료! {reviewer}님이 {repo_name}의 \"{pr_title}\"에 {state_text} 의견을 주셨어요! {state_emoji}\n\n{state_description}" + (f"\n작성자: {pr_author}" if pr_author else "") + (f"\n{branch_info}" if branch_info else ""),
-                f"{repo_name}의 PR #{pr_number}이 {reviewer}님에 의해 리뷰되었어요! 상태: {state_text} {state_emoji}\n\nPR: {pr_title}" + (f"\n작성자: {pr_author}" if pr_author else "") + (f"\n{stats_info}" if stats_info else ""),
-                f"팀워크! {reviewer}님이 {repo_name}의 \"{pr_title}\" PR을 꼼꼼히 리뷰해주셨어요! {state_emoji} ({state_text})" + (f"\n\n작성자: {pr_author}" if pr_author else "") + (f"\n{branch_info}" if branch_info else "")
+                f"{reviewer}님이 {repo_name}의 PR #{pr_number}에 {state_text} 리뷰를 남겼어요! {state_emoji}\n\nPR: {pr_title}\n작성자: {pr_author}\n{state_description}"
+                + (f"\n\n{branch_info}" if branch_info else "")
+                + (f"\n{stats_info}" if stats_info else ""),
+                f'코드 리뷰 완료! {reviewer}님이 {repo_name}의 "{pr_title}"에 {state_text} 의견을 주셨어요! {state_emoji}\n\n{state_description}'
+                + (f"\n작성자: {pr_author}" if pr_author else "")
+                + (f"\n{branch_info}" if branch_info else ""),
+                f"{repo_name}의 PR #{pr_number}이 {reviewer}님에 의해 리뷰되었어요! 상태: {state_text} {state_emoji}\n\nPR: {pr_title}"
+                + (f"\n작성자: {pr_author}" if pr_author else "")
+                + (f"\n{stats_info}" if stats_info else ""),
+                f'팀워크! {reviewer}님이 {repo_name}의 "{pr_title}" PR을 꼼꼼히 리뷰해주셨어요! {state_emoji} ({state_text})'
+                + (f"\n\n작성자: {pr_author}" if pr_author else "")
+                + (f"\n{branch_info}" if branch_info else ""),
             ]
 
             # 리뷰 내용이 있으면 추가
             if review_preview:
                 for i in range(len(messages)):
-                    messages[i] += f"\n\n💭 리뷰 내용:\n\"{review_preview}\""
-                    
+                    messages[i] += f'\n\n💭 리뷰 내용:\n"{review_preview}"'
+
             # 리뷰 URL이 있으면 추가
             if review_html_url:
                 for i in range(len(messages)):
@@ -963,34 +1027,34 @@ class WebhookClient:
             commenter = comment.get("user", {}).get("login", sender)
             comment_html_url = comment.get("html_url", "")
             comment_id = comment.get("id", "")
-            
+
             # PR 정보
             pr_title = pr.get("title", "")
             pr_number = pr.get("number", "")
             pr_author = pr.get("user", {}).get("login", "")
-            
+
             # 브랜치 정보
             base_branch = pr.get("base", {}).get("ref", "")
             head_branch = pr.get("head", {}).get("ref", "")
-            
+
             # 파일 및 라인 정보
             file_path = comment.get("path", "")
             line_number = comment.get("line") or comment.get("original_line", "")
             position = comment.get("position", "")
             original_position = comment.get("original_position", "")
-            
+
             # 인라인 코멘트 vs 일반 코멘트 구분
             is_inline = bool(file_path and line_number)
             comment_type = "인라인 코멘트" if is_inline else "리뷰 코멘트"
-            
+
             # 커밋 정보
             commit_id = comment.get("commit_id", "")
             commit_short = commit_id[:7] if commit_id else ""
-            
+
             # 코멘트 본문 미리보기
             comment_preview = ""
             if comment_body and comment_body.strip():
-                clean_comment = comment_body.replace('\r\n', '\n').replace('\r', '\n').strip()
+                clean_comment = comment_body.replace("\r\n", "\n").replace("\r", "\n").strip()
                 if len(clean_comment) > 100:
                     comment_preview = clean_comment[:100] + "..."
                 else:
@@ -998,21 +1062,26 @@ class WebhookClient:
 
             # 파일명만 추출 (경로가 길면)
             file_name = file_path.split("/")[-1] if file_path else "파일"
-            
+
             titles = [
                 f"💬 {commenter}님의 {comment_type}",
                 f"📝 PR #{pr_number}에 새 {comment_type}",
                 f"🔍 {file_name}에 리뷰 의견" if is_inline else f"🔍 PR #{pr_number}에 리뷰 의견",
-                f"💭 {commenter}님이 코드에 의견을 남겼어요!"
+                f"💭 {commenter}님이 코드에 의견을 남겼어요!",
             ]
-            
+
             branch_info = f"{base_branch} ← {head_branch}" if base_branch and head_branch else ""
-            
+
             messages = [
-                f"{commenter}님이 {repo_name}의 PR #{pr_number}에 {comment_type}를 남겼어요! 💬\n\nPR: {pr_title}" + (f"\n작성자: {pr_author}" if pr_author else "") + (f"\n{branch_info}" if branch_info else ""),
-                f"{comment_type} 도착! {commenter}님이 {repo_name}의 \"{pr_title}\"에 의견을 주셨어요! 👀" + (f"\n작성자: {pr_author}" if pr_author else ""),
-                f"{repo_name}의 PR #{pr_number}에 {commenter}님의 새로운 {comment_type}가 있어요! 📝\n\nPR: {pr_title}" + (f"\n작성자: {pr_author}" if pr_author else ""),
-                f"세심한 리뷰! {commenter}님이 {repo_name}의 \"{pr_title}\" 코드에 피드백을 남겼어요! 🔍" + (f"\n\n{branch_info}" if branch_info else "")
+                f"{commenter}님이 {repo_name}의 PR #{pr_number}에 {comment_type}를 남겼어요! 💬\n\nPR: {pr_title}"
+                + (f"\n작성자: {pr_author}" if pr_author else "")
+                + (f"\n{branch_info}" if branch_info else ""),
+                f'{comment_type} 도착! {commenter}님이 {repo_name}의 "{pr_title}"에 의견을 주셨어요! 👀'
+                + (f"\n작성자: {pr_author}" if pr_author else ""),
+                f"{repo_name}의 PR #{pr_number}에 {commenter}님의 새로운 {comment_type}가 있어요! 📝\n\nPR: {pr_title}"
+                + (f"\n작성자: {pr_author}" if pr_author else ""),
+                f'세심한 리뷰! {commenter}님이 {repo_name}의 "{pr_title}" 코드에 피드백을 남겼어요! 🔍'
+                + (f"\n\n{branch_info}" if branch_info else ""),
             ]
 
             # 파일 위치 정보 추가 (인라인 코멘트인 경우)
@@ -1024,15 +1093,15 @@ class WebhookClient:
                     location_info += f" [위치: {position}]"
                 if commit_short:
                     location_info += f" (커밋: {commit_short})"
-                
+
                 for i in range(len(messages)):
                     messages[i] += f"\n\n{location_info}"
 
             # 코멘트 내용이 있으면 추가
             if comment_preview:
                 for i in range(len(messages)):
-                    messages[i] += f"\n\n💭 코멘트:\n\"{comment_preview}\""
-                    
+                    messages[i] += f'\n\n💭 코멘트:\n"{comment_preview}"'
+
             # 코멘트 URL이 있으면 추가
             if comment_html_url:
                 for i in range(len(messages)):
@@ -1044,7 +1113,11 @@ class WebhookClient:
             tag_name = release.get("tag_name", "")
             release_name = release.get("name", tag_name)
             release_body = release.get("body", "")
-            release_body_preview = release_body[:150] + "..." if release_body and len(release_body) > 150 else release_body
+            release_body_preview = (
+                release_body[:150] + "..."
+                if release_body and len(release_body) > 150
+                else release_body
+            )
 
             # 릴리즈 작성자
             author = release.get("author", {}).get("login", sender)
@@ -1060,13 +1133,13 @@ class WebhookClient:
                 f"🎉 {repo_name} {release_name} 출시!",
                 f"🚀 {tag_name} 버전 업데이트!",
                 f"📦 {repo_name} {release_type}: {release_name}",
-                f"✨ 새 릴리즈: {release_name} ({tag_name})"
+                f"✨ 새 릴리즈: {release_name} ({tag_name})",
             ]
             messages = [
                 f"와우! {author}님이 {repo_name}의 새 버전 {release_name}을 출시했어요! 🌟\n\n태그: {tag_name} | {release_type}",
                 f"축하합니다! {repo_name}가 {author}님에 의해 {release_name} 버전으로 업그레이드됐어요! 🎊\n\n태그: {tag_name} | {release_type}",
                 f"{repo_name}의 개발팀이 {tag_name} 태그로 {release_name} 릴리즈를 선보였어요! 👨‍💻\n\n{release_type} | 작성자: {author}",
-                f"새로운 기능과 개선사항이 {repo_name}의 {release_name} 버전에 담겨 도착했어요! 확인해보세요! 🔥\n\n태그: {tag_name} | {release_type}"
+                f"새로운 기능과 개선사항이 {repo_name}의 {release_name} 버전에 담겨 도착했어요! 확인해보세요! 🔥\n\n태그: {tag_name} | {release_type}",
             ]
 
             # 릴리즈 노트가 있으면 추가
@@ -1086,13 +1159,13 @@ class WebhookClient:
                 f"⭐ {stargazer}님이 스타를 주셨어요!",
                 f"🌟 {repo_name}에 새 스타!",
                 f"✨ {stargazer}님이 인정한 프로젝트!",
-                f"🎯 {stargazer}님의 스타 감사합니다!"
+                f"🎯 {stargazer}님의 스타 감사합니다!",
             ]
             messages = [
                 f"오예! {stargazer}님이 {repo_name}에 스타를 주셨어요! ⭐ {star_count_text}",
                 f"{stargazer}님이 {repo_name}에 스타를 눌러줬네요! 인기 프로젝트가 되어가고 있어요! 🌟 {star_count_text}",
                 f"{repo_name}의 매력에 {stargazer}님이 빠졌나봐요! 스타 감사합니다! 😊 {star_count_text}",
-                f"스타 하나 추가! {stargazer}님 덕분에 {repo_name}가 점점 더 빛나고 있어요! ✨ {star_count_text}"
+                f"스타 하나 추가! {stargazer}님 덕분에 {repo_name}가 점점 더 빛나고 있어요! ✨ {star_count_text}",
             ]
 
         elif event_type == "fork":
@@ -1111,13 +1184,21 @@ class WebhookClient:
                 f"🍴 {forker}님이 {repo_name}를 포크했어요!",
                 f"🌿 {forker}님의 새 포크 생성!",
                 f"🔀 {repo_name}가 {forker}님에 의해 포크됐어요!",
-                f"📋 {forker}님의 포크 알림!"
+                f"📋 {forker}님의 포크 알림!",
             ]
             messages = [
-                f"{forker}님이 {repo_name}를 포크했어요! 프로젝트가 더 널리 퍼져나가고 있네요! 🌱" + (f"\n\n포크: {fork_full_name}" if fork_full_name else "") + (f"\n\n{fork_count_text}" if fork_count_text else ""),
-                f"와! {forker}님이 {repo_name}를 자신의 계정으로 포크했어요! 🤝" + (f"\n\n포크: {fork_full_name}" if fork_full_name else "") + (f"\n\n{fork_count_text}" if fork_count_text else ""),
-                f"{repo_name}의 코드가 {forker}님에 의해 새로운 곳에서 활용될 예정이에요! 기대돼요! 🚀" + (f"\n\n포크: {fork_full_name}" if fork_full_name else "") + (f"\n\n{fork_count_text}" if fork_count_text else ""),
-                f"포크 알림! {forker}님이 {repo_name}를 포크하여 오픈소스의 힘을 보여주고 있어요! 💪" + (f"\n\n포크: {fork_full_name}" if fork_full_name else "") + (f"\n\n{fork_count_text}" if fork_count_text else "")
+                f"{forker}님이 {repo_name}를 포크했어요! 프로젝트가 더 널리 퍼져나가고 있네요! 🌱"
+                + (f"\n\n포크: {fork_full_name}" if fork_full_name else "")
+                + (f"\n\n{fork_count_text}" if fork_count_text else ""),
+                f"와! {forker}님이 {repo_name}를 자신의 계정으로 포크했어요! 🤝"
+                + (f"\n\n포크: {fork_full_name}" if fork_full_name else "")
+                + (f"\n\n{fork_count_text}" if fork_count_text else ""),
+                f"{repo_name}의 코드가 {forker}님에 의해 새로운 곳에서 활용될 예정이에요! 기대돼요! 🚀"
+                + (f"\n\n포크: {fork_full_name}" if fork_full_name else "")
+                + (f"\n\n{fork_count_text}" if fork_count_text else ""),
+                f"포크 알림! {forker}님이 {repo_name}를 포크하여 오픈소스의 힘을 보여주고 있어요! 💪"
+                + (f"\n\n포크: {fork_full_name}" if fork_full_name else "")
+                + (f"\n\n{fork_count_text}" if fork_count_text else ""),
             ]
 
         elif event_type == "watch":
@@ -1132,15 +1213,15 @@ class WebhookClient:
                 f"👀 {watcher}님이 {repo_name}를 구독했어요!",
                 f"🔔 {watcher}님이 알림 설정을 했어요!",
                 f"👥 {watcher}님이 새 팔로워로 추가됐어요!",
-                f"📺 {watcher}님의 구독 알림!"
+                f"📺 {watcher}님의 구독 알림!",
             ]
             messages = [
                 f"{watcher}님이 {repo_name}를 지켜보기 시작했어요! 👀 {watch_count_text}",
                 f"{watcher}님이 {repo_name}의 소식을 받아보고 싶어해요! 관심 감사합니다! 😊 {watch_count_text}",
                 f"{repo_name}의 팬이 한 명 더 늘었네요! {watcher}님이 구독을 시작했어요! 계속 좋은 코드 부탁해요! 👍 {watch_count_text}",
-                f"구독 알림! {watcher}님 덕분에 {repo_name}가 더 많은 사람들에게 알려지고 있어요! 🌟 {watch_count_text}"
+                f"구독 알림! {watcher}님 덕분에 {repo_name}가 더 많은 사람들에게 알려지고 있어요! 🌟 {watch_count_text}",
             ]
-            
+
         elif event_type == "issue_comment":
             # 이슈/PR 코멘트 정보 추출
             comment = payload.get("comment", {})
@@ -1148,60 +1229,65 @@ class WebhookClient:
             comment_body = comment.get("body", "")
             commenter = comment.get("user", {}).get("login", sender)
             comment_html_url = comment.get("html_url", "")
-            
+
             # 이슈/PR 정보
             issue_title = issue.get("title", "")
             issue_number = issue.get("number", "")
             issue_author = issue.get("user", {}).get("login", "")
             is_pull_request = "pull_request" in issue  # PR인지 이슈인지 구분
-            
+
             # 이슈/PR 상태
             issue_state = issue.get("state", "")
-            
+
             # 코멘트 본문 미리보기
             comment_preview = ""
             if comment_body and comment_body.strip():
-                clean_comment = comment_body.replace('\r\n', '\n').replace('\r', '\n').strip()
+                clean_comment = comment_body.replace("\r\n", "\n").replace("\r", "\n").strip()
                 if len(clean_comment) > 120:
                     comment_preview = clean_comment[:120] + "..."
                 else:
                     comment_preview = clean_comment
-            
+
             # 이슈/PR 구분
             item_type = "PR" if is_pull_request else "이슈"
             emoji = "🔄" if is_pull_request else "🐛"
-            
+
             titles = [
                 f"💬 {commenter}님의 {item_type} 코멘트",
                 f"📝 {item_type} #{issue_number}에 새 코멘트",
                 f"🗨️ {commenter}님이 의견을 남겼어요!",
-                f"💭 {item_type} 토론 참여!"
+                f"💭 {item_type} 토론 참여!",
             ]
-            
+
             messages = [
-                f"{commenter}님이 {repo_name}의 {item_type} #{issue_number}에 코멘트를 남겼어요! 💬\n\n{emoji} {item_type}: {issue_title}" + (f"\n작성자: {issue_author}" if issue_author else "") + (f"\n상태: {issue_state}" if issue_state else ""),
-                f"{item_type} 코멘트 도착! {commenter}님이 {repo_name}의 \"{issue_title}\"에 의견을 주셨어요! 👀" + (f"\n작성자: {issue_author}" if issue_author else ""),
-                f"{repo_name}의 {item_type} #{issue_number}에 {commenter}님의 새로운 코멘트가 있어요! 📝\n\n{emoji} {issue_title}" + (f"\n작성자: {issue_author}" if issue_author else ""),
-                f"활발한 토론! {commenter}님이 {repo_name}의 \"{issue_title}\" {item_type}에 참여했어요! 🗣️" + (f"\n상태: {issue_state}" if issue_state else "")
+                f"{commenter}님이 {repo_name}의 {item_type} #{issue_number}에 코멘트를 남겼어요! 💬\n\n{emoji} {item_type}: {issue_title}"
+                + (f"\n작성자: {issue_author}" if issue_author else "")
+                + (f"\n상태: {issue_state}" if issue_state else ""),
+                f'{item_type} 코멘트 도착! {commenter}님이 {repo_name}의 "{issue_title}"에 의견을 주셨어요! 👀'
+                + (f"\n작성자: {issue_author}" if issue_author else ""),
+                f"{repo_name}의 {item_type} #{issue_number}에 {commenter}님의 새로운 코멘트가 있어요! 📝\n\n{emoji} {issue_title}"
+                + (f"\n작성자: {issue_author}" if issue_author else ""),
+                f'활발한 토론! {commenter}님이 {repo_name}의 "{issue_title}" {item_type}에 참여했어요! 🗣️'
+                + (f"\n상태: {issue_state}" if issue_state else ""),
             ]
-            
+
             # 코멘트 내용이 있으면 추가
             if comment_preview:
                 for i in range(len(messages)):
-                    messages[i] += f"\n\n💭 코멘트:\n\"{comment_preview}\""
-                    
+                    messages[i] += f'\n\n💭 코멘트:\n"{comment_preview}"'
+
             # 코멘트 URL이 있으면 추가
             if comment_html_url:
                 for i in range(len(messages)):
                     messages[i] += f"\n\n🔗 코멘트 보기: {comment_html_url}"
-                    
+
         elif event_type == "create":
             # 브랜치/태그 생성 이벤트
             ref = payload.get("ref", "")
             ref_type = payload.get("ref_type", "")
             creator = sender
             master_branch = payload.get("master_branch", "")
-            
+
             # 타입별 이모지와 텍스트
             if ref_type == "branch":
                 type_emoji = "🌿"
@@ -1212,27 +1298,30 @@ class WebhookClient:
             else:
                 type_emoji = "📝"
                 type_text = ref_type or "항목"
-            
+
             titles = [
                 f"{type_emoji} {creator}님이 새 {type_text}를 만들었어요!",
                 f"✨ {repo_name}에 새 {type_text}: {ref}",
                 f"🎉 {type_text} 생성: {ref}",
-                f"🚀 {creator}님의 새 {type_text} 등장!"
+                f"🚀 {creator}님의 새 {type_text} 등장!",
             ]
-            
+
             messages = [
-                f"{creator}님이 {repo_name}에 새로운 {type_text} '{ref}'를 만들었어요! {type_emoji}" + (f"\n기준 브랜치: {master_branch}" if master_branch else ""),
-                f"새로운 {type_text}가 {repo_name}에 등장했네요! '{ref}' {type_emoji}\n생성자: {creator}" + (f"\n기준: {master_branch}" if master_branch else ""),
+                f"{creator}님이 {repo_name}에 새로운 {type_text} '{ref}'를 만들었어요! {type_emoji}"
+                + (f"\n기준 브랜치: {master_branch}" if master_branch else ""),
+                f"새로운 {type_text}가 {repo_name}에 등장했네요! '{ref}' {type_emoji}\n생성자: {creator}"
+                + (f"\n기준: {master_branch}" if master_branch else ""),
                 f"{repo_name}의 {type_text} '{ref}'가 {creator}님에 의해 생성됐어요! 개발이 활발해지고 있어요! 💪",
-                f"{type_text} 생성 알림! {creator}님이 {repo_name}에 '{ref}'를 만들었어요! {type_emoji}" + (f"\n\n기준 브랜치: {master_branch}" if master_branch else "")
+                f"{type_text} 생성 알림! {creator}님이 {repo_name}에 '{ref}'를 만들었어요! {type_emoji}"
+                + (f"\n\n기준 브랜치: {master_branch}" if master_branch else ""),
             ]
-            
+
         elif event_type == "delete":
             # 브랜치/태그 삭제 이벤트
             ref = payload.get("ref", "")
             ref_type = payload.get("ref_type", "")
             deleter = sender
-            
+
             # 타입별 이모지와 텍스트
             if ref_type == "branch":
                 type_emoji = "🗑️"
@@ -1243,21 +1332,21 @@ class WebhookClient:
             else:
                 type_emoji = "❌"
                 type_text = ref_type or "항목"
-            
+
             titles = [
                 f"{type_emoji} {deleter}님이 {type_text}를 삭제했어요",
                 f"🗑️ {repo_name}에서 {type_text} 삭제: {ref}",
                 f"❌ {type_text} 제거: {ref}",
-                f"🧹 {deleter}님의 정리 작업"
+                f"🧹 {deleter}님의 정리 작업",
             ]
-            
+
             messages = [
                 f"{deleter}님이 {repo_name}의 {type_text} '{ref}'를 삭제했어요! {type_emoji}\n\n정리 작업이 진행되고 있네요!",
                 f"{repo_name}에서 {type_text} '{ref}'가 제거됐어요! 🗑️\n삭제자: {deleter}",
                 f"{type_text} 삭제 알림! {deleter}님이 {repo_name}의 '{ref}'를 정리했어요! 🧹",
-                f"코드베이스 정리! {deleter}님이 {repo_name}에서 {type_text} '{ref}'를 삭제했어요! ✨"
+                f"코드베이스 정리! {deleter}님이 {repo_name}에서 {type_text} '{ref}'를 삭제했어요! ✨",
             ]
-            
+
         elif event_type == "commit_comment":
             # 커밋 코멘트 이벤트
             comment = payload.get("comment", {})
@@ -1266,38 +1355,38 @@ class WebhookClient:
             comment_html_url = comment.get("html_url", "")
             commit_id = comment.get("commit_id", "")
             commit_short = commit_id[:7] if commit_id else ""
-            
+
             # 파일 및 라인 정보 (있는 경우)
             file_path = comment.get("path", "")
             line_number = comment.get("line", "")
             position = comment.get("position", "")
-            
+
             # 코멘트 본문 미리보기
             comment_preview = ""
             if comment_body and comment_body.strip():
-                clean_comment = comment_body.replace('\r\n', '\n').replace('\r', '\n').strip()
+                clean_comment = comment_body.replace("\r\n", "\n").replace("\r", "\n").strip()
                 if len(clean_comment) > 100:
                     comment_preview = clean_comment[:100] + "..."
                 else:
                     comment_preview = clean_comment
-            
+
             # 파일명만 추출 (경로가 길면)
             file_name = file_path.split("/")[-1] if file_path else ""
-            
+
             titles = [
                 f"💬 {commenter}님의 커밋 코멘트",
                 f"📝 {commit_short} 커밋에 새 코멘트",
                 f"🔍 커밋 리뷰 의견",
-                f"💭 {commenter}님이 커밋에 의견을 남겼어요!"
+                f"💭 {commenter}님이 커밋에 의견을 남겼어요!",
             ]
-            
+
             messages = [
                 f"{commenter}님이 {repo_name}의 커밋 {commit_short}에 코멘트를 남겼어요! 💬",
                 f"커밋 코멘트 도착! {commenter}님이 {repo_name}의 커밋에 의견을 주셨어요! 👀\n\n커밋: {commit_short}",
                 f"{repo_name}의 커밋 {commit_short}에 {commenter}님의 새로운 코멘트가 있어요! 📝",
-                f"코드 리뷰! {commenter}님이 {repo_name}의 커밋에 피드백을 남겼어요! 🔍\n\n커밋: {commit_short}"
+                f"코드 리뷰! {commenter}님이 {repo_name}의 커밋에 피드백을 남겼어요! 🔍\n\n커밋: {commit_short}",
             ]
-            
+
             # 파일 위치 정보 추가 (있는 경우)
             if file_path:
                 location_info = f"📁 {file_path}"
@@ -1305,25 +1394,25 @@ class WebhookClient:
                     location_info += f" (라인 {line_number})"
                 if position:
                     location_info += f" [위치: {position}]"
-                
+
                 for i in range(len(messages)):
                     messages[i] += f"\n\n{location_info}"
-            
+
             # 코멘트 내용이 있으면 추가
             if comment_preview:
                 for i in range(len(messages)):
-                    messages[i] += f"\n\n💭 코멘트:\n\"{comment_preview}\""
-                    
+                    messages[i] += f'\n\n💭 코멘트:\n"{comment_preview}"'
+
             # 코멘트 URL이 있으면 추가
             if comment_html_url:
                 for i in range(len(messages)):
                     messages[i] += f"\n\n🔗 코멘트 보기: {comment_html_url}"
-                    
+
         elif event_type == "gollum":
             # 위키 업데이트 이벤트
             pages = payload.get("pages", [])
             editor = sender
-            
+
             if not pages:
                 titles = [f"📚 {editor}님이 위키를 수정했어요!"]
                 messages = [f"{editor}님이 {repo_name}의 위키를 업데이트했어요! 📚"]
@@ -1334,29 +1423,41 @@ class WebhookClient:
                     page_title = page.get("title", "")
                     page_action = page.get("action", "")
                     page_html_url = page.get("html_url", "")
-                    
-                    action_emoji = "✏️" if page_action == "edited" else "📄" if page_action == "created" else "🔄"
-                    action_text = "수정" if page_action == "edited" else "생성" if page_action == "created" else page_action
-                    
+
+                    action_emoji = (
+                        "✏️"
+                        if page_action == "edited"
+                        else "📄" if page_action == "created" else "🔄"
+                    )
+                    action_text = (
+                        "수정"
+                        if page_action == "edited"
+                        else "생성" if page_action == "created" else page_action
+                    )
+
                     page_summaries.append(f"{action_emoji} {page_title} ({action_text})")
-                
+
                 if len(pages) > 3:
                     page_summaries.append(f"... 그 외 {len(pages) - 3}개 페이지")
-                
+
                 titles = [
                     f"📚 {editor}님이 위키를 업데이트했어요!",
                     f"📖 {repo_name} 위키 수정",
                     f"✏️ 위키 편집: {len(pages)}개 페이지",
-                    f"📝 {editor}님의 위키 작업"
+                    f"📝 {editor}님의 위키 작업",
                 ]
-                
+
                 messages = [
-                    f"{editor}님이 {repo_name}의 위키를 업데이트했어요! 📚\n\n" + "\n".join(page_summaries),
-                    f"위키 업데이트 알림! {editor}님이 {repo_name}에서 {len(pages)}개의 위키 페이지를 수정했어요! 📖\n\n" + "\n".join(page_summaries),
-                    f"{repo_name}의 문서가 {editor}님에 의해 개선됐어요! 더 나은 문서화! 💪\n\n" + "\n".join(page_summaries),
-                    f"지식 공유! {editor}님이 {repo_name}의 위키를 풍성하게 만들어주셨어요! ✨\n\n" + "\n".join(page_summaries)
+                    f"{editor}님이 {repo_name}의 위키를 업데이트했어요! 📚\n\n"
+                    + "\n".join(page_summaries),
+                    f"위키 업데이트 알림! {editor}님이 {repo_name}에서 {len(pages)}개의 위키 페이지를 수정했어요! 📖\n\n"
+                    + "\n".join(page_summaries),
+                    f"{repo_name}의 문서가 {editor}님에 의해 개선됐어요! 더 나은 문서화! 💪\n\n"
+                    + "\n".join(page_summaries),
+                    f"지식 공유! {editor}님이 {repo_name}의 위키를 풍성하게 만들어주셨어요! ✨\n\n"
+                    + "\n".join(page_summaries),
                 ]
-                
+
         elif event_type == "milestone":
             # 마일스톤 이벤트
             milestone = payload.get("milestone", {})
@@ -1365,12 +1466,12 @@ class WebhookClient:
             milestone_state = milestone.get("state", "")
             milestone_description = milestone.get("description", "")
             due_date = milestone.get("due_on", "")
-            
+
             # 마일스톤 통계
             open_issues = milestone.get("open_issues", 0)
             closed_issues = milestone.get("closed_issues", 0)
             total_issues = open_issues + closed_issues
-            
+
             # 액션별 처리
             if action == "created":
                 action_emoji = "🎯"
@@ -1384,29 +1485,41 @@ class WebhookClient:
             else:
                 action_emoji = "📊"
                 action_text = action or "업데이트"
-            
+
             titles = [
                 f"{action_emoji} 마일스톤 {action_text}: {milestone_title}",
                 f"🎯 마일스톤 #{milestone_number} {action_text}",
                 f"📊 {repo_name} 마일스톤 업데이트",
-                f"🚀 프로젝트 진척도 알림"
+                f"🚀 프로젝트 진척도 알림",
             ]
-            
+
             progress_info = ""
             if total_issues > 0:
                 progress_percent = int((closed_issues / total_issues) * 100)
-                progress_info = f"\n진행률: {progress_percent}% ({closed_issues}/{total_issues} 완료)"
-            
+                progress_info = (
+                    f"\n진행률: {progress_percent}% ({closed_issues}/{total_issues} 완료)"
+                )
+
             messages = [
-                f"{sender}님이 {repo_name}의 마일스톤을 {action_text}했어요! {action_emoji}\n\n🎯 마일스톤: {milestone_title}" + progress_info + (f"\n마감일: {due_date}" if due_date else ""),
-                f"마일스톤 {action_text} 알림! {repo_name}의 '{milestone_title}' 마일스톤이 {action_text}됐어요! 📊" + progress_info,
-                f"프로젝트 관리! {sender}님이 {repo_name}의 마일스톤 #{milestone_number}을 {action_text}했어요! 🎯\n\n제목: {milestone_title}" + progress_info,
-                f"팀워크! {repo_name}의 '{milestone_title}' 마일스톤이 {action_text}됐어요! 🚀" + progress_info + (f"\n\n마감일: {due_date}" if due_date else "")
+                f"{sender}님이 {repo_name}의 마일스톤을 {action_text}했어요! {action_emoji}\n\n🎯 마일스톤: {milestone_title}"
+                + progress_info
+                + (f"\n마감일: {due_date}" if due_date else ""),
+                f"마일스톤 {action_text} 알림! {repo_name}의 '{milestone_title}' 마일스톤이 {action_text}됐어요! 📊"
+                + progress_info,
+                f"프로젝트 관리! {sender}님이 {repo_name}의 마일스톤 #{milestone_number}을 {action_text}했어요! 🎯\n\n제목: {milestone_title}"
+                + progress_info,
+                f"팀워크! {repo_name}의 '{milestone_title}' 마일스톤이 {action_text}됐어요! 🚀"
+                + progress_info
+                + (f"\n\n마감일: {due_date}" if due_date else ""),
             ]
-            
+
             # 마일스톤 설명이 있으면 추가
             if milestone_description:
-                description_preview = milestone_description[:100] + "..." if len(milestone_description) > 100 else milestone_description
+                description_preview = (
+                    milestone_description[:100] + "..."
+                    if len(milestone_description) > 100
+                    else milestone_description
+                )
                 for i in range(len(messages)):
                     messages[i] += f"\n\n📝 설명: {description_preview}"
 
@@ -1431,20 +1544,32 @@ class WebhookClient:
                 branch_info = f"브랜치: {head_branch}" if head_branch else ""
 
                 # 상태에 따른 이모지 선택
-                status_emoji = "🟢" if conclusion == "success" else "🔴" if conclusion == "failure" else "🟡" if status == "in_progress" else "⚪"
+                status_emoji = (
+                    "🟢"
+                    if conclusion == "success"
+                    else (
+                        "🔴"
+                        if conclusion == "failure"
+                        else "🟡" if status == "in_progress" else "⚪"
+                    )
+                )
 
                 titles = [
                     f"{status_emoji} 워크플로우 실행: {workflow_name}",
                     f"{status_emoji} GitHub Actions: {workflow_name} ({conclusion})",
                     f"{status_emoji} {repo_name}의 워크플로우 {conclusion}",
-                    f"{status_emoji} CI/CD 알림: {workflow_name}"
+                    f"{status_emoji} CI/CD 알림: {workflow_name}",
                 ]
 
                 messages = [
-                    f"{repo_name}의 '{workflow_name}' 워크플로우가 {conclusion} 상태로 실행됐어요! {status_emoji}\n\n실행자: {actor}" + (f"\n\n{branch_info}" if branch_info else ""),
-                    f"{actor}님이 실행한 {repo_name}의 '{workflow_name}' 워크플로우가 {conclusion} 상태입니다. {status_emoji}" + (f"\n\n{branch_info}" if branch_info else ""),
-                    f"{repo_name}의 CI/CD 파이프라인 '{workflow_name}'이 {conclusion} 상태로 완료됐어요! {status_emoji}\n\n실행자: {actor}" + (f"\n\n{branch_info}" if branch_info else ""),
-                    f"GitHub Actions 알림: {repo_name}의 '{workflow_name}' 워크플로우 상태는 {conclusion}입니다. {status_emoji}\n\n실행자: {actor}" + (f"\n\n{branch_info}" if branch_info else "")
+                    f"{repo_name}의 '{workflow_name}' 워크플로우가 {conclusion} 상태로 실행됐어요! {status_emoji}\n\n실행자: {actor}"
+                    + (f"\n\n{branch_info}" if branch_info else ""),
+                    f"{actor}님이 실행한 {repo_name}의 '{workflow_name}' 워크플로우가 {conclusion} 상태입니다. {status_emoji}"
+                    + (f"\n\n{branch_info}" if branch_info else ""),
+                    f"{repo_name}의 CI/CD 파이프라인 '{workflow_name}'이 {conclusion} 상태로 완료됐어요! {status_emoji}\n\n실행자: {actor}"
+                    + (f"\n\n{branch_info}" if branch_info else ""),
+                    f"GitHub Actions 알림: {repo_name}의 '{workflow_name}' 워크플로우 상태는 {conclusion}입니다. {status_emoji}\n\n실행자: {actor}"
+                    + (f"\n\n{branch_info}" if branch_info else ""),
                 ]
 
                 # URL이 있으면 추가
@@ -1464,20 +1589,28 @@ class WebhookClient:
                 html_url = job.get("html_url", "")
 
                 # 상태에 따른 이모지 선택
-                status_emoji = "🟢" if conclusion == "success" else "🔴" if conclusion == "failure" else "🟡" if status == "in_progress" else "⚪"
+                status_emoji = (
+                    "🟢"
+                    if conclusion == "success"
+                    else (
+                        "🔴"
+                        if conclusion == "failure"
+                        else "🟡" if status == "in_progress" else "⚪"
+                    )
+                )
 
                 titles = [
                     f"{status_emoji} 작업 실행: {job_name}",
                     f"{status_emoji} GitHub Actions 작업: {job_name} ({conclusion})",
                     f"{status_emoji} {repo_name}의 작업 {conclusion}",
-                    f"{status_emoji} CI/CD 작업 알림: {job_name}"
+                    f"{status_emoji} CI/CD 작업 알림: {job_name}",
                 ]
 
                 messages = [
                     f"{repo_name}의 '{job_name}' 작업이 {conclusion} 상태로 실행됐어요! {status_emoji}",
                     f"{repo_name}의 '{job_name}' 작업이 {conclusion} 상태입니다. {status_emoji}",
                     f"{repo_name}의 CI/CD 작업 '{job_name}'이 {conclusion} 상태로 완료됐어요! {status_emoji}",
-                    f"GitHub Actions 작업 알림: {repo_name}의 '{job_name}' 상태는 {conclusion}입니다. {status_emoji}"
+                    f"GitHub Actions 작업 알림: {repo_name}의 '{job_name}' 상태는 {conclusion}입니다. {status_emoji}",
                 ]
 
                 # URL이 있으면 추가
@@ -1496,20 +1629,28 @@ class WebhookClient:
                 html_url = check_run.get("html_url", "")
 
                 # 상태에 따른 이모지 선택
-                status_emoji = "🟢" if conclusion == "success" else "🔴" if conclusion == "failure" else "🟡" if status == "in_progress" else "⚪"
+                status_emoji = (
+                    "🟢"
+                    if conclusion == "success"
+                    else (
+                        "🔴"
+                        if conclusion == "failure"
+                        else "🟡" if status == "in_progress" else "⚪"
+                    )
+                )
 
                 titles = [
                     f"{status_emoji} 체크 실행: {check_name}",
                     f"{status_emoji} GitHub 체크: {check_name} ({conclusion})",
                     f"{status_emoji} {repo_name}의 체크 {conclusion}",
-                    f"{status_emoji} 코드 체크 알림: {check_name}"
+                    f"{status_emoji} 코드 체크 알림: {check_name}",
                 ]
 
                 messages = [
                     f"{repo_name}의 '{check_name}' 체크가 {conclusion} 상태로 실행됐어요! {status_emoji}",
                     f"{repo_name}의 '{check_name}' 체크가 {conclusion} 상태입니다. {status_emoji}",
                     f"{repo_name}의 코드 체크 '{check_name}'이 {conclusion} 상태로 완료됐어요! {status_emoji}",
-                    f"GitHub 체크 알림: {repo_name}의 '{check_name}' 상태는 {conclusion}입니다. {status_emoji}"
+                    f"GitHub 체크 알림: {repo_name}의 '{check_name}' 상태는 {conclusion}입니다. {status_emoji}",
                 ]
 
                 # URL이 있으면 추가
@@ -1524,20 +1665,28 @@ class WebhookClient:
                 conclusion = check_suite.get("conclusion", "진행중")
 
                 # 상태에 따른 이모지 선택
-                status_emoji = "🟢" if conclusion == "success" else "🔴" if conclusion == "failure" else "🟡" if status == "in_progress" else "⚪"
+                status_emoji = (
+                    "🟢"
+                    if conclusion == "success"
+                    else (
+                        "🔴"
+                        if conclusion == "failure"
+                        else "🟡" if status == "in_progress" else "⚪"
+                    )
+                )
 
                 titles = [
                     f"{status_emoji} 체크 스위트 실행",
                     f"{status_emoji} GitHub 체크 스위트 ({conclusion})",
                     f"{status_emoji} {repo_name}의 체크 스위트 {conclusion}",
-                    f"{status_emoji} 코드 체크 스위트 알림"
+                    f"{status_emoji} 코드 체크 스위트 알림",
                 ]
 
                 messages = [
                     f"{repo_name}의 체크 스위트가 {conclusion} 상태로 실행됐어요! {status_emoji}",
                     f"{repo_name}의 체크 스위트가 {conclusion} 상태입니다. {status_emoji}",
                     f"{repo_name}의 코드 체크 스위트가 {conclusion} 상태로 완료됐어요! {status_emoji}",
-                    f"GitHub 체크 스위트 알림: {repo_name}의 상태는 {conclusion}입니다. {status_emoji}"
+                    f"GitHub 체크 스위트 알림: {repo_name}의 상태는 {conclusion}입니다. {status_emoji}",
                 ]
 
         else:
@@ -1564,13 +1713,21 @@ class WebhookClient:
                 f"📢 {event_type} 이벤트 발생!",
                 f"🔔 {actor}님의 {event_type} 알림!",
                 f"📬 {repo_name}의 {event_type} 업데이트!",
-                f"🎯 {event_type} 액션 발생!"
+                f"🎯 {event_type} 액션 발생!",
             ]
             messages = [
-                f"{actor}님이 {repo_name}에서 {event_type} 이벤트를 발생시켰어요!" + (f"\n\n{action_info}" if action_info else "") + payload_preview,
-                f"{repo_name}의 {event_type} 소식을 전해드려요! 발생자: {actor}" + (f"\n\n{action_info}" if action_info else "") + payload_preview,
-                f"어? {repo_name}에서 {actor}님이 {event_type} 이벤트를 발생시켰어요!" + (f"\n\n{action_info}" if action_info else "") + payload_preview,
-                f"{repo_name}가 {actor}님에 의해 활발하게 움직이고 있어요! 이벤트: {event_type}" + (f"\n\n{action_info}" if action_info else "") + payload_preview
+                f"{actor}님이 {repo_name}에서 {event_type} 이벤트를 발생시켰어요!"
+                + (f"\n\n{action_info}" if action_info else "")
+                + payload_preview,
+                f"{repo_name}의 {event_type} 소식을 전해드려요! 발생자: {actor}"
+                + (f"\n\n{action_info}" if action_info else "")
+                + payload_preview,
+                f"어? {repo_name}에서 {actor}님이 {event_type} 이벤트를 발생시켰어요!"
+                + (f"\n\n{action_info}" if action_info else "")
+                + payload_preview,
+                f"{repo_name}가 {actor}님에 의해 활발하게 움직이고 있어요! 이벤트: {event_type}"
+                + (f"\n\n{action_info}" if action_info else "")
+                + payload_preview,
             ]
 
         # 랜덤하게 선택
@@ -1605,7 +1762,8 @@ class WebhookClient:
 
             should_show_system, should_show_bubble = (
                 self.filter_engine.should_show_notification(message)
-                if self.filter_engine else (True, True)
+                if self.filter_engine
+                else (True, True)
             )
 
             if not should_show_system and not should_show_bubble:
@@ -1613,8 +1771,10 @@ class WebhookClient:
                 return True
 
             # Pull Request Open 이벤트는 HTML 다이얼로그로 처리
-            if (message.get("event_type") == "pull_request" and 
-                message.get("payload", {}).get("action") == "opened"):
+            if (
+                message.get("event_type") == "pull_request"
+                and message.get("payload", {}).get("action") == "opened"
+            ):
                 return self._send_pr_html_dialog(message)
 
             # 친숙한 메시지로 변환
@@ -1691,6 +1851,7 @@ class WebhookClient:
                 if loop.is_running():
                     # 이미 실행 중인 루프가 있으면 새 스레드에서 실행
                     import concurrent.futures
+
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         future = executor.submit(self._run_async_summary, messages)
                         future.result(timeout=30)  # 30초 타임아웃
@@ -1710,6 +1871,7 @@ class WebhookClient:
     def _run_async_summary(self, messages: List[Dict[str, Any]]) -> None:
         """별도 스레드에서 비동기 요약 실행"""
         import asyncio
+
         asyncio.run(self._process_messages_with_summary(messages))
 
     async def _process_messages_with_summary(self, messages: List[Dict[str, Any]]) -> None:
@@ -1729,7 +1891,12 @@ class WebhookClient:
 
             # 준비 중 알림 전송
             try:
-                response = self.session.post(url, json=preparing_notification, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
+                response = self.session.post(
+                    url,
+                    json=preparing_notification,
+                    timeout=SESSION_SOCKET_TIMEOUT,
+                    verify=SESSION_VERIFY,
+                )
                 response.raise_for_status()
                 logger.info(f"요약 준비 알림 전송 성공: {len(messages)}개 메시지 요약 시작")
             except Exception as e:
@@ -1746,7 +1913,9 @@ class WebhookClient:
                 "priority": "high",  # 요약 메시지는 높은 우선순위
             }
 
-            response = self.session.post(url, json=final_notification, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
+            response = self.session.post(
+                url, json=final_notification, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY
+            )
             response.raise_for_status()
 
             logger.info(f"최종 요약 알림 전송 성공: {title} ({len(messages)}개 메시지 요약)")
@@ -1764,7 +1933,12 @@ class WebhookClient:
                     "duration": 4000,
                     "priority": "normal",
                 }
-                self.session.post(url, json=error_notification, timeout=SESSION_SOCKET_TIMEOUT, verify=SESSION_VERIFY)
+                self.session.post(
+                    url,
+                    json=error_notification,
+                    timeout=SESSION_SOCKET_TIMEOUT,
+                    verify=SESSION_VERIFY,
+                )
             except:
                 pass  # 실패 알림 전송도 실패하면 무시
 
@@ -1827,7 +2001,7 @@ class WebhookClient:
     def __del__(self) -> None:
         """소멸자에서 polling 정리"""
         if self.is_polling:
-            self.stop_polling() 
+            self.stop_polling()
 
     def _handle_polled_messages(self, messages: List[Dict[str, Any]], first_poll: bool) -> None:
         """PollingManager 에서 전달된 메시지 처리"""

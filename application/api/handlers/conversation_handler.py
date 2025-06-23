@@ -26,8 +26,7 @@ class ConversationHandler(BaseHandler):
 
             self.notification_signals.save_chat.emit(request.file_path)
             return self._create_success_response(
-                f"대화 내용이 저장되었습니다: {request.file_path}", 
-                {"file_path": request.file_path}
+                f"대화 내용이 저장되었습니다: {request.file_path}", {"file_path": request.file_path}
             )
         except Exception as exception:
             return self._create_error_response("대화 저장 실패", exception)
@@ -39,8 +38,7 @@ class ConversationHandler(BaseHandler):
 
             self.notification_signals.load_chat.emit(request.file_path)
             return self._create_success_response(
-                f"대화 내용이 불러와졌습니다: {request.file_path}", 
-                {"file_path": request.file_path}
+                f"대화 내용이 불러와졌습니다: {request.file_path}", {"file_path": request.file_path}
             )
         except Exception as exception:
             return self._create_error_response("대화 불러오기 실패", exception)

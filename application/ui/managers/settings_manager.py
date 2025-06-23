@@ -27,9 +27,7 @@ class SettingsManager:
 
         # 채팅 버블 너비 설정
         self.parent.bubble_width_slider.setValue(ui_config["chat_bubble_max_width"])
-        self.parent.bubble_width_label.setText(
-            f"{ui_config['chat_bubble_max_width']}px"
-        )
+        self.parent.bubble_width_label.setText(f"{ui_config['chat_bubble_max_width']}px")
 
         # 미리보기 업데이트
         self.parent.ui_tab_manager.update_preview()
@@ -60,9 +58,7 @@ class SettingsManager:
                 "instructions/default_agent_instructions.txt"
             )
         elif current_tab == 1:  # UI 탭
-            font = QFont(
-                "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
-            )
+            font = QFont("-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif")
             self.parent.font_family_combo.setCurrentFont(font)
             self.parent.font_size_slider.setValue(14)
             self.parent.bubble_width_slider.setValue(600)

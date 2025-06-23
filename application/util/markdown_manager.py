@@ -8,6 +8,7 @@ try:
     from pygments import highlight  # type: ignore
     from pygments.formatters import HtmlFormatter  # type: ignore
     from pygments.lexers import get_lexer_by_name  # type: ignore
+
     PYGMENTS_AVAILABLE = True
 except ImportError:
     PYGMENTS_AVAILABLE = False
@@ -62,9 +63,7 @@ class MarkdownManager:
             self.logger.error("QTextBrowser 최적화 중 오류: %s", e)
             return html_content
 
-    def convert_with_syntax_highlighting(
-        self, markdown_content: str
-    ) -> Tuple[str, List[str]]:
+    def convert_with_syntax_highlighting(self, markdown_content: str) -> Tuple[str, List[str]]:
         """
         마크다운을 HTML로 변환하면서 코드 블록에 문법 하이라이트를 적용합니다.
         Returns: (html_content, code_blocks_list)
@@ -87,14 +86,10 @@ class MarkdownManager:
                     language = self.detect_language(code_content)
 
                 # 문법 하이라이트 적용
-                highlighted_code = self.apply_syntax_highlighting(
-                    code_content, language
-                )
+                highlighted_code = self.apply_syntax_highlighting(code_content, language)
 
                 # 코드 블록 HTML 생성
-                return self.create_code_block_html(
-                    highlighted_code, language, code_index
-                )
+                return self.create_code_block_html(highlighted_code, language, code_index)
 
             # Fenced code blocks 패턴 (```language\ncode\n```)
             fenced_pattern = r"```(\w+)?\n(.*?)\n```"
@@ -169,12 +164,11 @@ class MarkdownManager:
             # Pygments가 없거나 오류가 발생한 경우
             if not PYGMENTS_AVAILABLE:
                 import html
+
                 return html.escape(code_content)
             raise
 
-    def create_code_block_html(
-        self, highlighted_code: str, language: str, code_index: int
-    ) -> str:
+    def create_code_block_html(self, highlighted_code: str, language: str, code_index: int) -> str:
         """코드 블록 HTML을 생성합니다."""
         display_language = language.upper() if language else "TEXT"
 
@@ -239,9 +233,7 @@ class MarkdownManager:
             return "java"
 
         # HTML 패턴
-        if any(
-            keyword in code_lower for keyword in ["<html", "<!doctype", "<div", "<body"]
-        ):
+        if any(keyword in code_lower for keyword in ["<html", "<!doctype", "<div", "<body"]):
             return "html"
 
         # JSON 패턴
@@ -253,8 +245,7 @@ class MarkdownManager:
 
         # Bash/Shell 패턴
         if any(
-            keyword in code_lower
-            for keyword in ["#!/bin/bash", "#!/bin/sh", "echo ", "cd ", "ls "]
+            keyword in code_lower for keyword in ["#!/bin/bash", "#!/bin/sh", "echo ", "cd ", "ls "]
         ):
             return "bash"
 
@@ -262,7 +253,6 @@ class MarkdownManager:
 
     def _adjust_colors_for_light_background(self, highlighted_html: str) -> str:
         """밝은 배경에 맞게 글자색을 어두운색으로 조정"""
-
 
         # 기본 색상을 어두운색으로 매핑
         color_mappings = {

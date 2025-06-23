@@ -47,4 +47,4 @@ class ToolConverter:  # pylint: disable=too-few-public-methods
         # GitHub 관련 도구인 경우 추가 안내
         if "github" in server_name.lower() or "git" in tool_name.lower():
             enhanced += " (GitHub 관련 질문 시 우선 사용)"
-        return enhanced 
+        return enhanced

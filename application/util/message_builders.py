@@ -27,7 +27,9 @@ class PushMessageBuilder(BaseMessageBuilder):
         commit_count = len(commits)
         pusher = payload.get("pusher", {}).get("name", "누군가")
         title = f"🚀 {pusher}님이 {branch or '브랜치'}에 {commit_count}개 커밋!"
-        content = f"{pusher}님이 {branch or '브랜치'}에 코드를 푸시했습니다. 커밋 수: {commit_count}"
+        content = (
+            f"{pusher}님이 {branch or '브랜치'}에 코드를 푸시했습니다. 커밋 수: {commit_count}"
+        )
         return title, content
 
 
@@ -40,7 +42,7 @@ class PullRequestMessageBuilder(BaseMessageBuilder):
         pr_number = pr.get("number", "")
         author = pr.get("user", {}).get("login", "누군가")
         title = f"📝 PR {action}: {pr_title}"
-        content = f"{author}님의 PR #{pr_number} \"{pr_title}\" ({action})"
+        content = f'{author}님의 PR #{pr_number} "{pr_title}" ({action})'
         return title, content
 
 
@@ -52,4 +54,4 @@ _BUILDER_MAP: Dict[str, BaseMessageBuilder] = {
 
 
 def get_builder(event_type: str) -> BaseMessageBuilder | None:  # noqa: D401
-    return _BUILDER_MAP.get(event_type) 
+    return _BUILDER_MAP.get(event_type)

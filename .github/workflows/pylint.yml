@@ -21,4 +21,4 @@ jobs:
       - name: Analyse the code with pylint
         run: |
           # pylint 점수가 8 이상이면 성공, 미만이면 실패
-          pylint --fail-under=8 $(git ls-files '*.py')
+          pylint application --fail-under=8 $(git ls-files '*.py')

@@ -26,9 +26,7 @@ class MCPConfigManager:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self.config = MCPConfig(**data)
-                    logger.debug(
-                        "MCP 설정 로드 완료: %d개 서버", len(self.config.mcpServers)
-                    )
+                    logger.debug("MCP 설정 로드 완료: %d개 서버", len(self.config.mcpServers))
             else:
                 logger.warning("MCP 설정 파일이 없습니다: %s", self.config_path)
                 self.create_default_config()
@@ -42,9 +40,7 @@ class MCPConfigManager:
         """MCP 설정 파일 저장"""
         try:
             config_dict = self.config.model_dump()
-            for _server_name, server_config in config_dict.get(
-                "mcpServers", {}
-            ).items():
+            for _server_name, server_config in config_dict.get("mcpServers", {}).items():
                 server_config.pop("connected", None)
                 server_config.pop("tools", None)
                 server_config.pop("resources", None)
@@ -151,11 +147,7 @@ class MCPConfigManager:
 
     def get_enabled_servers(self) -> Dict[str, MCPServer]:
         """활성화된 MCP 서버들 반환"""
-        return {
-            name: server
-            for name, server in self.config.mcpServers.items()
-            if server.enabled
-        }
+        return {name: server for name, server in self.config.mcpServers.items() if server.enabled}
 
     def clear_servers(self):
         """모든 MCP 서버 설정을 지웁니다."""

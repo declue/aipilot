@@ -47,4 +47,4 @@ class ToolCache:  # pylint: disable=too-few-public-methods
         return len(self._cache)
 
     def __contains__(self, key: str) -> bool:  # pragma: no cover
-        return key in self._cache 
+        return key in self._cache

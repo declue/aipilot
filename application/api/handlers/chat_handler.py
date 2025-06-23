@@ -22,9 +22,7 @@ class ChatHandler(BaseHandler):
             elif message_type == "ai":
                 self.notification_signals.add_api_message.emit("ai", request.message)
             elif message_type == "system":
-                self.notification_signals.add_api_message.emit(
-                    "system", request.message
-                )
+                self.notification_signals.add_api_message.emit("system", request.message)
             else:
                 return self._create_error_response(
                     f"지원하지 않는 메시지 타입: {message_type} (user, ai, system만 지원)"

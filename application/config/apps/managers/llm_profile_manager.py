@@ -40,11 +40,8 @@ class LLMProfileManager:
                 with open(self.llm_profiles_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self._llm_profiles = data.get("profiles", {})
-                    self._current_profile_name = data.get(
-                        "current_profile", DEFAULT_LLM_PROFILE)
-                    logger.debug(
-                        f"LLM 프로필 로드 완료: {len(self._llm_profiles)}개 프로필"
-                    )
+                    self._current_profile_name = data.get("current_profile", DEFAULT_LLM_PROFILE)
+                    logger.debug(f"LLM 프로필 로드 완료: {len(self._llm_profiles)}개 프로필")
             else:
                 # 기본 프로필 생성
                 self.create_default_llm_profiles()

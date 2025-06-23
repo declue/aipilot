@@ -120,9 +120,11 @@ class MessageManager:
     # ------------------------------------------------------------------
     def _remove_trailing_spacer(self) -> None:
         if self.main_window.chat_layout.count() > 0:
-            last_item = self.main_window.chat_layout.itemAt(self.main_window.chat_layout.count() - 1)
+            last_item = self.main_window.chat_layout.itemAt(
+                self.main_window.chat_layout.count() - 1
+            )
             if last_item and last_item.spacerItem():
                 self.main_window.chat_layout.removeItem(last_item)
 
     def _append_spacer(self) -> None:
-        self.main_window.chat_layout.addStretch() 
+        self.main_window.chat_layout.addStretch()

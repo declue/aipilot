@@ -61,9 +61,10 @@ class StreamingBubbleManager:
             return
 
         logger.debug(
-            " 버블 업데이트: %s자, 추론모델: %s",
+            "🔄 버블 업데이트: %s자, 추론모델: %s, 추론내용: %s자",
             len(state.streaming_content),
             state.is_reasoning_model,
+            len(state.reasoning_content) if state.reasoning_content else 0,
         )
 
         text_browser = bubble.text_browser
@@ -72,16 +73,23 @@ class StreamingBubbleManager:
 
         current_ui_config = self.main_window.ui_config
 
+        # 추론 모델인 경우 추론 과정과 최종 답변을 분리해서 표시
         if state.is_reasoning_model and state.reasoning_content:
             self.html_renderer.ui_config = current_ui_config
+
+            # 스트리밍 중에는 추론 과정을 "진행중" 상태로 표시
+            is_reasoning_complete = (
+                "</think>" in state.streaming_content
+                or "</thinking>" in state.streaming_content
+                or "</reasoning>" in state.streaming_content
+            )
+
             styled_html = self.html_renderer.create_streaming_reasoning_html(
-                state.reasoning_content, state.final_answer
+                state.reasoning_content, state.final_answer, is_complete=is_reasoning_complete
             )
         else:
             self.html_renderer.ui_config = current_ui_config
-            styled_html = self.html_renderer.create_regular_streaming_html(
-                state.streaming_content
-            )
+            styled_html = self.html_renderer.create_regular_streaming_html(state.streaming_content)
 
         text_browser.setHtml(styled_html)
         bubble.adjust_browser_height(text_browser)
@@ -114,12 +122,14 @@ class StreamingBubbleManager:
         bubble.original_message = final_content
         bubble.message = final_content  # 이후 set_reasoning_info 에서 렌더링
         bubble.is_streaming = False
-        
-        logger.info(f"🔄 버블 최종화: 추론모델={is_reasoning_model}, 추론내용={len(reasoning_content)}자, 답변={len(final_answer)}자")
-        
+
+        logger.info(
+            f"🔄 버블 최종화: 추론모델={is_reasoning_model}, 추론내용={len(reasoning_content)}자, 답변={len(final_answer)}자"
+        )
+
         # 추론 정보를 먼저 설정 (렌더링이 포함됨)
         bubble.set_reasoning_info(is_reasoning_model, reasoning_content, final_answer)
-        
+
         # 사용 도구 정보 표시
         if used_tools:
             bubble.show_raw_button()

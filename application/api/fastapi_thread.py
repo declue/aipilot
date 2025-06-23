@@ -182,4 +182,4 @@ class FastAPIThread(QThread):
             logger.error(f"FastAPIThread 소멸자에서 오류 발생: {e}")
         finally:
             # 부모 클래스의 소멸자 호출
-            super().__del__() if hasattr(super(), '__del__') else None
+            super().__del__() if hasattr(super(), "__del__") else None

@@ -21,18 +21,18 @@ class TaskThread(QThread):
     scheduler_stopped = Signal()
 
     def __init__(
-        self, 
+        self,
         config_file: str = "task.json",
         task_configuration: Optional[ITaskConfiguration] = None,
         task_scheduler: Optional[ITaskScheduler] = None,
         http_client_timeout: int = 30,
-        max_workers: int = 5
+        max_workers: int = 5,
     ) -> None:
         super().__init__()
         self.config_file = config_file
         self.task_manager: Optional[TaskManager] = None
         self.is_running = False
-        
+
         # 의존성 주입을 위한 매개변수 저장
         self._task_configuration = task_configuration
         self._task_scheduler = task_scheduler
@@ -50,7 +50,7 @@ class TaskThread(QThread):
                 task_configuration=self._task_configuration,
                 task_scheduler=self._task_scheduler,
                 http_client_timeout=self._http_client_timeout,
-                max_workers=self._max_workers
+                max_workers=self._max_workers,
             )
 
             # 콜백 함수 설정

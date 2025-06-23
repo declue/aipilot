@@ -51,9 +51,7 @@ class LLMAgent:
         return self._client
 
     @staticmethod
-    async def test_connection(
-        api_key: str, base_url: str, model: str
-    ) -> Dict[str, Any]:
+    async def test_connection(api_key: str, base_url: str, model: str) -> Dict[str, Any]:
         """LLM 서버 연결 테스트"""
         try:
             client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=300.0)
@@ -198,18 +196,14 @@ class LLMAgent:
                             "used_tools": [],  # 추후 확장
                         }
                     else:
-                        response_text = await self._generate_basic_response(
-                            user_msg, streaming_cb
-                        )
+                        response_text = await self._generate_basic_response(user_msg, streaming_cb)
                         response_data = {
                             "response": response_text,
                             "reasoning": "",
                             "used_tools": [],
                         }
                 else:
-                    response_text = await self._generate_basic_response(
-                        user_msg, streaming_cb
-                    )
+                    response_text = await self._generate_basic_response(user_msg, streaming_cb)
                     response_data = {
                         "response": response_text,
                         "reasoning": "",
@@ -267,9 +261,7 @@ class LLMAgent:
             r"\b\w+\.\w+\b",  # domain.extension 형식
         ]
 
-        has_special_pattern = any(
-            re.search(pattern, msg) for pattern in special_patterns
-        )
+        has_special_pattern = any(re.search(pattern, msg) for pattern in special_patterns)
         has_keyword = any(keyword in msg_lower for keyword in tool_keywords)
 
         return has_special_pattern or has_keyword
@@ -287,9 +279,7 @@ class LLMAgent:
                 streaming_cb("🚀 복합적인 도구 작업을 시작합니다...\n\n")
 
             # MCPToolManager를 통해 agents SDK 기반 응답 생성
-            result = await self.mcp_tool_manager.run_agent_with_tools(
-                user_msg, streaming_cb
-            )
+            result = await self.mcp_tool_manager.run_agent_with_tools(user_msg, streaming_cb)
 
             return result
 

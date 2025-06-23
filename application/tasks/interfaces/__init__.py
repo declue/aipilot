@@ -10,4 +10,4 @@ __all__ = [
     "ITaskConfiguration",
     "ITaskExecutor",
     "ITaskScheduler",
-] 
+]

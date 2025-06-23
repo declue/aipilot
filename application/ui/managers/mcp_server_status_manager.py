@@ -125,9 +125,7 @@ class MCPServerStatusManager:
         if config.env:
             for key, value in config.env.items():
                 # 민감한 정보는 일부 숨김
-                if any(
-                    sensitive in key.lower() for sensitive in ["token", "key", "secret"]
-                ):
+                if any(sensitive in key.lower() for sensitive in ["token", "key", "secret"]):
                     if len(value) > 8:
                         masked_value = value[:4] + "*" * (len(value) - 8) + value[-4:]
                     else:

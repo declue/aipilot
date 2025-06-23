@@ -24,9 +24,7 @@ class QFrameABCMeta(type(QFrame), ABCMeta):  # type: ignore
 class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
     """채팅 버블의 기본 클래스 (Presentation Layer)"""
 
-    DEFAULT_FONT_FAMILY = (
-        "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
-    )
+    DEFAULT_FONT_FAMILY = "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
     DEFAULT_FONT_SIZE = 14
     DEFAULT_CHAT_BUBBLE_MAX_WIDTH = 1000
 
@@ -83,9 +81,9 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
             if app is not None:
                 # 모든 최상위 위젯 중에서 MainWindow 찾기
                 for widget in app.topLevelWidgets():
-                    if widget.isVisible() and hasattr(widget, 'objectName'):
+                    if widget.isVisible() and hasattr(widget, "objectName"):
                         # MainWindow나 QMainWindow인 경우
-                        if 'MainWindow' in str(type(widget)) or hasattr(widget, 'centralWidget'):
+                        if "MainWindow" in str(type(widget)) or hasattr(widget, "centralWidget"):
                             window_width = widget.width()
                             if window_width > 100:  # 유효한 크기인지 확인
                                 # 윈도우 크기의 80%로 설정
@@ -94,7 +92,7 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
                                     f"[DEBUG] Main window width: {window_width}px, calculated 80% width: {calculated_width}px"
                                 )
                                 return calculated_width
-                
+
                 # MainWindow를 찾지 못한 경우, 화면 크기 사용
                 screens = QGuiApplication.screens()
                 if screens:
@@ -111,9 +109,7 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
             logger.warning("Could not get screen/window information, using default width")
             # 화면 크기 기준 계산이 실패한 경우에만 설정값 사용
             config_max_width: int = int(
-                self.ui_config.get(
-                    "chat_bubble_max_width", self.DEFAULT_CHAT_BUBBLE_MAX_WIDTH
-                )
+                self.ui_config.get("chat_bubble_max_width", self.DEFAULT_CHAT_BUBBLE_MAX_WIDTH)
             )
             return max(config_max_width, self.DEFAULT_CHAT_BUBBLE_MAX_WIDTH)
 
@@ -149,20 +145,14 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
         except Exception as exception:
             logger.error("Failed to update styles: %s", str(exception))
 
-    def _update_font_in_stylesheet(
-        self, stylesheet: str, font_family: str, font_size: int
-    ) -> str:
+    def _update_font_in_stylesheet(self, stylesheet: str, font_family: str, font_size: int) -> str:
         """스타일시트에서 폰트 설정을 업데이트"""
 
         # font-family 업데이트
-        stylesheet = re.sub(
-            r"font-family:\s*[^;]+;", f"font-family: '{font_family}';", stylesheet
-        )
+        stylesheet = re.sub(r"font-family:\s*[^;]+;", f"font-family: '{font_family}';", stylesheet)
 
         # font-size 업데이트
-        stylesheet = re.sub(
-            r"font-size:\s*\d+px;", f"font-size: {font_size}px;", stylesheet
-        )
+        stylesheet = re.sub(r"font-size:\s*\d+px;", f"font-size: {font_size}px;", stylesheet)
 
         return stylesheet
 
@@ -217,12 +207,12 @@ class ChatBubble(QFrame, metaclass=QFrameABCMeta):  # type: ignore
         else:
             # 기본 라이트 테마 색상 반환
             return {
-                'background': '#FFFFFF',
-                'text': '#1F2937',
-                'surface': '#F8FAFC',
-                'border': '#E5E7EB',
-                'primary': '#2563EB',
-                'primary_hover': '#1D4ED8',
-                'success': '#10B981',
-                'danger': '#EF4444'
-            } 
+                "background": "#FFFFFF",
+                "text": "#1F2937",
+                "surface": "#F8FAFC",
+                "border": "#E5E7EB",
+                "primary": "#2563EB",
+                "primary_hover": "#1D4ED8",
+                "success": "#10B981",
+                "danger": "#EF4444",
+            }

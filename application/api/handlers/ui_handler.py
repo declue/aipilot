@@ -69,8 +69,8 @@ class UIHandler(BaseHandler):
             self.notification_signals.update_ui_settings.emit({"font_size": request.font_size})
 
             return self._create_success_response(
-                f"폰트 크기가 {request.font_size}px로 변경되었습니다", 
-                {"font_size": request.font_size}
+                f"폰트 크기가 {request.font_size}px로 변경되었습니다",
+                {"font_size": request.font_size},
             )
         except Exception as exception:
             return self._create_error_response("폰트 크기 변경 실패", exception)

@@ -149,9 +149,7 @@ class UISetupManager:
             }
         """
         )
-        self.parent.test_button.clicked.connect(
-            self.parent.llm_tab_manager.test_connection
-        )
+        self.parent.test_button.clicked.connect(self.parent.llm_tab_manager.test_connection)
 
         # 기본값 복원 버튼
         reset_button = QPushButton("🔄 기본값 복원")
@@ -242,18 +240,18 @@ class UISetupManager:
     def update_theme(self) -> None:
         """테마 업데이트"""
         try:
-            if hasattr(self.parent, 'theme_manager'):
+            if hasattr(self.parent, "theme_manager"):
                 colors = self.parent.theme_manager.get_theme_colors()
-                
+
                 # 헤더 라벨들 업데이트
                 self._update_header_theme(colors)
-                
+
                 # 탭 위젯 테마 업데이트
                 self._update_tab_widget_theme(colors)
-                
+
                 # 버튼들 테마 업데이트
                 self._update_buttons_theme(colors)
-                
+
         except Exception as e:
             print(f"설정창 테마 업데이트 실패: {e}")
 
@@ -264,8 +262,9 @@ class UISetupManager:
 
     def _update_tab_widget_theme(self, colors: dict[str, str]) -> None:
         """탭 위젯 테마 업데이트"""
-        if hasattr(self.parent, 'tab_widget'):
-            self.parent.tab_widget.setStyleSheet(f"""
+        if hasattr(self.parent, "tab_widget"):
+            self.parent.tab_widget.setStyleSheet(
+                f"""
                 QTabWidget::pane {{
                     border: 1px solid {colors['border']};
                     border-radius: 6px;
@@ -296,14 +295,16 @@ class UISetupManager:
                     background-color: {colors['button_hover']};
                     color: {colors['text']};
                 }}
-            """)
+            """
+            )
 
     def _update_buttons_theme(self, colors: dict[str, str]) -> None:
         """버튼들 테마 업데이트"""
         try:
             # 테스트 버튼
-            if hasattr(self.parent, 'test_button'):
-                self.parent.test_button.setStyleSheet(f"""
+            if hasattr(self.parent, "test_button"):
+                self.parent.test_button.setStyleSheet(
+                    f"""
                     QPushButton {{
                         background-color: {colors['warning']};
                         color: white;
@@ -321,6 +322,7 @@ class UISetupManager:
                     QPushButton:pressed {{
                         background-color: {colors.get('warning_pressed', colors['warning'])};
                     }}
-                """)
+                """
+                )
         except Exception as e:
             print(f"버튼 테마 업데이트 실패: {e}")

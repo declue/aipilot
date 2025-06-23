@@ -13,4 +13,4 @@ from application.util.markdown_manager import MarkdownManager  # type: ignore
 __all__: list[str] = [
     "StyleManager",
     "MarkdownManager",
-] 
+]

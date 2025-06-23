@@ -21,7 +21,7 @@ class TaskExecutor(ITaskExecutor):
     async def execute_task(self, task: TaskConfig) -> Dict[str, Any]:
         """작업을 실행합니다."""
         logger.info(f"작업 실행 시작: {task.name} ({task.id})")
-        
+
         try:
             if task.action_type == "llm_request":
                 return await self.execute_llm_request(task)
@@ -30,10 +30,7 @@ class TaskExecutor(ITaskExecutor):
             elif task.action_type == "notification":
                 return await self.execute_notification(task)
             else:
-                raise TaskExecutionError(
-                    task.id, 
-                    f"알 수 없는 작업 타입: {task.action_type}"
-                )
+                raise TaskExecutionError(task.id, f"알 수 없는 작업 타입: {task.action_type}")
         except Exception as e:
             logger.error(f"작업 실행 중 오류: {task.name} - {e}")
             if isinstance(e, TaskExecutionError):
@@ -98,13 +95,10 @@ class TaskExecutor(ITaskExecutor):
             raise TaskExecutionError(task.id, "알림에 메시지가 없습니다")
 
         try:
-            payload = {
-                "title": params.get("title", task.name),
-                "message": message
-            }
+            payload = {"title": params.get("title", task.name), "message": message}
             result = await self.http_client.post(api_url, payload)
             logger.info(f"알림 전송 완료: {task.name}")
             logger.debug(f"알림 응답: {result}")
             return result
         except Exception as e:
-            raise TaskExecutionError(task.id, f"알림 실행 실패: {e}", e) 
+            raise TaskExecutionError(task.id, f"알림 실행 실패: {e}", e)

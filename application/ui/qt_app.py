@@ -19,9 +19,7 @@ if sys.platform == "win32":
         import ctypes
 
         # Windows AppUserModel ID 설정 (작업 표시줄 그룹화 방지)
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-            "dspilot.ai.chat.1.0"
-        )
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("dspilot.ai.chat.1.0")
     except Exception:
         pass  # 실패해도 계속 진행
 
@@ -56,7 +54,7 @@ class QtApp:
         """애플리케이션 아이콘 설정"""
         if not self.qt_app:
             return
-            
+
         try:
             # logo.png 파일을 애플리케이션 아이콘으로 설정
             logo_path = "logo.png"
@@ -76,9 +74,7 @@ class QtApp:
                     # 애플리케이션 전체 아이콘 설정
                     self.qt_app.setWindowIcon(app_icon)
 
-                    logger.debug(
-                        "애플리케이션 아이콘을 logo.png로 설정 완료 (다중 크기)"
-                    )
+                    logger.debug("애플리케이션 아이콘을 logo.png로 설정 완료 (다중 크기)")
                 else:
                     logger.warning("logo.png 파일을 아이콘으로 로드할 수 없습니다")
             else:
@@ -102,9 +98,7 @@ class QtApp:
 
         # 더 안전한 DPI 제어 방법
         try:
-            self.qt_app.setAttribute(
-                Qt.ApplicationAttribute.AA_DisableHighDpiScaling, True
-            )
+            self.qt_app.setAttribute(Qt.ApplicationAttribute.AA_DisableHighDpiScaling, True)
         except AttributeError:
             # PySide6에서 지원하지 않는 경우 무시
             logger.debug("일부 DPI 설정을 사용할 수 없지만, 환경변수로 제어됩니다.")
@@ -118,7 +112,7 @@ class QtApp:
         """QT 스타일 적용"""
         if not self.qt_app:
             return
-            
+
         # 시스템 테마와 무관하게 라이트 테마 강제 적용
         self.qt_app.setStyle("Fusion")  # 일관된 스타일 사용
         self.qt_app.setStyleSheet(

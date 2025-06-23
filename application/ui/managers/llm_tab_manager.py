@@ -173,9 +173,7 @@ class LLMTabManager:
 
         # 서버 URL 입력
         self.parent.base_url_input = QLineEdit()
-        self.parent.base_url_input.setPlaceholderText(
-            "예: http://localhost:11434/v1 (Ollama)"
-        )
+        self.parent.base_url_input.setPlaceholderText("예: http://localhost:11434/v1 (Ollama)")
         StyleManager.style_input(self.parent.base_url_input)
 
         base_url_label = QLabel("🌐 서버 URL:")
@@ -190,9 +188,7 @@ class LLMTabManager:
 
         self.parent.model_input = QComboBox()
         self.parent.model_input.setEditable(True)  # 직접 입력 가능
-        self.parent.model_input.setPlaceholderText(
-            "예: llama3.2, gpt-3.5-turbo, codellama"
-        )
+        self.parent.model_input.setPlaceholderText("예: llama3.2, gpt-3.5-turbo, codellama")
         StyleManager.style_input(self.parent.model_input)
 
         # 모델 새로고침 버튼
@@ -264,9 +260,7 @@ class LLMTabManager:
         self.parent.instruction_file_input.setPlaceholderText(
             "예: instructions/default_agent_instructions.txt"
         )
-        self.parent.instruction_file_input.setToolTip(
-            "Agent가 사용할 instruction 파일 경로"
-        )
+        self.parent.instruction_file_input.setToolTip("Agent가 사용할 instruction 파일 경로")
         StyleManager.style_input(self.parent.instruction_file_input)
 
         # 파일 선택 버튼
@@ -334,12 +328,8 @@ class LLMTabManager:
                 self.parent.api_key_input.setText(current_profile.get("api_key", ""))
                 self.parent.base_url_input.setText(current_profile.get("base_url", ""))
                 self.parent.model_input.setCurrentText(current_profile.get("model", ""))
-                self.parent.temperature_spin.setValue(
-                    current_profile.get("temperature", 0.7)
-                )
-                self.parent.max_tokens_spin.setValue(
-                    current_profile.get("max_tokens", 100000)
-                )
+                self.parent.temperature_spin.setValue(current_profile.get("temperature", 0.7))
+                self.parent.max_tokens_spin.setValue(current_profile.get("max_tokens", 100000))
                 self.parent.top_k_spin.setValue(current_profile.get("top_k", 50))
                 self.parent.instruction_file_input.setText(
                     current_profile.get(
@@ -347,9 +337,7 @@ class LLMTabManager:
                         "instructions/default_agent_instructions.txt",
                     )
                 )
-                self.parent.profile_description.setText(
-                    current_profile.get("description", "")
-                )
+                self.parent.profile_description.setText(current_profile.get("description", ""))
 
         except Exception as e:
             QMessageBox.warning(
@@ -371,14 +359,10 @@ class LLMTabManager:
         try:
             profiles = self.parent.config_manager.get_llm_profiles()
             if profile_id in profiles:
-                QMessageBox.warning(
-                    self.parent, "중복 프로필", "이미 존재하는 프로필 ID입니다."
-                )
+                QMessageBox.warning(self.parent, "중복 프로필", "이미 존재하는 프로필 ID입니다.")
                 return
 
-            name, ok = QInputDialog.getText(
-                self.parent, "프로필 이름", "프로필 이름을 입력하세요:"
-            )
+            name, ok = QInputDialog.getText(self.parent, "프로필 이름", "프로필 이름을 입력하세요:")
             if not ok or not name.strip():
                 return
 
@@ -411,9 +395,7 @@ class LLMTabManager:
                     self.parent.profile_combo.setCurrentIndex(i)
                     break
 
-            QMessageBox.information(
-                self.parent, "성공", f"프로필 '{name}'이 추가되었습니다."
-            )
+            QMessageBox.information(self.parent, "성공", f"프로필 '{name}'이 추가되었습니다.")
 
         except Exception as e:
             QMessageBox.critical(
@@ -473,9 +455,7 @@ class LLMTabManager:
             return
 
         if profile_id == "default":
-            QMessageBox.warning(
-                self.parent, "삭제 불가", "기본 프로필은 삭제할 수 없습니다."
-            )
+            QMessageBox.warning(self.parent, "삭제 불가", "기본 프로필은 삭제할 수 없습니다.")
             return
 
         try:
@@ -601,8 +581,7 @@ class LLMTabManager:
                 QMessageBox.warning(
                     self.parent,
                     "모델 없음 ⚠️",
-                    "서버에서 사용 가능한 모델을 찾을 수 없습니다.\n"
-                    "서버 설정을 확인해주세요.",
+                    "서버에서 사용 가능한 모델을 찾을 수 없습니다.\n" "서버 설정을 확인해주세요.",
                 )
         else:
             QMessageBox.critical(
@@ -645,9 +624,7 @@ class LLMTabManager:
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
                 # 기본 instruction 내용 생성
-                default_content = (
-                    self.parent.config_manager._get_default_instruction_content()
-                )
+                default_content = self.parent.config_manager._get_default_instruction_content()
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(default_content)
 
@@ -656,12 +633,9 @@ class LLMTabManager:
                 content = f.read()
 
             # 편집 대화상자 생성
-            
 
             dialog = QDialog(self.parent)
-            dialog.setWindowTitle(
-                f"Instruction 파일 편집 - {os.path.basename(file_path)}"
-            )
+            dialog.setWindowTitle(f"Instruction 파일 편집 - {os.path.basename(file_path)}")
             dialog.setMinimumSize(800, 600)
 
             layout = QVBoxLayout(dialog)
@@ -719,19 +693,18 @@ class LLMTabManager:
     def update_theme(self) -> None:
         """테마 업데이트"""
         try:
-            if hasattr(self.parent, 'theme_manager'):
+            if hasattr(self.parent, "theme_manager"):
                 # 스타일 매니저에 테마 매니저 설정
                 StyleManager.set_theme_manager(self.parent.theme_manager)
-                
+
                 colors = self.parent.theme_manager.get_theme_colors()
-                
+
                 # 스크롤 영역 테마 업데이트
                 self._update_scroll_area_theme(colors)
-                
+
         except Exception as e:
             print(f"LLM 탭 테마 업데이트 실패: {e}")
 
     def _update_scroll_area_theme(self, colors: Dict[str, Any]) -> None:
         """스크롤 영역 테마 업데이트"""
         # 스크롤 영역 스타일 업데이트 (실제 구현에서는 위젯 참조 필요)
-        

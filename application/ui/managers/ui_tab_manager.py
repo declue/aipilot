@@ -291,18 +291,18 @@ class UITabManager:
     def update_theme(self):
         """테마 업데이트"""
         try:
-            if hasattr(self.parent, 'theme_manager'):
+            if hasattr(self.parent, "theme_manager"):
                 # 스타일 매니저에 테마 매니저 설정
                 StyleManager.set_theme_manager(self.parent.theme_manager)
-                
+
                 colors = self.parent.theme_manager.get_theme_colors()
-                
+
                 # 스크롤 영역 테마 업데이트
                 self._update_scroll_area_theme(colors)
-                
+
                 # 미리보기 라벨 테마 업데이트
                 self._update_preview_theme(colors)
-                
+
         except Exception as e:
             print(f"UI 탭 테마 업데이트 실패: {e}")
 
@@ -314,11 +314,12 @@ class UITabManager:
 
     def _update_preview_theme(self, colors):
         """미리보기 테마 업데이트"""
-        if hasattr(self.parent, 'preview_label'):
+        if hasattr(self.parent, "preview_label"):
             font_family = self.parent.font_family_combo.currentFont().family()
             font_size = self.parent.font_size_slider.value()
-            
-            self.parent.preview_label.setStyleSheet(f"""
+
+            self.parent.preview_label.setStyleSheet(
+                f"""
                 QLabel {{
                     color: {colors['text']};
                     background-color: {colors['surface']};
@@ -329,4 +330,5 @@ class UITabManager:
                     'Segoe UI', Roboto, sans-serif;
                     font-size: {font_size}px;
                 }}
-            """)
+            """
+            )

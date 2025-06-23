@@ -40,9 +40,7 @@ class MCPUIBuilder:
         splitter.addWidget(server_panel)
 
         # 오른쪽: 도구 및 세부정보 패널
-        tools_panel, tools_tree, tool_details_text, logs_text = (
-            self._create_tools_panel()
-        )
+        tools_panel, tools_tree, tool_details_text, logs_text = self._create_tools_panel()
         splitter.addWidget(tools_panel)
 
         # 비율 설정을 더 유연하게 (35:65로 조정)

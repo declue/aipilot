@@ -1,13 +1,14 @@
 ﻿import logging
 import os
-from datetime import datetime
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 
 @dataclass
 class LoggerConfig:
     """Configuration class for logger settings."""
+
     name: str
     output_dir: str = "output"
     file_log_level: int = logging.DEBUG
@@ -51,9 +52,7 @@ class Logger:
             Configured FileHandler object
         """
         try:
-            file_handler = logging.FileHandler(
-                log_filename, encoding=self.config.encoding
-            )
+            file_handler = logging.FileHandler(log_filename, encoding=self.config.encoding)
             file_handler.setLevel(self.config.file_log_level)
             return file_handler
         except (OSError, IOError) as exception:
@@ -75,10 +74,7 @@ class Logger:
         Returns:
             Configured Formatter object
         """
-        return logging.Formatter(
-            self.config.log_format,
-            datefmt=self.config.date_format
-        )
+        return logging.Formatter(self.config.log_format, datefmt=self.config.date_format)
 
     def setup(self) -> Optional[logging.Logger]:
         """Set up and configure the logger.

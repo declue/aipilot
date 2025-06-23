@@ -125,4 +125,4 @@ class MCPProcess:
             "name": self.server.name,
             "config": self.server.model_dump(exclude_none=True),
             "status": self.status.model_dump(exclude_none=True),
-        } 
+        }

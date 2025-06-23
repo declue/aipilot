@@ -109,7 +109,7 @@ class SystemChatBubble(ChatBubble):
             self.copy_button.setMinimumSize(32, 28)
             self.copy_button.setToolTip("내용 복사")
             self.copy_button.clicked.connect(self.copy_content)  # type: ignore
-            
+
             # 버튼 테마 적용
             self._update_button_theme()
 
@@ -150,9 +150,7 @@ class SystemChatBubble(ChatBubble):
                 ],
             )
             font_family, font_size = self.get_font_config()
-            return (
-                f"<div style=\"font-family:'{font_family}';font-size:{font_size}px;line-height:1.6;color:#1F2937;\">{html}</div>"
-            )
+            return f"<div style=\"font-family:'{font_family}';font-size:{font_size}px;line-height:1.6;color:#1F2937;\">{html}</div>"
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("Markdown to HTML failed: %s", exc)
             return self.message
@@ -160,8 +158,7 @@ class SystemChatBubble(ChatBubble):
     def _get_markdown_stylesheet(self) -> str:
         font_family, font_size = self.get_font_config()
         code_font: int = max(font_size - 1, 12)
-        return (
-            f"""
+        return f"""
             QTextBrowser {{
                 background-color: transparent;
                 border: none;
@@ -175,7 +172,6 @@ class SystemChatBubble(ChatBubble):
                 font-size: {code_font}px;
             }}
         """
-        )
 
     # ------------------------------------------------------------------
     def toggle_raw_mode(self) -> None:  # noqa: D401
@@ -220,13 +216,13 @@ class SystemChatBubble(ChatBubble):
     def update_theme_styles(self) -> None:
         """테마에 맞는 스타일을 적용합니다."""
         try:
-            if hasattr(self, 'bubble_frame'):
+            if hasattr(self, "bubble_frame"):
                 self._update_bubble_theme()
-            if hasattr(self, 'text_browser'):
+            if hasattr(self, "text_browser"):
                 self._update_text_browser_theme()
-            if hasattr(self, 'copy_button'):
+            if hasattr(self, "copy_button"):
                 self._update_button_theme()
-            if hasattr(self, 'toggle_button'):
+            if hasattr(self, "toggle_button"):
                 self._update_button_theme()
         except Exception as e:
             logger.error(f"시스템 버블 테마 업데이트 실패: {e}")
@@ -234,19 +230,21 @@ class SystemChatBubble(ChatBubble):
     def _update_bubble_theme(self) -> None:
         """버블 프레임의 테마를 업데이트합니다."""
         colors = self.get_theme_colors()
-        if hasattr(self, 'bubble_frame'):
+        if hasattr(self, "bubble_frame"):
             # 시스템 메시지는 경고 색상 사용
-            self.bubble_frame.setStyleSheet(f"""
+            self.bubble_frame.setStyleSheet(
+                f"""
                 QFrame {{
                     background-color: {colors.get('warning_background', '#FEF3C7')};
                     border: 1px solid {colors.get('warning', '#F59E0B')};
                     border-radius: 20px;
                 }}
-            """)
+            """
+            )
 
     def _update_text_browser_theme(self) -> None:
         """텍스트 브라우저의 테마를 업데이트합니다."""
-        if hasattr(self, 'text_browser'):
+        if hasattr(self, "text_browser"):
             self.text_browser.setStyleSheet(self._get_markdown_stylesheet())
 
     def _update_button_theme(self) -> None:
@@ -266,10 +264,10 @@ class SystemChatBubble(ChatBubble):
                 background-color: {colors.get('button_hover', '#E5E7EB')};
             }}
         """
-        
-        if hasattr(self, 'copy_button'):
+
+        if hasattr(self, "copy_button"):
             self.copy_button.setStyleSheet(button_style)
-        if hasattr(self, 'toggle_button'):
+        if hasattr(self, "toggle_button"):
             self.toggle_button.setStyleSheet(button_style)
 
 

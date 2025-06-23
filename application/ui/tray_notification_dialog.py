@@ -1,6 +1,13 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QPushButton,
-                               QTextBrowser, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class TrayNotificationDialog(QWidget):

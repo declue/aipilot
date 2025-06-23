@@ -1,36 +1,34 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Optional, List
-from .serializers import SerializerFactory
-from .config_change_notifier import (
-    ConfigChangeCallback,
-    get_config_change_notifier,
-)
+from typing import List, Optional
+
+from .config_change_notifier import ConfigChangeCallback, get_config_change_notifier
 from .interfaces import (
+    ConfigDict,
+    ConfigType,
+    ConfigValue,
     IConfigManager,
     IConfigSerializer,
     IConfigValidator,
-    ConfigDict,
-    ConfigValue,
-    ConfigType,
-    ValidationResult
+    ValidationResult,
 )
+from .serializers import SerializerFactory
 from .utils import (
+    backup_config_file,
+    detect_config_type,
+    ensure_config_dir,
     get_nested_value,
-    set_nested_value,
     has_nested_key,
     remove_nested_key,
-    ensure_config_dir,
-    backup_config_file,
-    detect_config_type
+    set_nested_value,
 )
 
 # 로거 설정을 선택적으로 처리
 try:
     from application.util.logger import setup_logger
-    logger: logging.Logger = setup_logger(
-        "config") or logging.getLogger("config")
+
+    logger: logging.Logger = setup_logger("config") or logging.getLogger("config")
 except ImportError:
     logger = logging.getLogger("config")
 
@@ -48,7 +46,7 @@ class BaseConfigManager(IConfigManager, ABC):
         serializer: Optional[IConfigSerializer] = None,
         validator: Optional[IConfigValidator] = None,
         auto_create_dir: bool = True,
-        enable_file_watching: bool = True
+        enable_file_watching: bool = True,
     ) -> None:
         """BaseConfigManager 생성자
 
@@ -148,7 +146,7 @@ class BaseConfigManager(IConfigManager, ABC):
         """설정 파일 로드 (기본 구현)"""
         try:
             if os.path.exists(self._config_file):
-                with open(self._config_file, 'r', encoding='utf-8') as f:
+                with open(self._config_file, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 if self._serializer:
@@ -156,8 +154,7 @@ class BaseConfigManager(IConfigManager, ABC):
                 else:
                     # 직렬화기가 없으면 파일 타입에 따라 자동 생성
 
-                    serializer = SerializerFactory.create_serializer(
-                        self._config_type)
+                    serializer = SerializerFactory.create_serializer(self._config_type)
                     self._config_data = serializer.deserialize(content)
 
                 logger.debug("설정 파일 로드 완료: %s", self._config_file)
@@ -183,11 +180,10 @@ class BaseConfigManager(IConfigManager, ABC):
             if self._serializer:
                 content = self._serializer.serialize(self._config_data)
             else:
-                serializer = SerializerFactory.create_serializer(
-                    self._config_type)
+                serializer = SerializerFactory.create_serializer(self._config_type)
                 content = serializer.serialize(self._config_data)
 
-            with open(self._config_file, 'w', encoding='utf-8') as f:
+            with open(self._config_file, "w", encoding="utf-8") as f:
                 f.write(content)
 
             logger.debug("설정 파일 저장 완료: %s", self._config_file)
@@ -201,8 +197,7 @@ class BaseConfigManager(IConfigManager, ABC):
         """파일 변경 감지 설정"""
         try:
             self._change_callback = self._on_config_changed
-            self._change_notifier.register_callback(
-                self._config_file, self._change_callback)
+            self._change_notifier.register_callback(self._config_file, self._change_callback)
             logger.debug("파일 변경 감지 설정 완료: %s", self._config_file)
         except Exception as exception:
             logger.error("파일 변경 감지 설정 실패: %s", exception)
@@ -228,8 +223,7 @@ class BaseConfigManager(IConfigManager, ABC):
         """리소스 정리"""
         try:
             if self._change_callback and self._enable_file_watching:
-                self._change_notifier.unregister_callback(
-                    self._config_file, self._change_callback)
+                self._change_notifier.unregister_callback(self._config_file, self._change_callback)
                 self._change_callback = None
                 logger.debug("파일 변경 감지 해제: %s", self._config_file)
         except Exception as exception:

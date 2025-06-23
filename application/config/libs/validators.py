@@ -35,7 +35,6 @@ class SchemaValidator(IConfigValidator):
 
         try:
             # JSON Schema 검증 시도
-            
 
             jsonschema.validate(config_data, self.schema)
         except ImportError:

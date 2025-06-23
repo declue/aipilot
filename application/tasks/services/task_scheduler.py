@@ -27,20 +27,17 @@ class TaskScheduler(ITaskScheduler):
     """작업 스케줄러 서비스 구현"""
 
     def __init__(
-        self, 
-        task_executor: ITaskExecutor,
-        settings: TaskSettings,
-        max_workers: int = 5
+        self, task_executor: ITaskExecutor, settings: TaskSettings, max_workers: int = 5
     ) -> None:
         self.task_executor = task_executor
         self.settings = settings
         self._scheduler: Optional[BackgroundScheduler] = None
         self._is_running = False
-        
+
         # 이벤트 콜백
         self._on_executed: Optional[Callable[[str, object], None]] = None
         self._on_error: Optional[Callable[[str, object], None]] = None
-        
+
         # 스케줄러 초기화
         self._init_scheduler(max_workers)
 
@@ -96,8 +93,10 @@ class TaskScheduler(ITaskScheduler):
             return False
 
         try:
-            trigger = CronTrigger.from_crontab(task.cron_expression, timezone=self.settings.timezone)
-            
+            trigger = CronTrigger.from_crontab(
+                task.cron_expression, timezone=self.settings.timezone
+            )
+
             self._scheduler.add_job(
                 func=self._execute_task_wrapper,
                 trigger=trigger,
@@ -106,7 +105,7 @@ class TaskScheduler(ITaskScheduler):
                 args=[task],
                 replace_existing=True,
             )
-            
+
             logger.debug(f"작업이 스케줄러에 추가되었습니다: {task.name}")
             return True
         except Exception as e:
@@ -143,18 +142,20 @@ class TaskScheduler(ITaskScheduler):
 
         jobs = []
         for job in self._scheduler.get_jobs():
-            jobs.append({
-                "id": job.id,
-                "name": job.name,
-                "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
-                "trigger": str(job.trigger),
-            })
+            jobs.append(
+                {
+                    "id": job.id,
+                    "name": job.name,
+                    "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
+                    "trigger": str(job.trigger),
+                }
+            )
         return jobs
 
     def set_job_listener(
-        self, 
+        self,
         on_executed: Optional[Callable[[str, object], None]] = None,
-        on_error: Optional[Callable[[str, object], None]] = None
+        on_error: Optional[Callable[[str, object], None]] = None,
     ) -> None:
         """작업 실행 결과 리스너를 설정합니다."""
         self._on_executed = on_executed
@@ -177,7 +178,7 @@ class TaskScheduler(ITaskScheduler):
         """작업 실행 완료 이벤트 핸들러"""
         job_id = event.job_id
         logger.info(f"작업 실행 완료: {job_id}")
-        
+
         if self._on_executed:
             self._on_executed(job_id, event)
 
@@ -186,6 +187,6 @@ class TaskScheduler(ITaskScheduler):
         job_id = event.job_id
         exception = event.exception
         logger.error(f"작업 실행 오류: {job_id} - {exception}")
-        
+
         if self._on_error:
-            self._on_error(job_id, event) 
+            self._on_error(job_id, event)

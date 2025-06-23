@@ -19,9 +19,7 @@ class ConversationManager:
     def add_assistant_message(self, content: str) -> None:
         """어시스턴트 메시지를 히스토리에 추가"""
         self.conversation_history.append({"role": "assistant", "content": content})
-        logger.debug(
-            "AI 응답 추가 후 대화 히스토리 길이: %s", len(self.conversation_history)
-        )
+        logger.debug("AI 응답 추가 후 대화 히스토리 길이: %s", len(self.conversation_history))
 
     def clear_history(self) -> None:
         """대화 히스토리 초기화"""
@@ -29,4 +27,4 @@ class ConversationManager:
 
     def get_history(self) -> list[dict[str, str]]:
         """대화 히스토리 반환"""
-        return self.conversation_history 
+        return self.conversation_history

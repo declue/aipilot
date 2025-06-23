@@ -107,9 +107,7 @@ class MCPTabManager:
 
                 # 설정 파일 위치 안내
                 current_dir = os.getcwd()
-                self.log_manager.log_config_file_location(
-                    os.path.join(current_dir, config_file)
-                )
+                self.log_manager.log_config_file_location(os.path.join(current_dir, config_file))
             else:
                 self.log_manager.log_config_found(config_file)
 
@@ -169,12 +167,8 @@ class MCPTabManager:
             self.log_manager.log_data_refresh_success(len(server_data), len(tools_data))
 
             # 안내 메시지
-            enabled_count = sum(
-                1 for data in server_data.values() if data["config"].enabled
-            )
-            self.log_manager.log_guidance_messages(
-                len(server_data), len(tools_data), enabled_count
-            )
+            enabled_count = sum(1 for data in server_data.values() if data["config"].enabled)
+            self.log_manager.log_guidance_messages(len(server_data), len(tools_data), enabled_count)
 
             # 상태 업데이트
             self.ui_components["status_label"].setText(
@@ -239,14 +233,14 @@ class MCPTabManager:
     def update_theme(self):
         """테마 업데이트"""
         try:
-            if hasattr(self.parent, 'theme_manager'):
+            if hasattr(self.parent, "theme_manager"):
                 colors = self.parent.theme_manager.get_theme_colors()
-                
+
                 # UI 컴포넌트들이 있으면 테마 적용
                 if self.ui_components:
                     self._update_status_labels_theme(colors)
                     self._update_ui_builder_theme(colors)
-                
+
         except Exception as e:
             print(f"MCP 탭 테마 업데이트 실패: {e}")
 
@@ -259,5 +253,5 @@ class MCPTabManager:
     def _update_ui_builder_theme(self, colors):
         """UI 빌더 컴포넌트 테마 업데이트"""
         # UI 빌더에 테마 업데이트 메서드가 있으면 호출
-        if hasattr(self.ui_builder, 'update_theme'):
+        if hasattr(self.ui_builder, "update_theme"):
             self.ui_builder.update_theme(colors)

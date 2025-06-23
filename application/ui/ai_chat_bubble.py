@@ -27,12 +27,8 @@ def __getattr__(name: str) -> Any:  # pragma: no cover
     """
 
     if name == "AIChatBubble":
-        module: ModuleType = importlib.import_module(
-            "application.ui.presentation.ai_chat_bubble"
-        )
+        module: ModuleType = importlib.import_module("application.ui.presentation.ai_chat_bubble")
         cls = getattr(module, "AIChatBubble")
         globals()[name] = cls  # cache for future look-ups
         return cls
     raise AttributeError(name)
-
-
