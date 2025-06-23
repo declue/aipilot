@@ -1,11 +1,5 @@
 from __future__ import annotations
 
-"""Background polling thread manager.
-
-Generically fetches items at interval and hands them to a callback.
-Used by WebhookClient but reusable elsewhere.
-"""
-
 import logging
 import threading
 import time

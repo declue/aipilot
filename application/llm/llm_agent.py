@@ -15,45 +15,6 @@ logger: logging.Logger = setup_logger("llm") or logging.getLogger("llm_agent")
 # 디버깅을 위한 로그 레벨 INFO 설정
 logger.setLevel(logging.INFO)
 
-# ---------------------------------------------------------------------------
-# Small helpers
-# ---------------------------------------------------------------------------
-
-
-def _is_reasoning_model(model: str) -> bool:
-    """Heuristic check for models that emit visible chain‑of‑thought."""
-    reasoning_names = (
-        "o1",
-        "claude-3-5",
-        "deepseek-r1",
-        "qwen-qvq",
-        "qwen3:32b-q8_0",
-        "gemini-2.5-pro-preview-06-05",
-        "deepseek-chat",
-        "llama-3.3-70b-reasoning",
-    )
-    is_reasoning = any(name in model.lower() for name in reasoning_names)
-    logger.info(f"🧠 추론 모델 감지: {model} -> {is_reasoning}")
-    return is_reasoning
-
-
-def _strip_reasoning(raw: str) -> str:
-    """Drop `<think>` … `</think>` or similar sections, keep the answer only."""
-    if "</think>" in raw:
-        return raw.split("</think>")[-1].strip()
-    for pat in (
-        r"<thinking>[\s\S]*?</thinking>",
-        r"<thought>[\s\S]*?</thought>",
-        r"추론 과정:[\s\S]*?(?=답변:|$)",
-    ):
-        raw = re.sub(pat, "", raw, flags=re.I)
-    return raw.strip()
-
-
-# ---------------------------------------------------------------------------
-# Core class
-# ---------------------------------------------------------------------------
-
 
 class LLMAgent:
     """MCPToolManager를 사용하는 LLM 에이전트"""
@@ -368,11 +329,6 @@ class LLMAgent:
 
                 content = response.choices[0].message.content or ""
 
-                # UI에서 추론 과정을 표시하기 위해 원본 응답을 보존하고 처리는 UI에서 담당
-                # show_cot_flag = str(cfg.get("show_cot", "false")).lower() == "true"
-                # if not show_cot_flag and _is_reasoning_model(cfg["model"]):
-                #     content = _strip_reasoning(content)
-
                 return content
             else:
                 # 스트리밍 모드
@@ -396,11 +352,6 @@ class LLMAgent:
                         delta_content = chunk.choices[0].delta.content
                         accumulated_content += delta_content
                         streaming_cb(delta_content)
-
-                # UI에서 추론 과정을 표시하기 위해 원본 응답을 보존
-                # show_cot_flag = str(cfg.get("show_cot", "false")).lower() == "true"
-                # if not show_cot_flag and _is_reasoning_model(cfg["model"]):
-                #     accumulated_content = _strip_reasoning(accumulated_content)
 
                 return accumulated_content
 

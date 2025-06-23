@@ -9,8 +9,7 @@ project_root = Path(__file__).parent.parent.parent.parent.resolve()
 sys.path.insert(0, str(project_root))
 
 from application.config.config_manager import ConfigManager
-from application.llm.llm_agent import (LLMAgent, _is_reasoning_model,
-                                       _strip_reasoning)
+from application.llm.llm_agent import LLMAgent
 
 
 def test_llm_agent_initialization():
@@ -49,15 +48,9 @@ def test_message_operations():
 
 
 def test_helper_functions():
-    """헬퍼 함수 테스트"""
-    # _is_reasoning_model 테스트
-    assert _is_reasoning_model("o1-preview") == True
-    assert _is_reasoning_model("gpt-4") == False
-    
-    # _strip_reasoning 테스트
-    assert _strip_reasoning("<think>생각</think>답변") == "답변"
-    assert _strip_reasoning("일반 텍스트") == "일반 텍스트"
-    print("✅ 헬퍼 함수 테스트 통과")
+    """헬퍼 함수 테스트 - 제거된 함수들로 인해 빈 테스트"""
+    # 이전에 테스트하던 헬퍼 함수들이 제거되었습니다
+    print("✅ 헬퍼 함수 테스트 통과 (제거된 함수들)")
 
 
 def test_client_reinitialize():

@@ -256,8 +256,6 @@ class TrayApp(QObject):
     def _stop_taskbar_flash(self) -> None:
         """Windows 작업 표시줄 깜박임 중지"""
         try:
-            import sys
-
             if sys.platform == "win32":
                 try:
                     import ctypes

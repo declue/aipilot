@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-"""API 서버로 데스크톱 알림을 전송하는 작은 서비스 레이어.
-
-WebhookClient 뿐만 아니라 다른 모듈에서도 재사용 가능하도록 분리했다.
-"""
-
 import logging
 from typing import Any, Dict
 

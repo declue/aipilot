@@ -1,12 +1,5 @@
 from __future__ import annotations
 
-"""Notification filter engine extracted from WebhookClient.
-
-이 모듈은 GitHub Webhook 메시지와 사용자 설정을 기반으로 시스템 알림 / 채팅 버블 표시 여부를
-결정합니다. 기존 WebhookClient 의 `_should_show_notification`, `_map_event_type`, `_check_custom_filters`
-로직을 그대로 옮기고 타입 힌트와 가독성을 개선했습니다.
-"""
-
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 

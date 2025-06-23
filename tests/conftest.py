@@ -39,8 +39,7 @@ def _force_cleanup_threads():
     import time
 
     # 현재 활성 스레드 확인
-    active_threads = threading.active_count()
-    
+    #active_threads = threading.active_count()
     # 잠시 대기
     time.sleep(0.05)  # 대기 시간 단축
     
