@@ -182,127 +182,162 @@ class LLMAgent(LLMInterface):
         user_message: str,
         streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> Dict[str, Any]:
-        """간단한 MCP 접근법으로 폴백"""
+        """진정한 MCP 접근법 - LLM이 직접 도구를 선택하도록"""
         try:
-            # 사용자 메시지에서 필요한 도구 파악 및 실행
-            tool_results = await self._execute_relevant_tools(user_message)
-            
-            # 도구 결과를 포함한 프롬프트로 LLM에게 최종 답변 요청
-            if tool_results["used_tools"]:
-                enhanced_prompt = self._create_enhanced_prompt_with_tools(user_message, tool_results)
-                final_response = await self._generate_basic_response(enhanced_prompt, streaming_callback)
-                
-                return {
-                    "response": final_response,
-                    "reasoning": "Simple MCP approach with tool results",
-                    "used_tools": tool_results["used_tools"]
-                }
-            else:
-                return await self._fallback_to_basic_response(user_message, streaming_callback)
-            
-        except Exception as e:
-            logger.error(f"Simple MCP approach 실패: {e}")
-            return await self._fallback_to_basic_response(user_message, streaming_callback)
-
-    async def _execute_relevant_tools(self, user_message: str) -> Dict[str, Any]:
-        """사용자 메시지에서 관련 도구 실행"""
-        try:
-            # Langchain 도구 가져오기
+            # 사용 가능한 도구 목록 가져오기
             langchain_tools = await self.mcp_tool_manager.get_langchain_tools()
             
             if not langchain_tools:
                 logger.warning("사용 가능한 MCP 도구가 없습니다")
-                return {"response": "", "reasoning": "사용 가능한 도구 없음", "used_tools": []}
+                return await self._fallback_to_basic_response(user_message, streaming_callback)
             
-            logger.info(f"🔍 도구 실행 분석: '{user_message}' -> {len(langchain_tools)}개 도구 사용 가능")
+            # 도구 설명 생성
+            tool_descriptions = []
+            for tool in langchain_tools:
+                tool_descriptions.append(f"- {tool.name}: {tool.description}")
             
-            # 간단한 키워드 기반 도구 실행
-            message_lower = user_message.lower()
+            tools_info = "\n".join(tool_descriptions)
+            
+            # LLM에게 도구 사용 여부를 직접 결정하도록 요청
+            decision_prompt = f"""🚨 **중요: 반드시 지정된 형식으로만 응답하세요**
+
+질문: "{user_message}"
+
+도구 목록:
+{tools_info}
+
+**규칙**: 
+- 현재 시간/날씨 등 실시간 정보가 필요하면: TOOL_NEEDED: 도구명(인자)
+- 일반 지식으로 답변 가능하면: NO_TOOLS_NEEDED
+- 다른 형태의 응답은 절대 금지
+
+**예시**:
+질문: "지금 시간은?" → TOOL_NEEDED: get_current_time()
+질문: "서울 날씨는?" → TOOL_NEEDED: get_current_weather(city="Seoul")  
+질문: "서울과 부산 날씨 비교해줘" → TOOL_NEEDED: get_current_weather(city="Seoul"), get_current_weather(city="Busan")
+
+**경고**: 표, 설명, 추가 텍스트 없이 위 형식만 출력하세요."""
+
+            # LLM의 도구 선택 결정 받기
+            decision_response = await self._generate_basic_response(decision_prompt, None)
+            
+            logger.info(f"🤖 LLM 도구 선택 결정: {decision_response[:200]}...")
+            
+            # 결정에 따라 도구 실행 또는 기본 응답
+            if "TOOL_NEEDED:" in decision_response:
+                # 도구 실행 후 최종 답변
+                tool_results = await self._execute_tools_based_on_llm_decision(decision_response, langchain_tools)
+                
+                if tool_results["used_tools"]:
+                    enhanced_prompt = self._create_enhanced_prompt_with_tools(user_message, tool_results)
+                    final_response = await self._generate_basic_response(enhanced_prompt, streaming_callback)
+                    
+                    return {
+                        "response": final_response,
+                        "reasoning": "LLM이 도구를 직접 선택하여 실행",
+                        "used_tools": tool_results["used_tools"]
+                    }
+            
+            # 도구 사용이 불필요한 경우 기본 응답
+            return await self._fallback_to_basic_response(user_message, streaming_callback)
+            
+        except Exception as e:
+            logger.error(f"진정한 MCP 접근법 실패: {e}")
+            return await self._fallback_to_basic_response(user_message, streaming_callback)
+
+    async def _execute_tools_based_on_llm_decision(self, decision_response: str, langchain_tools: List[Any]) -> Dict[str, Any]:
+        """LLM 결정에 따른 도구 실행"""
+        try:
             used_tools = []
             responses = []
             
-            # 시간 관련 요청
-            time_keywords = ["시간", "time", "현재", "지금"]
-            time_match = any(keyword in message_lower for keyword in time_keywords)
-            logger.info(f"🕐 시간 키워드 매칭: {time_match} (키워드: {time_keywords})")
+            # TOOL_NEEDED 라인들 추출
+            lines = decision_response.split('\n')
+            for line in lines:
+                if "TOOL_NEEDED:" in line:
+                    # "TOOL_NEEDED: get_current_time()" -> "get_current_time()"
+                    tool_calls = line.split("TOOL_NEEDED:")[1].strip()
+                    
+                    # 다중 도구 호출 처리 (쉼표로 구분)
+                    for tool_call in tool_calls.split(','):
+                        tool_call = tool_call.strip()
+                        
+                        # 도구명과 인자 파싱
+                        if '(' in tool_call and ')' in tool_call:
+                            tool_name = tool_call.split('(')[0].strip()
+                            args_str = tool_call.split('(')[1].split(')')[0].strip()
+                            
+                            # 인자 파싱 (간단한 방식)
+                            args = {}
+                            if args_str and args_str != '':
+                                # city="Seoul" 형태 파싱
+                                if '=' in args_str:
+                                    for arg in args_str.split(','):
+                                        if '=' in arg:
+                                            key, value = arg.split('=', 1)
+                                            key = key.strip()
+                                            value = value.strip().strip('"').strip("'")
+                                            args[key] = value
+                            
+                            # 해당 도구 찾기
+                            target_tool = None
+                            for tool in langchain_tools:
+                                if tool.name == tool_name:
+                                    target_tool = tool
+                                    break
+                            
+                            if target_tool:
+                                logger.info(f"🔧 LLM 선택 도구 실행: {tool_name}({args})")
+                                result = await target_tool.ainvoke(args)
+                                logger.info(f"✅ 도구 결과: {result}")
+                                responses.append(f"[{tool_name}] {str(result)}")
+                                used_tools.append(f"{tool_name}({args})")
+                            else:
+                                logger.warning(f"❌ 도구 '{tool_name}'을 찾을 수 없습니다")
             
-            if time_match:
-                logger.info("🕐 시간 관련 도구 검색 중...")
-                for tool in langchain_tools:
-                    logger.debug(f"  - 도구 확인: {tool.name}")
-                    if "time" in tool.name.lower() and "current" in tool.name.lower():
-                        try:
-                            logger.info(f"🔧 시간 도구 실행: {tool.name}")
-                            result = await tool.ainvoke({})
-                            logger.info(f"✅ 시간 도구 결과: {result}")
-                            responses.append(str(result))
-                            used_tools.append(tool.name)
-                            break
-                        except Exception as e:
-                            logger.error(f"❌ 도구 {tool.name} 실행 실패: {e}")
+            return {
+                "response": "\n\n".join(responses),
+                "reasoning": f"LLM이 선택한 {len(used_tools)}개 도구 실행",
+                "used_tools": used_tools
+            }
             
-            # 날씨 관련 요청
-            weather_keywords = ["날씨", "weather", "기온", "온도"]
-            weather_match = any(keyword in message_lower for keyword in weather_keywords)
-            logger.info(f"🌤️ 날씨 키워드 매칭: {weather_match} (키워드: {weather_keywords})")
-            
-            if weather_match:
-                city = "Seoul"  # 기본값
-                # 도시명 추출 (간단한 방식)
-                for word in user_message.split():
-                    if word in ["서울", "Seoul", "부산", "Busan", "도쿄", "Tokyo"]:
-                        city = word
-                        break
-                
-                logger.info(f"🌤️ 날씨 관련 도구 검색 중... (도시: {city})")
-                for tool in langchain_tools:
-                    logger.debug(f"  - 도구 확인: {tool.name}")
-                    if "weather" in tool.name.lower() and "current" in tool.name.lower():
-                        try:
-                            logger.info(f"🔧 날씨 도구 실행: {tool.name} (city={city})")
-                            result = await tool.ainvoke({"city": city})
-                            logger.info(f"✅ 날씨 도구 결과: {result}")
-                            responses.append(str(result))
-                            used_tools.append(tool.name)
-                            break
-                        except Exception as e:
-                            logger.error(f"❌ 도구 {tool.name} 실행 실패: {e}")
-            
-            if responses:
-                logger.info(f"✅ 도구 실행 완료: {len(used_tools)}개 도구 사용")
-                return {
-                    "response": "\n\n".join(responses),
-                    "reasoning": f"도구 {len(used_tools)}개 실행",
-                    "used_tools": used_tools
-                }
-            else:
-                logger.warning("⚠️ 실행된 도구가 없습니다")
-                return {
-                    "response": "",
-                    "reasoning": "실행할 도구 없음",
-                    "used_tools": []
-                }
-                
         except Exception as e:
-            logger.error(f"❌ 관련 도구 실행 실패: {e}")
+            logger.error(f"❌ LLM 결정 기반 도구 실행 실패: {e}")
             return {"response": "", "reasoning": str(e), "used_tools": []}
+
+    async def _execute_relevant_tools(self, user_message: str) -> Dict[str, Any]:
+        """사용자 메시지에서 관련 도구 실행 (레거시 - 사용 안 함)"""
+        logger.warning("⚠️ 레거시 수동 도구 실행 메서드 호출됨 - LLM 기반 방식을 사용해야 합니다")
+        return {"response": "", "reasoning": "레거시 메서드", "used_tools": []}
 
     def _create_enhanced_prompt_with_tools(self, user_message: str, tool_results: Dict[str, Any]) -> str:
         """도구 결과를 포함한 향상된 프롬프트 생성"""
         tool_info = ""
         if tool_results.get("used_tools"):
-            tool_info = f"\n\n도구 실행 결과:\n{tool_results.get('response', '')}\n"
+            tool_info = f"\n\n=== 실시간 도구 실행 결과 ===\n{tool_results.get('response', '')}\n=== 실시간 도구 실행 결과 끝 ===\n"
         
         enhanced_prompt = f"""사용자 질문: {user_message}
 {tool_info}
-위의 도구 실행 결과를 바탕으로 사용자의 질문에 대해 정확하고 유용한 답변을 제공해주세요.
 
-특별 요청사항:
-- 시간 관련 질문의 경우: 시간 계산, 포맷팅, 추가적인 정보 제공
-- 날씨 관련 질문의 경우: 표 형태나 구조화된 형태로 정보 정리
-- 복합 질문의 경우: 여러 정보를 종합하여 완전한 답변 제공
+🔴 **절대 준수 사항 (반드시 읽고 따를 것!):**
+1. **오직 위의 실시간 도구 실행 결과만 사용하세요**
+2. **절대로 추측, 예시, 가짜 데이터를 생성하지 마세요**
+3. **도구 결과의 정확한 수치, 시간, 날씨 상태만 사용하세요**
+4. **시간은 도구에서 제공한 ISO 형식을 한국 시간으로 변환하여 표시하세요**
+5. **날씨 데이터가 없는 도시는 "데이터 없음"으로 표시하세요**
 
-항상 한국어로 친절하고 자세하게 답변해주세요."""
+🚫 **절대 금지 사항:**
+- 임의의 온도, 습도, 풍속 수치 생성 금지
+- "예상", "대략", "보통" 등의 추측성 표현 금지  
+- 도구 결과에 없는 미세먼지, 공기질 정보 추가 금지
+- 도구 결과와 다른 날씨 상태 표시 금지
+
+✅ **정확한 답변 방법:**
+- 시간: 도구 결과의 ISO 시간을 "2025년 6월 24일 오전 11:45" 형식으로 변환
+- 날씨: 도구 결과의 정확한 상태와 온도만 사용
+- 표: 실제 도구 데이터로만 구성, 없는 데이터는 "정보 없음"
+
+한국어로 정확하고 친절하게 답변해주세요."""
 
         return enhanced_prompt
 
