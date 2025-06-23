@@ -66,6 +66,62 @@ try:
             # 대화 삭제
             agent.clear_conversation()
             assert len(agent.history) == 0
+        
+        async def test_handle_workflow_mode(self):
+            """워크플로우 모드 처리 함수 테스트"""
+            from unittest.mock import AsyncMock, Mock, patch
+            
+            class MockConfig:
+                def get_llm_config(self):
+                    return {"api_key": "test", "base_url": "test", "model": "test", "max_tokens": 100, "temperature": 0.7}
+                def get_config_value(self, section, key, default=None):
+                    if section == "LLM" and key == "workflow":
+                        return "basic_chat"
+                    return default
+            
+            config = MockConfig()
+            agent = LLMAgent(config, None)
+            
+            # Mock 워크플로우 클래스
+            mock_workflow = Mock()
+            mock_workflow.run = AsyncMock(return_value="테스트 응답")
+            mock_workflow_cls = Mock(return_value=mock_workflow)
+            
+            with patch('application.llm.llm_agent.get_workflow', return_value=mock_workflow_cls):
+                result = await agent._handle_workflow_mode("테스트 메시지", None)
+                
+                assert result["response"] == "테스트 응답"
+                assert result["workflow"] == "basic_chat"
+                assert result["reasoning"] == ""
+                assert result["used_tools"] == []
+                assert len(agent.history) == 1  # _handle_workflow_mode에서는 사용자 메시지를 추가하지 않음
+        
+        async def test_handle_workflow_mode_error(self):
+            """워크플로우 모드 오류 처리 테스트"""
+            from unittest.mock import AsyncMock, Mock, patch
+            
+            class MockConfig:
+                def get_llm_config(self):
+                    return {"api_key": "test", "base_url": "test", "model": "test", "max_tokens": 100, "temperature": 0.7}
+                def get_config_value(self, section, key, default=None):
+                    if section == "LLM" and key == "workflow":
+                        return "basic_chat"
+                    return default
+            
+            config = MockConfig()
+            agent = LLMAgent(config, None)
+            
+            # Mock 워크플로우가 예외를 발생시키도록 설정
+            mock_workflow = Mock()
+            mock_workflow.run = AsyncMock(side_effect=Exception("테스트 예외"))
+            mock_workflow_cls = Mock(return_value=mock_workflow)
+            
+            with patch('application.llm.llm_agent.get_workflow', return_value=mock_workflow_cls):
+                result = await agent._handle_workflow_mode("테스트 메시지", None)
+                
+                assert "워크플로우 처리 중 문제가 발생했습니다" in result["response"]
+                assert "테스트 예외" in result["reasoning"]
+                assert result["used_tools"] == []
 
 except ImportError:
     print("LLMAgent import failed - skipping LLMAgent tests")

@@ -9,12 +9,12 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from application.config.config_manager import ConfigManager
 from application.llm.mcp.mcp_tool_manager import MCPToolManager
+from application.llm.workflow import get_workflow
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("llm") or logging.getLogger("llm_agent")
-# 디버깅을 위한 로그 레벨 INFO 설정
-logger.setLevel(logging.INFO)
+logger: logging.Logger = setup_logger("llm") or logging.getLogger("llm")
 
+LLM_AGENT_TIMEOUT = 300.0
 
 class LLMAgent:
     """MCPToolManager를 사용하는 LLM 에이전트"""
@@ -46,7 +46,7 @@ class LLMAgent:
         if not self._client:
             cfg = self.config_manager.get_llm_config()
             self._client = AsyncOpenAI(
-                api_key=cfg["api_key"], base_url=cfg["base_url"], timeout=300.0
+                api_key=cfg["api_key"], base_url=cfg["base_url"], timeout=LLM_AGENT_TIMEOUT
             )
         return self._client
 
@@ -54,7 +54,8 @@ class LLMAgent:
     async def test_connection(api_key: str, base_url: str, model: str) -> Dict[str, Any]:
         """LLM 서버 연결 테스트"""
         try:
-            client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=300.0)
+            client = AsyncOpenAI(
+                api_key=api_key, base_url=base_url, timeout=LLM_AGENT_TIMEOUT)
             response = await client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": "Hello"}],
@@ -79,7 +80,8 @@ class LLMAgent:
     async def get_available_models(api_key: str, base_url: str) -> Dict[str, Any]:
         """사용 가능한 모델 목록 가져오기"""
         try:
-            client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=300.0)
+            client = AsyncOpenAI(
+                api_key=api_key, base_url=base_url, timeout=LLM_AGENT_TIMEOUT)
             models_response = await client.models.list()
 
             models = []
@@ -119,11 +121,53 @@ class LLMAgent:
     ) -> Dict[str, Any]:
         return await self._respond(user_message, streaming_callback)
 
+    async def _handle_workflow_mode(
+        self, user_msg: str, streaming_cb: Optional[Callable[[str], None]]
+    ) -> Dict[str, Any]:
+        """워크플로우 모드 처리"""
+        # 워크플로우 이름 가져오기 (없으면 basic_chat)
+        workflow_name: str = (
+            self.config_manager.get_config_value(
+                "LLM", "workflow", "basic_chat")
+            or "basic_chat"
+        )
+
+        try:
+            workflow_cls = get_workflow(workflow_name)
+            if workflow_cls is None:
+                logger.warning(
+                    "워크플로우 '%s' 을 찾을 수 없어 기본 워크플로우로 대체합니다.",
+                    workflow_name,
+                )
+                workflow_cls = get_workflow("basic_chat")
+
+            assert (
+                workflow_cls is not None
+            ), "기본 워크플로우가 레지스트리에 등록되지 않았습니다"
+
+            workflow = workflow_cls()
+            response_text: str = await workflow.run(self, user_msg, streaming_cb)
+            self.add_assistant_message(response_text)
+            return {
+                "response": response_text,
+                "reasoning": "",  # 추후 워크플로우 세부 reasoning 추가 가능
+                "used_tools": [],
+                "workflow": workflow_name,
+            }
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("워크플로우 실행 중 예외 발생: %s", exc)
+            fallback_response = "죄송합니다. 워크플로우 처리 중 문제가 발생했습니다."
+            self.add_assistant_message(fallback_response)
+            return {
+                "response": fallback_response,
+                "reasoning": str(exc),
+                "used_tools": [],
+            }
+
     async def _respond(
         self, user_msg: str, streaming_cb: Optional[Callable[[str], None]] = None
     ) -> Dict[str, Any]:
         """사용자 메시지에 대한 응답을 생성합니다."""
-        logger.info(f"사용자 메시지: {user_msg}")
         self.add_user_message(user_msg)
         response_data = {}
 
@@ -131,52 +175,12 @@ class LLMAgent:
         # 1) LLM Workflow 모드 우선 처리
         # ------------------------------------------------------------------
         llm_mode: str = (
-            self.config_manager.get_config_value("LLM", "mode", "basic") or "basic"
+            self.config_manager.get_config_value(
+                "LLM", "mode", "basic") or "basic"
         ).lower()
 
         if llm_mode == "workflow":
-            # 워크플로우 이름 가져오기 (없으면 basic_chat)
-            workflow_name: str = (
-                self.config_manager.get_config_value("LLM", "workflow", "basic_chat")
-                or "basic_chat"
-            )
-
-            try:
-                from application.llm.workflow import (
-                    get_workflow,  # pylint: disable=import-outside-toplevel
-                )
-
-                workflow_cls = get_workflow(workflow_name)
-                if workflow_cls is None:
-                    logger.warning(
-                        "워크플로우 '%s' 을 찾을 수 없어 기본 워크플로우로 대체합니다.",
-                        workflow_name,
-                    )
-                    workflow_cls = get_workflow("basic_chat")
-
-                assert (
-                    workflow_cls is not None
-                ), "기본 워크플로우가 레지스트리에 등록되지 않았습니다"
-
-                workflow = workflow_cls()
-                response_text: str = await workflow.run(self, user_msg, streaming_cb)
-                self.add_assistant_message(response_text)
-                return {
-                    "response": response_text,
-                    "reasoning": "",  # 추후 워크플로우 세부 reasoning 추가 가능
-                    "used_tools": [],
-                    "workflow": workflow_name,
-                }
-
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.error("워크플로우 실행 중 예외 발생: %s", exc)
-                fallback_response = "죄송합니다. 워크플로우 처리 중 문제가 발생했습니다."
-                self.add_assistant_message(fallback_response)
-                return {
-                    "response": fallback_response,
-                    "reasoning": str(exc),
-                    "used_tools": [],
-                }
+            return await self._handle_workflow_mode(user_msg, streaming_cb)
 
         # MCPToolManager를 사용하는 경우
         if self.mcp_tool_manager:
@@ -261,7 +265,8 @@ class LLMAgent:
             r"\b\w+\.\w+\b",  # domain.extension 형식
         ]
 
-        has_special_pattern = any(re.search(pattern, msg) for pattern in special_patterns)
+        has_special_pattern = any(re.search(pattern, msg)
+                                  for pattern in special_patterns)
         has_keyword = any(keyword in msg_lower for keyword in tool_keywords)
 
         return has_special_pattern or has_keyword

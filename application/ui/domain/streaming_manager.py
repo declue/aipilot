@@ -68,6 +68,18 @@ class StreamingManager:
     # ------------------------------------------------------------------
     # 내부 동작
     # ------------------------------------------------------------------
+    def _parse_and_update_reasoning_state(self, content: str) -> None:
+        """추론 과정 감지 및 상태 업데이트"""
+        (
+            is_reasoning,
+            reasoning_content,
+            final_answer,
+        ) = self.reasoning_parser.parse_reasoning_content(content)
+
+        self.state.is_reasoning_model = is_reasoning
+        self.state.reasoning_content = reasoning_content
+        self.state.final_answer = final_answer
+
     def _update_display(self) -> None:
         """실시간으로 화면 업데이트"""
         if not self.state.is_streaming:
@@ -80,15 +92,7 @@ class StreamingManager:
         logger.debug("🔄 화면 업데이트: %s자", len(self.state.streaming_content))
 
         # 추론 과정 감지 및 분리
-        (
-            is_reasoning,
-            reasoning_content,
-            final_answer,
-        ) = self.reasoning_parser.parse_reasoning_content(self.state.streaming_content)
-
-        self.state.is_reasoning_model = is_reasoning
-        self.state.reasoning_content = reasoning_content
-        self.state.final_answer = final_answer
+        self._parse_and_update_reasoning_state(self.state.streaming_content)
 
         if self.state.current_streaming_bubble:
             # 스트리밍 중에도 original_message 업데이트
@@ -115,19 +119,11 @@ class StreamingManager:
         prev_final_answer = self.state.final_answer
 
         self.state.streaming_content = final_content
-        (
-            is_reasoning,
-            reasoning_content,
-            final_answer,
-        ) = self.reasoning_parser.parse_reasoning_content(final_content)
+        self._parse_and_update_reasoning_state(final_content)
 
         logger.info(
-            f"🧠 파싱 결과 - 추론모델: {is_reasoning}, 추론내용: {len(reasoning_content)}자, 답변: {len(final_answer)}자"
+            f"🧠 파싱 결과 - 추론모델: {self.state.is_reasoning_model}, 추론내용: {len(self.state.reasoning_content)}자, 답변: {len(self.state.final_answer)}자"
         )
-
-        self.state.is_reasoning_model = is_reasoning
-        self.state.reasoning_content = reasoning_content
-        self.state.final_answer = final_answer
 
         # 기존에 추론 모델로 감지되었다면 상태 유지
         if prev_is_reasoning and not self.state.is_reasoning_model:
@@ -179,14 +175,7 @@ class StreamingManager:
             # 남은 청크들 마지막으로 처리
             self.state.process_pending_chunks()
 
-            (
-                is_reasoning,
-                reasoning_content,
-                final_answer,
-            ) = self.reasoning_parser.parse_reasoning_content(self.state.streaming_content)
-            self.state.is_reasoning_model = is_reasoning
-            self.state.reasoning_content = reasoning_content
-            self.state.final_answer = final_answer
+            self._parse_and_update_reasoning_state(self.state.streaming_content)
 
             # 스트리밍 완료 처리
             self.finish_streaming(self.state.streaming_content)
