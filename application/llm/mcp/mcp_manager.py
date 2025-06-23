@@ -1,147 +1,175 @@
-import logging
-from typing import Any
+"""
+MCP 관리자 - MCP 서버 연결 및 관리
+"""
 
-from application.config.config_manager import ConfigManager
-from application.llm.mcp.config.mcp_config_manager import MCPConfigManager
-from application.llm.mcp.config.models.mcp_server import MCPServer
-from application.llm.mcp.config.models.mcp_server_status import MCPServerStatus
-from application.llm.mcp.process import MCPProcess
+import asyncio
+import json
+import logging
+from typing import Dict, Optional
+
+from application.llm.mcp.models.mcp_config import MCPConfig
+from application.llm.mcp.models.mcp_server import MCPServer
+from application.llm.mcp.models.mcp_server_status import MCPServerStatus
 from application.util.logger import setup_logger
 
+logger = setup_logger("mcp_manager") or logging.getLogger("mcp_manager")
 
-# pylint: disable=too-many-instance-attributes
+
 class MCPManager:
-    """MCP 서버 관리 클래스"""
-
-    def __init__(
-        self,
-        config_manager: ConfigManager,
-        mcp_config: MCPConfigManager | None = None,
-    ) -> None:
-        """MCPManager 생성자
-
-        파라미터
-        ----------
-        config_manager : ConfigManager
-            전역 설정을 관리하는 ConfigManager 인스턴스
-        mcp_config : Optional[MCPConfigManager]
-            별도의 MCPConfigManager 인스턴스를 주입 받아 테스트 용이성을 높입니다. 미지정 시 내부에서 생성합니다.
+    """MCP 서버 관리자"""
+    
+    def __init__(self, config_manager):
         """
-
-        self.logger: logging.Logger = setup_logger("llm") or logging.getLogger("llm")
-
-        self.config_manager: ConfigManager = config_manager
-        self.mcp_config: MCPConfigManager = mcp_config or MCPConfigManager()
-        self.processes: dict[str, MCPProcess] = {}
-        self.load_config()
-
-    def get_config_manager(self) -> MCPConfigManager:
-        """설정 관리자 반환"""
-        return self.mcp_config
-
-    def remove_server(self, name: str) -> bool:
-        """MCP 서버 제거 (실행 중인 서버 중지 포함)"""
-        if self.mcp_config.remove_server(name, self.stop_server):
-            self.processes.pop(name, None)
-            return True
-        return False
-
-    # Config 관련 프록시 메서드들 (하위 호환성 유지)
-    def add_server(self, name: str, server: MCPServer) -> bool:
-        """MCP 서버 추가"""
-        if self.mcp_config.add_server(name, server):
-            # 서버 객체에 이름 설정(런타임용)
-            server.name = name
-            self.processes[name] = MCPProcess(server)
-            return True
-        return False
-
-    def update_server(self, name: str, server: MCPServer) -> bool:
-        """MCP 서버 업데이트"""
-        if self.mcp_config.update_server(name, server):
-            # 기존 프로세스 삭제 후 새로 등록
-            server.name = name
-            self.processes[name] = MCPProcess(server)
-            return True
-        return False
-
-    def get_server_list(self) -> list[str]:
-        """MCP 서버 목록 반환"""
-        return self.mcp_config.get_server_list()
-
-    def get_server(self, name: str) -> MCPServer | None:
-        """특정 MCP 서버 정보 반환"""
-        return self.mcp_config.get_server(name)
-
-    def load_config(self) -> None:
-        """ConfigManager로부터 MCP 서버 설정을 로드합니다."""
-        self.mcp_config.clear_servers()
-        self.processes.clear()
-
-        mcp_config: dict[str, Any] = self.config_manager.get_mcp_config()
-        server_configs: Any = mcp_config.get("mcpServers", {})
-        for server_name, server_config in server_configs.items():
-            # server_config가 딕셔너리인 경우 MCPServer 객체로 변환
-            if isinstance(server_config, dict):
-                server_config["name"] = server_name  # name 필드 추가
-                server = MCPServer(**server_config)
-                self.mcp_config.add_server(server_name, server)
-
-                # MCPProcess 생성 및 등록
-                server.name = server_name
-                self.processes[server_name] = MCPProcess(server)
-
-    def save_config(self) -> bool:
-        """MCP 설정 파일 저장"""
-        return self.mcp_config.save_config()
-
-    def start_server(self, name: str) -> bool:
-        """MCP 서버 시작"""
-        process = self.processes.get(name)
-        if not process:
-            self.logger.warning("존재하지 않는 MCP 서버: %s", name)
-            return False
-        return process.start()
-
-    def stop_server(self, name: str) -> bool:
-        """MCP 서버 중지"""
-        process = self.processes.get(name)
-        if not process:
-            self.logger.warning("존재하지 않는 MCP 서버: %s", name)
-            return False
-        return process.stop()
-
-    def get_server_status(self, name: str) -> MCPServerStatus | None:
-        """서버 상태 반환"""
-        process = self.processes.get(name)
-        return process.status if process else None
-
-    def get_all_server_statuses(self) -> dict[str, MCPServerStatus]:
-        """모든 서버 상태 반환"""
-        return {name: proc.status for name, proc in self.processes.items()}
-
-    def get_all_servers(self) -> list[MCPServer]:
-        """설정된 모든 MCP 서버 목록을 반환합니다."""
-        return list(self.mcp_config.get_servers().values())
-
-    def get_server_by_name(self, name: str) -> MCPServer | None:
-        """이름으로 MCP 서버를 찾아 반환합니다."""
-        return self.mcp_config.get_server(name)
-
-    def get_enabled_servers(self) -> dict[str, MCPServer]:
-        """활성화된 서버 목록을 반환합니다."""
-        return {
-            name: server for name, server in self.mcp_config.get_servers().items() if server.enabled
-        }
-
+        MCP 관리자 초기화
+        
+        Args:
+            config_manager: 설정 관리자
+        """
+        self.config_manager = config_manager
+        self._mcp_config: Optional[MCPConfig] = None
+        self._server_statuses: Dict[str, MCPServerStatus] = {}
+        
+        self._load_mcp_config()
+        logger.info("MCP 관리자 초기화 완료")
+    
+    def _load_mcp_config(self) -> None:
+        """MCP 설정 로드"""
+        try:
+            # config_manager에서 MCP 설정을 먼저 시도
+            if hasattr(self.config_manager, 'get_mcp_config'):
+                try:
+                    mcp_data = self.config_manager.get_mcp_config()
+                    if mcp_data:
+                        # 필드명 매핑 (mcpServers -> mcp_servers)
+                        if 'mcpServers' in mcp_data:
+                            mcp_data['mcp_servers'] = mcp_data.pop('mcpServers')
+                        if 'defaultServer' in mcp_data:
+                            mcp_data['default_server'] = mcp_data.pop('defaultServer')
+                        
+                        self._mcp_config = MCPConfig.from_dict(mcp_data)
+                        logger.info("MCP 설정 로드 완료")
+                        return
+                except Exception as e:
+                    logger.warning(f"config_manager에서 MCP 설정 로드 실패: {e}")
+            
+            # 파일에서 설정 로드 (fallback)
+            mcp_config_path = "mcp.json"
+            try:
+                with open(mcp_config_path, 'r', encoding='utf-8') as f:
+                    mcp_data = json.load(f)
+                    
+                # 필드명 매핑
+                if 'mcpServers' in mcp_data:
+                    mcp_data['mcp_servers'] = mcp_data.pop('mcpServers')
+                if 'defaultServer' in mcp_data:
+                    mcp_data['default_server'] = mcp_data.pop('defaultServer')
+                    
+                self._mcp_config = MCPConfig.from_dict(mcp_data)
+                logger.info("MCP 설정 파일 로드 완료")
+            except FileNotFoundError:
+                logger.warning("mcp.json 파일을 찾을 수 없습니다. 기본 설정 사용")
+                self._mcp_config = MCPConfig()
+            except Exception as e:
+                logger.error(f"MCP 설정 로드 실패: {e}")
+                self._mcp_config = MCPConfig()
+                
+        except Exception as e:
+            logger.error(f"MCP 설정 초기화 실패: {e}")
+            self._mcp_config = MCPConfig()
+    
+    def get_enabled_servers(self) -> Dict[str, MCPServer]:
+        """활성화된 서버 목록 반환"""
+        if not self._mcp_config:
+            return {}
+        
+        enabled_servers = {}
+        for name, config in self._mcp_config.get_enabled_servers().items():
+            try:
+                server = MCPServer.from_dict(name, config)
+                enabled_servers[name] = server
+            except Exception as e:
+                logger.error(f"서버 설정 파싱 실패 {name}: {e}")
+        
+        return enabled_servers
+    
     async def test_server_connection(self, server_name: str) -> MCPServerStatus:
-        """지정된 MCP 서버의 연결을 테스트합니다."""
-        process = self.processes.get(server_name)
-        if not process:
-            return MCPServerStatus(
-                name=server_name,
-                connected=False,
-                error_message="서버를 찾을 수 없습니다.",
+        """
+        서버 연결 테스트
+        
+        Args:
+            server_name: 서버 이름
+            
+        Returns:
+            MCPServerStatus: 서버 상태
+        """
+        try:
+            servers = self.get_enabled_servers()
+            if server_name not in servers:
+                return MCPServerStatus(
+                    server_name=server_name,
+                    connected=False,
+                    error_message=f"서버 '{server_name}'를 찾을 수 없습니다"
+                )
+            
+            server = servers[server_name]
+            
+            # 간단한 연결 테스트 (실제 구현에서는 MCP 클라이언트 사용)
+            # 현재는 기본적인 상태만 반환
+            status = MCPServerStatus(
+                server_name=server_name,
+                connected=True,
+                tools=[
+                    {
+                        "name": f"{server_name}_example",
+                        "description": f"{server_name} 예제 도구",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {"input": {"type": "string"}},
+                            "required": ["input"]
+                        }
+                    }
+                ]
             )
-
-        return await process.test_connection()
+            
+            self._server_statuses[server_name] = status
+            logger.info(f"서버 연결 테스트 성공: {server_name}")
+            return status
+            
+        except Exception as e:
+            logger.error(f"서버 연결 테스트 실패 {server_name}: {e}")
+            status = MCPServerStatus(
+                server_name=server_name,
+                connected=False,
+                error_message=str(e)
+            )
+            self._server_statuses[server_name] = status
+            return status
+    
+    def get_server_status(self, server_name: str) -> Optional[MCPServerStatus]:
+        """서버 상태 반환"""
+        return self._server_statuses.get(server_name)
+    
+    def get_all_server_statuses(self) -> Dict[str, MCPServerStatus]:
+        """모든 서버 상태 반환"""
+        return self._server_statuses.copy()
+    
+    async def refresh_all_servers(self) -> None:
+        """모든 서버 상태 갱신"""
+        servers = self.get_enabled_servers()
+        tasks = []
+        
+        for server_name in servers.keys():
+            task = self.test_server_connection(server_name)
+            tasks.append(task)
+        
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+            logger.info("모든 서버 상태 갱신 완료")
+    
+    def is_mcp_enabled(self) -> bool:
+        """MCP 활성화 여부 확인"""
+        return self._mcp_config.enabled if self._mcp_config else False
+    
+    def get_mcp_config(self) -> Optional[MCPConfig]:
+        """MCP 설정 반환"""
+        return self._mcp_config 

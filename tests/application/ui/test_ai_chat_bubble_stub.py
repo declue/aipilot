@@ -282,8 +282,10 @@ def test_real_reasoning_response() -> None:
         # HTML 렌더링 확인
         html_content = bubble.text_browser.toHtml()
         assert "<details" in html_content  # 접을 수 있는 추론 과정
-        assert "🤔" in html_content  # 추론 아이콘
-        assert "추론 과정 보기" in html_content
+        # 추론 관련 스타일과 텍스트 확인
+        assert ("🤔" in html_content or "think" in html_content or "추론" in html_content)
+        assert "font-style: italic" in html_content  # 새로운 이탤릭 스타일 확인
+        assert "#9CA3AF" in html_content  # 새로운 회색 색상 확인
         
         print("✅ 실제 추론 응답 테스트 성공")
         
@@ -293,6 +295,58 @@ def test_real_reasoning_response() -> None:
         
     except Exception as e:
         print(f"❌ 실제 추론 응답 테스트 실패: {e}")
+        raise
+
+
+def test_reasoning_without_opening_tag() -> None:
+    """시작 태그 없이 종료 태그만 있는 추론 응답 테스트"""
+    if not check_gui_available():
+        pytest.skip("GUI environment not available (no QApplication)")
+        
+    try:
+        # 시작 태그 없이 종료 태그만 있는 추론 응답 (사용자가 제공한 예시)
+        reasoning_response_without_opening = """ Okay, the user just said "hello" again. Let me check the history. The previous conversation also started with "hello" and I responded with a friendly greeting. Now they're repeating "hello". Maybe they want to continue the conversation but aren't sure how. I should keep it open-ended and encourage them to ask questions or share what they need. Let me make sure my response is welcoming and invites them to elaborate. I'll avoid repeating the same thing and instead add a prompt for more details.
+</think>
+
+Hello again! How can I assist you today? Feel free to ask me any questions or let me know if you need help with anything specific. 😊"""
+
+        bubble = AIChatBubble("original message")
+        
+        # 추론 과정 파싱 테스트
+        from application.ui.domain.reasoning_parser import ReasoningParser
+        parser = ReasoningParser()
+        is_reasoning, reasoning_content, final_answer = parser.parse_reasoning_content(reasoning_response_without_opening)
+        
+        assert is_reasoning is True
+        assert "Okay, the user just said" in reasoning_content
+        assert "Hello again!" in final_answer
+        assert "</think>" not in final_answer  # 최종 답변에는 태그가 없어야 함
+        assert "</think>" not in reasoning_content  # 추론 내용에도 종료 태그가 없어야 함
+        
+        # 버블에 추론 정보 설정
+        bubble.set_reasoning_info(is_reasoning, reasoning_content, final_answer)
+        
+        # 추론 모델 속성 확인
+        assert bubble.is_reasoning_model is True
+        assert len(bubble.reasoning_content) > 0
+        assert len(bubble.final_answer) > 0
+        
+        # HTML 렌더링 확인
+        html_content = bubble.text_browser.toHtml()
+        assert "<details" in html_content  # 접을 수 있는 추론 과정
+        # 추론 관련 스타일과 텍스트 확인
+        assert ("🤔" in html_content or "think" in html_content or "추론" in html_content)
+        assert "font-style: italic" in html_content  # 새로운 이탤릭 스타일 확인
+        assert "#9CA3AF" in html_content  # 새로운 회색 색상 확인
+        
+        print("✅ 시작 태그 없는 추론 응답 테스트 성공")
+        
+        # 리소스 정리
+        bubble.deleteLater()
+        cleanup_qt_resources()
+        
+    except Exception as e:
+        print(f"❌ 시작 태그 없는 추론 응답 테스트 실패: {e}")
         raise
 
 

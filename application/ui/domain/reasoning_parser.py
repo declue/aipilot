@@ -35,39 +35,81 @@ class ReasoningParser:
             )
             return (True, reasoning_content, final_answer)
 
-        # 태그 기반 분리 로직 (동일)
+        # 태그 기반 분리 로직
         if "</think>" in content:
+            # 1. 완전한 <think>...</think> 패턴 찾기
             think_pattern = r"<think>(.*?)</think>"
             match = re.search(think_pattern, content, re.DOTALL)
             if match:
                 reasoning_content = match.group(1).strip()
                 final_answer = re.sub(think_pattern, "", content, flags=re.DOTALL).strip()
                 logger.debug(
-                    f"🧠 think 태그 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
+                    f"🧠 완전한 think 태그 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
                 )
                 return (True, reasoning_content, final_answer)
+            
+            # 2. 시작 태그 없이 </think>로만 끝나는 경우 처리
+            think_end_pos = content.find("</think>")
+            if think_end_pos != -1:
+                reasoning_content = content[:think_end_pos].strip()
+                final_answer = content[think_end_pos + 8:].strip()  # "</think>" 길이 = 8
+                
+                # 추론 내용이 충분히 있고 최종 답변도 있는 경우만 처리
+                if len(reasoning_content) > 10 and len(final_answer) > 0:
+                    logger.debug(
+                        f"🧠 종료 태그만 있는 think 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
+                    )
+                    return (True, reasoning_content, final_answer)
 
         # reasoning 태그
-        reasoning_tag_pattern = r"<reasoning>(.*?)</reasoning>"
-        match = re.search(reasoning_tag_pattern, content, re.DOTALL)
-        if match:
-            reasoning_content = match.group(1).strip()
-            final_answer = re.sub(reasoning_tag_pattern, "", content, flags=re.DOTALL).strip()
-            logger.debug(
-                f"🧠 reasoning 태그 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
-            )
-            return (True, reasoning_content, final_answer)
+        if "</reasoning>" in content:
+            # 1. 완전한 <reasoning>...</reasoning> 패턴 찾기
+            reasoning_tag_pattern = r"<reasoning>(.*?)</reasoning>"
+            match = re.search(reasoning_tag_pattern, content, re.DOTALL)
+            if match:
+                reasoning_content = match.group(1).strip()
+                final_answer = re.sub(reasoning_tag_pattern, "", content, flags=re.DOTALL).strip()
+                logger.debug(
+                    f"🧠 완전한 reasoning 태그 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
+                )
+                return (True, reasoning_content, final_answer)
+            
+            # 2. 시작 태그 없이 </reasoning>로만 끝나는 경우 처리
+            reasoning_end_pos = content.find("</reasoning>")
+            if reasoning_end_pos != -1:
+                reasoning_content = content[:reasoning_end_pos].strip()
+                final_answer = content[reasoning_end_pos + 12:].strip()  # "</reasoning>" 길이 = 12
+                
+                if len(reasoning_content) > 10 and len(final_answer) > 0:
+                    logger.debug(
+                        f"🧠 종료 태그만 있는 reasoning 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
+                    )
+                    return (True, reasoning_content, final_answer)
 
         # <thinking> 태그
-        thinking_tag_pattern = r"<thinking>(.*?)</thinking>"
-        match = re.search(thinking_tag_pattern, content, re.DOTALL)
-        if match:
-            reasoning_content = match.group(1).strip()
-            final_answer = re.sub(thinking_tag_pattern, "", content, flags=re.DOTALL).strip()
-            logger.debug(
-                f"🧠 thinking 태그 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
-            )
-            return (True, reasoning_content, final_answer)
+        if "</thinking>" in content:
+            # 1. 완전한 <thinking>...</thinking> 패턴 찾기
+            thinking_tag_pattern = r"<thinking>(.*?)</thinking>"
+            match = re.search(thinking_tag_pattern, content, re.DOTALL)
+            if match:
+                reasoning_content = match.group(1).strip()
+                final_answer = re.sub(thinking_tag_pattern, "", content, flags=re.DOTALL).strip()
+                logger.debug(
+                    f"🧠 완전한 thinking 태그 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
+                )
+                return (True, reasoning_content, final_answer)
+            
+            # 2. 시작 태그 없이 </thinking>로만 끝나는 경우 처리
+            thinking_end_pos = content.find("</thinking>")
+            if thinking_end_pos != -1:
+                reasoning_content = content[:thinking_end_pos].strip()
+                final_answer = content[thinking_end_pos + 11:].strip()  # "</thinking>" 길이 = 11
+                
+                if len(reasoning_content) > 10 and len(final_answer) > 0:
+                    logger.debug(
+                        f"🧠 종료 태그만 있는 thinking 감지: 추론 {len(reasoning_content)}자, 답변 {len(final_answer)}자"
+                    )
+                    return (True, reasoning_content, final_answer)
 
         # <thought> 태그
         thought_tag_pattern = r"<thought>(.*?)</thought>"

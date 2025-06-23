@@ -1,355 +1,450 @@
-from __future__ import annotations
+"""
+Langchain 기반 LLM 에이전트
+"""
 
 import logging
-import re
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional
 
-from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam
-
-from application.config.config_manager import ConfigManager
-from application.llm.mcp.mcp_tool_manager import MCPToolManager
-from application.llm.workflow import get_workflow
+from application.llm.interfaces.llm_interface import LLMInterface
+from application.llm.models.llm_config import LLMConfig
+from application.llm.services.conversation_service import ConversationService
+from application.llm.services.llm_service import LLMService
+from application.llm.workflow.workflow_utils import get_workflow
 from application.util.logger import setup_logger
 
-logger: logging.Logger = setup_logger("llm") or logging.getLogger("llm")
+logger = setup_logger("llm_agent") or logging.getLogger("llm_agent")
 
-LLM_AGENT_TIMEOUT = 300.0
 
-class LLMAgent:
-    """MCPToolManager를 사용하는 LLM 에이전트"""
+class LLMAgent(LLMInterface):
+    """Langchain 기반 LLM 에이전트"""
 
-    def __init__(self, config_manager: ConfigManager, mcp_tool_manager: MCPToolManager):
+    def __init__(self, config_manager, mcp_tool_manager=None):
+        """
+        LLM 에이전트 초기화
+        
+        Args:
+            config_manager: 설정 관리자
+            mcp_tool_manager: MCP 도구 관리자 (선택사항)
+        """
         self.config_manager = config_manager
-        self.history: List[ChatCompletionMessageParam] = []
-        self._client: Optional[AsyncOpenAI] = None
         self.mcp_tool_manager = mcp_tool_manager
+        
+        # 설정 로드
+        self._load_config()
+        
+        # 서비스 초기화
+        self.llm_service = LLMService(self.llm_config)
+        self.conversation_service = ConversationService()
+        
+        # 히스토리 (하위 호환성)
+        self.history = []
+        
+        logger.info("LLM 에이전트 초기화 완료")
 
-    def reinitialize_client(self) -> None:
-        """설정 변경 시 클라이언트를 재초기화합니다."""
-        self._client = None
-
-        # 새로운 설정 확인을 위한 로그
+    def _load_config(self) -> None:
+        """설정 로드"""
         try:
-            cfg = self.config_manager.get_llm_config()
-            logger.info(
-                f"LLM Agent 클라이언트 재초기화: 모델={cfg.get('model')}, base_url={cfg.get('base_url')}"
-            )
+            # 프로필 기반 설정 로드 (mode와 workflow 포함)
+            llm_config_dict = self.config_manager.get_llm_config()
+            
+            self.llm_config = LLMConfig.from_dict(llm_config_dict)
+            logger.debug(f"LLM 설정 로드 완료: {self.llm_config.model}, 모드: {self.llm_config.mode}")
+            
         except Exception as e:
-            logger.error(f"LLM Agent 설정 로드 실패: {e}")
-
-        logger.info("LLM Agent 클라이언트가 재초기화되었습니다.")
-
-    @property
-    def client(self) -> AsyncOpenAI:
-        """OpenAI 클라이언트를 반환합니다."""
-        if not self._client:
-            cfg = self.config_manager.get_llm_config()
-            self._client = AsyncOpenAI(
-                api_key=cfg["api_key"], base_url=cfg["base_url"], timeout=LLM_AGENT_TIMEOUT
-            )
-        return self._client
-
-    @staticmethod
-    async def test_connection(api_key: str, base_url: str, model: str) -> Dict[str, Any]:
-        """LLM 서버 연결 테스트"""
-        try:
-            client = AsyncOpenAI(
-                api_key=api_key, base_url=base_url, timeout=LLM_AGENT_TIMEOUT)
-            response = await client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": "Hello"}],
-                max_tokens=10,
+            logger.error(f"설정 로드 실패: {e}")
+            # 기본 설정으로 폴백
+            self.llm_config = LLMConfig(
+                api_key="",
+                model="gpt-3.5-turbo",
+                mode="basic"
             )
 
-            return {
-                "success": True,
-                "message": "연결 성공",
-                "response": response.choices[0].message.content or "",
-                "model": model,
-            }
-
-        except Exception as exception:
-            return {
-                "success": False,
-                "message": f"연결 실패: {str(exception)}",
-                "error": str(exception),
-            }
-
-    @staticmethod
-    async def get_available_models(api_key: str, base_url: str) -> Dict[str, Any]:
-        """사용 가능한 모델 목록 가져오기"""
+    async def generate_response(
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
+    ) -> Dict[str, Any]:
+        """
+        사용자 메시지에 대한 응답 생성
+        
+        Args:
+            user_message: 사용자 입력 메시지
+            streaming_callback: 스트리밍 콜백 함수
+            
+        Returns:
+            Dict[str, Any]: 응답 데이터
+        """
         try:
-            client = AsyncOpenAI(
-                api_key=api_key, base_url=base_url, timeout=LLM_AGENT_TIMEOUT)
-            models_response = await client.models.list()
-
-            models = []
-            async for model in models_response:
-                models.append(model.id)
-            models.sort()
-
-            return {
-                "success": True,
-                "models": models,
-                "message": f"{len(models)}개 모델을 찾았습니다",
-            }
-
-        except Exception as exception:
-            return {
-                "success": False,
-                "models": [],
-                "message": f"모델 목록 가져오기 실패: {str(exception)}",
-                "error": str(exception),
-            }
-
-    def add_user_message(self, text: str) -> None:
-        self.history.append({"role": "user", "content": text})
-
-    def add_assistant_message(self, text: str) -> None:
-        self.history.append({"role": "assistant", "content": text})
-
-    def clear_conversation(self) -> None:
-        self.history.clear()
-
-    async def generate_response(self, user_message: str) -> str:
-        result = await self._respond(user_message)
-        return cast(str, result["response"])
+            logger.info(f"LLM 응답 생성 시작: {user_message[:50]}...")
+            
+            # 사용자 메시지 추가
+            self.add_user_message(user_message)
+            
+            # 모드에 따른 처리
+            mode = self._get_llm_mode()
+            
+            if mode == "workflow":
+                return await self._handle_workflow_mode(user_message, streaming_callback)
+            elif mode == "mcp_tools" and self.mcp_tool_manager:
+                return await self._handle_mcp_tools_mode(user_message, streaming_callback)
+            else:
+                return await self._handle_basic_mode(user_message, streaming_callback)
+                
+        except Exception as e:
+            logger.error(f"응답 생성 중 오류: {e}")
+            return self._create_error_response("응답 생성 중 오류가 발생했습니다", str(e))
 
     async def generate_response_streaming(
-        self, user_message: str, streaming_callback: Optional[Callable[[str], None]]
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> Dict[str, Any]:
-        return await self._respond(user_message, streaming_callback)
+        """스트리밍 응답 생성 (하위 호환성)"""
+        return await self.generate_response(user_message, streaming_callback)
+
+    async def _handle_basic_mode(
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
+    ) -> Dict[str, Any]:
+        """기본 모드 처리"""
+        try:
+            response = await self._generate_basic_response(user_message, streaming_callback)
+            return self._create_response_data(response)
+        except Exception as e:
+            logger.error(f"기본 모드 처리 중 오류: {e}")
+            return self._create_error_response("기본 모드 처리 중 오류가 발생했습니다", str(e))
 
     async def _handle_workflow_mode(
-        self, user_msg: str, streaming_cb: Optional[Callable[[str], None]]
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> Dict[str, Any]:
         """워크플로우 모드 처리"""
-        # 워크플로우 이름 가져오기 (없으면 basic_chat)
-        workflow_name: str = (
-            self.config_manager.get_config_value(
-                "LLM", "workflow", "basic_chat")
-            or "basic_chat"
-        )
-
         try:
-            workflow_cls = get_workflow(workflow_name)
-            if workflow_cls is None:
-                logger.warning(
-                    "워크플로우 '%s' 을 찾을 수 없어 기본 워크플로우로 대체합니다.",
-                    workflow_name,
-                )
-                workflow_cls = get_workflow("basic_chat")
-
-            assert (
-                workflow_cls is not None
-            ), "기본 워크플로우가 레지스트리에 등록되지 않았습니다"
-
-            workflow = workflow_cls()
-            response_text: str = await workflow.run(self, user_msg, streaming_cb)
-            self.add_assistant_message(response_text)
+            workflow_name = self.llm_config.workflow or "basic_chat"
+            workflow_class = get_workflow(workflow_name)
+            workflow = workflow_class()
+            
+            result = await workflow.run(self, user_message, streaming_callback)
+            
             return {
-                "response": response_text,
-                "reasoning": "",  # 추후 워크플로우 세부 reasoning 추가 가능
-                "used_tools": [],
+                "response": result,
                 "workflow": workflow_name,
-            }
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.error("워크플로우 실행 중 예외 발생: %s", exc)
-            fallback_response = "죄송합니다. 워크플로우 처리 중 문제가 발생했습니다."
-            self.add_assistant_message(fallback_response)
-            return {
-                "response": fallback_response,
-                "reasoning": str(exc),
-                "used_tools": [],
-            }
-
-    async def _respond(
-        self, user_msg: str, streaming_cb: Optional[Callable[[str], None]] = None
-    ) -> Dict[str, Any]:
-        """사용자 메시지에 대한 응답을 생성합니다."""
-        self.add_user_message(user_msg)
-        response_data = {}
-
-        # ------------------------------------------------------------------
-        # 1) LLM Workflow 모드 우선 처리
-        # ------------------------------------------------------------------
-        llm_mode: str = (
-            self.config_manager.get_config_value(
-                "LLM", "mode", "basic") or "basic"
-        ).lower()
-
-        if llm_mode == "workflow":
-            return await self._handle_workflow_mode(user_msg, streaming_cb)
-
-        # MCPToolManager를 사용하는 경우
-        if self.mcp_tool_manager:
-            try:
-                # 도구가 필요한지 확인
-                if await self._should_use_tools(user_msg):
-                    # MCP 도구를 사용하여 응답 생성
-                    openai_tools = await self.mcp_tool_manager.get_openai_tools()
-
-                    if openai_tools:
-                        tool_result = await self._generate_with_tools(
-                            user_msg, openai_tools, streaming_cb
-                        )
-                        response_data = {
-                            "response": tool_result.get("response", ""),
-                            "reasoning": tool_result.get("reasoning", ""),
-                            "used_tools": [],  # 추후 확장
-                        }
-                    else:
-                        response_text = await self._generate_basic_response(user_msg, streaming_cb)
-                        response_data = {
-                            "response": response_text,
-                            "reasoning": "",
-                            "used_tools": [],
-                        }
-                else:
-                    response_text = await self._generate_basic_response(user_msg, streaming_cb)
-                    response_data = {
-                        "response": response_text,
-                        "reasoning": "",
-                        "used_tools": [],
-                    }
-
-                self.add_assistant_message(response_data["response"])
-                return response_data
-
-            except Exception as exc:
-                logger.error(f"MCPToolManager 사용 중 예외 발생: {exc}")
-                response = "죄송합니다. 도구 처리 중 문제가 발생했습니다."
-                self.add_assistant_message(response)
-                return {"response": response, "reasoning": "", "used_tools": []}
-
-        # 기본 응답 생성
-        try:
-            response_text = await self._generate_basic_response(user_msg, streaming_cb)
-            self.add_assistant_message(response_text)
-            return {
-                "response": response_text,
                 "reasoning": "",
-                "used_tools": [],
+                "used_tools": []
             }
-        except Exception as exc:
-            logger.error(f"응답 생성 중 예외 발생: {exc}")
-            response = "죄송합니다. 응답 생성 중 문제가 발생했습니다."
-            self.add_assistant_message(response)
-            return {"response": response, "reasoning": "", "used_tools": []}
+            
+        except Exception as e:
+            logger.error(f"워크플로우 모드 처리 중 오류: {e}")
+            return {
+                "response": "워크플로우 처리 중 문제가 발생했습니다.",
+                "workflow": self.llm_config.workflow or "basic_chat",
+                "reasoning": str(e),
+                "used_tools": []
+            }
 
-    async def _should_use_tools(self, msg: str) -> bool:
-        """도구 사용 여부를 결정합니다."""
-        if not self.mcp_tool_manager:
-            return False
-
-        # MCP 도구 사용을 나타내는 키워드들
-        tool_keywords = [
-            "github",
-            "깃허브",
-            "MCP",
-            "도구",
-            "tool",
-            "검색",
-            "시간",
-            "실행",
-            "execute",
-        ]
-        msg_lower = msg.lower()
-
-        # 특수 패턴 확인 (예: owner/repo, @서버명 등)
-
-        special_patterns = [
-            r"@\w+",  # @로 시작하는 패턴 (예: @github)
-            r"\b\w+/\w+\b",  # owner/repo 형식
-            r"\b\w+\.\w+\b",  # domain.extension 형식
-        ]
-
-        has_special_pattern = any(re.search(pattern, msg)
-                                  for pattern in special_patterns)
-        has_keyword = any(keyword in msg_lower for keyword in tool_keywords)
-
-        return has_special_pattern or has_keyword
-
-    async def _generate_with_tools(
-        self, user_msg: str, tools: List[Dict], streaming_cb: Optional[Callable[[str], None]]
+    async def _handle_mcp_tools_mode(
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> Dict[str, Any]:
-        """OpenAI agents SDK를 사용하여 복합적인 도구 작업을 수행합니다."""
+        """MCP 도구 모드 처리 - Langchain Agent 패턴 사용"""
         try:
-            if streaming_cb:
-                # 사용 가능한 도구 정보 표시
-                tool_count = len(tools)
-                streaming_cb(f"🔧 {tool_count}개의 MCP 도구가 준비되었습니다.\n\n")
+            if not self.mcp_tool_manager:
+                return self._create_error_response("MCP 도구 관리자가 설정되지 않았습니다")
+            
+            # Langchain Agent를 사용한 도구 기반 응답 생성
+            result = await self._run_langchain_agent_with_tools(user_message, streaming_callback)
+            
+            return {
+                "response": result.get("response", ""),
+                "reasoning": result.get("reasoning", ""),
+                "used_tools": result.get("used_tools", [])
+            }
+            
+        except Exception as e:
+            logger.error(f"MCP 도구 모드 처리 중 오류: {e}")
+            return self._create_error_response("MCP 도구 모드 처리 중 오류가 발생했습니다", str(e))
 
-                streaming_cb("🚀 복합적인 도구 작업을 시작합니다...\n\n")
+    async def _run_langchain_agent_with_tools(
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
+    ) -> Dict[str, Any]:
+        """진정한 Langchain MCP Agent를 사용한 도구 기반 응답 생성"""
+        # JSON 스키마 이슈로 인해 일시적으로 간단한 방식 사용
+        logger.info("🔧 Langchain Agent JSON 스키마 이슈로 인해 간단한 MCP 방식 사용")
+        return await self._fallback_to_simple_mcp_approach(user_message, streaming_callback)
 
-            # MCPToolManager를 통해 agents SDK 기반 응답 생성
-            result = await self.mcp_tool_manager.run_agent_with_tools(user_msg, streaming_cb)
+    async def _fallback_to_simple_mcp_approach(
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
+    ) -> Dict[str, Any]:
+        """간단한 MCP 접근법으로 폴백"""
+        try:
+            # 사용자 메시지에서 필요한 도구 파악 및 실행
+            tool_results = await self._execute_relevant_tools(user_message)
+            
+            # 도구 결과를 포함한 프롬프트로 LLM에게 최종 답변 요청
+            if tool_results["used_tools"]:
+                enhanced_prompt = self._create_enhanced_prompt_with_tools(user_message, tool_results)
+                final_response = await self._generate_basic_response(enhanced_prompt, streaming_callback)
+                
+                return {
+                    "response": final_response,
+                    "reasoning": "Simple MCP approach with tool results",
+                    "used_tools": tool_results["used_tools"]
+                }
+            else:
+                return await self._fallback_to_basic_response(user_message, streaming_callback)
+            
+        except Exception as e:
+            logger.error(f"Simple MCP approach 실패: {e}")
+            return await self._fallback_to_basic_response(user_message, streaming_callback)
 
-            return result
+    async def _execute_relevant_tools(self, user_message: str) -> Dict[str, Any]:
+        """사용자 메시지에서 관련 도구 실행"""
+        try:
+            # Langchain 도구 가져오기
+            langchain_tools = await self.mcp_tool_manager.get_langchain_tools()
+            
+            if not langchain_tools:
+                logger.warning("사용 가능한 MCP 도구가 없습니다")
+                return {"response": "", "reasoning": "사용 가능한 도구 없음", "used_tools": []}
+            
+            logger.info(f"🔍 도구 실행 분석: '{user_message}' -> {len(langchain_tools)}개 도구 사용 가능")
+            
+            # 간단한 키워드 기반 도구 실행
+            message_lower = user_message.lower()
+            used_tools = []
+            responses = []
+            
+            # 시간 관련 요청
+            time_keywords = ["시간", "time", "현재", "지금"]
+            time_match = any(keyword in message_lower for keyword in time_keywords)
+            logger.info(f"🕐 시간 키워드 매칭: {time_match} (키워드: {time_keywords})")
+            
+            if time_match:
+                logger.info("🕐 시간 관련 도구 검색 중...")
+                for tool in langchain_tools:
+                    logger.debug(f"  - 도구 확인: {tool.name}")
+                    if "time" in tool.name.lower() and "current" in tool.name.lower():
+                        try:
+                            logger.info(f"🔧 시간 도구 실행: {tool.name}")
+                            result = await tool.ainvoke({})
+                            logger.info(f"✅ 시간 도구 결과: {result}")
+                            responses.append(str(result))
+                            used_tools.append(tool.name)
+                            break
+                        except Exception as e:
+                            logger.error(f"❌ 도구 {tool.name} 실행 실패: {e}")
+            
+            # 날씨 관련 요청
+            weather_keywords = ["날씨", "weather", "기온", "온도"]
+            weather_match = any(keyword in message_lower for keyword in weather_keywords)
+            logger.info(f"🌤️ 날씨 키워드 매칭: {weather_match} (키워드: {weather_keywords})")
+            
+            if weather_match:
+                city = "Seoul"  # 기본값
+                # 도시명 추출 (간단한 방식)
+                for word in user_message.split():
+                    if word in ["서울", "Seoul", "부산", "Busan", "도쿄", "Tokyo"]:
+                        city = word
+                        break
+                
+                logger.info(f"🌤️ 날씨 관련 도구 검색 중... (도시: {city})")
+                for tool in langchain_tools:
+                    logger.debug(f"  - 도구 확인: {tool.name}")
+                    if "weather" in tool.name.lower() and "current" in tool.name.lower():
+                        try:
+                            logger.info(f"🔧 날씨 도구 실행: {tool.name} (city={city})")
+                            result = await tool.ainvoke({"city": city})
+                            logger.info(f"✅ 날씨 도구 결과: {result}")
+                            responses.append(str(result))
+                            used_tools.append(tool.name)
+                            break
+                        except Exception as e:
+                            logger.error(f"❌ 도구 {tool.name} 실행 실패: {e}")
+            
+            if responses:
+                logger.info(f"✅ 도구 실행 완료: {len(used_tools)}개 도구 사용")
+                return {
+                    "response": "\n\n".join(responses),
+                    "reasoning": f"도구 {len(used_tools)}개 실행",
+                    "used_tools": used_tools
+                }
+            else:
+                logger.warning("⚠️ 실행된 도구가 없습니다")
+                return {
+                    "response": "",
+                    "reasoning": "실행할 도구 없음",
+                    "used_tools": []
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ 관련 도구 실행 실패: {e}")
+            return {"response": "", "reasoning": str(e), "used_tools": []}
 
-        except Exception as exc:
-            logger.error(f"agents SDK 기반 도구 사용 실패: {exc}")
-            error_msg = "죄송합니다. 도구를 사용한 응답 생성에 실패했습니다."
-            if streaming_cb:
-                streaming_cb(f"\n❌ **오류 발생:** {error_msg}\n")
-                streaming_cb(f"**상세 오류:** {str(exc)}\n")
-            return {"response": error_msg, "reasoning": str(exc)}
+    def _create_enhanced_prompt_with_tools(self, user_message: str, tool_results: Dict[str, Any]) -> str:
+        """도구 결과를 포함한 향상된 프롬프트 생성"""
+        tool_info = ""
+        if tool_results.get("used_tools"):
+            tool_info = f"\n\n도구 실행 결과:\n{tool_results.get('response', '')}\n"
+        
+        enhanced_prompt = f"""사용자 질문: {user_message}
+{tool_info}
+위의 도구 실행 결과를 바탕으로 사용자의 질문에 대해 정확하고 유용한 답변을 제공해주세요.
+
+특별 요청사항:
+- 시간 관련 질문의 경우: 시간 계산, 포맷팅, 추가적인 정보 제공
+- 날씨 관련 질문의 경우: 표 형태나 구조화된 형태로 정보 정리
+- 복합 질문의 경우: 여러 정보를 종합하여 완전한 답변 제공
+
+항상 한국어로 친절하고 자세하게 답변해주세요."""
+
+        return enhanced_prompt
+
+    async def _fallback_to_basic_response(
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
+    ) -> Dict[str, Any]:
+        """도구가 없을 때 기본 응답으로 폴백"""
+        try:
+            response = await self._generate_basic_response(user_message, streaming_callback)
+            return {
+                "response": response,
+                "reasoning": "도구 없이 기본 응답 생성",
+                "used_tools": []
+            }
+        except Exception as e:
+            logger.error(f"기본 응답 폴백 실패: {e}")
+            return {
+                "response": "죄송합니다. 응답 생성 중 문제가 발생했습니다.",
+                "reasoning": str(e),
+                "used_tools": []
+            }
+
+    async def _fallback_to_mcp_tools(self, user_message: str) -> Dict[str, Any]:
+        """Langchain Agent 실패 시 기본 MCP 도구 사용으로 폴백"""
+        try:
+            result = await self.mcp_tool_manager.run_agent_with_tools(user_message)
+            return {
+                "response": result.get("response", ""),
+                "reasoning": "Langchain Agent 실패로 기본 MCP 도구 사용",
+                "used_tools": result.get("used_tools", [])
+            }
+        except Exception as e:
+            logger.error(f"MCP 도구 폴백도 실패: {e}")
+            return {
+                "response": "죄송합니다. 도구 사용 중 문제가 발생했습니다.",
+                "reasoning": str(e),
+                "used_tools": []
+            }
 
     async def _generate_basic_response(
-        self, _user_msg: str, streaming_cb: Optional[Callable[[str], None]]
+        self,
+        user_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> str:
-        """기본 응답을 생성합니다."""
-        cfg = self.config_manager.get_llm_config()
-
+        """기본 응답 생성"""
         try:
-            # 더 이상 하드코딩된 데모 응답을 생성하지 않는다 – 실제 모델 응답 사용
-            if streaming_cb is None:
-                # OpenAI API 는 8192 토큰까지 허용하므로, 설정값이 초과할 경우 자동으로
-                # 클램핑(clamping) 하여 오류를 방지한다.
-                max_tokens_cfg = int(cfg.get("max_tokens", 2048))
-                if max_tokens_cfg > 8192:
-                    logger.warning(
-                        "max_tokens 값 %s 이(가) 허용 범위를 초과하여 8192로 조정됩니다.",
-                        max_tokens_cfg,
-                    )
-                    max_tokens_cfg = 8192
+            messages = self.conversation_service.get_messages()
+            response = await self.llm_service.generate_response(messages, streaming_callback)
+            return response.response
+        except Exception as e:
+            logger.error(f"기본 응답 생성 중 오류: {e}")
+            return f"응답 생성 중 오류가 발생했습니다: {str(e)}"
 
-                response = await self.client.chat.completions.create(
-                    model=cfg["model"],
-                    messages=self.history,
-                    max_tokens=max_tokens_cfg,
-                    temperature=cfg["temperature"],
-                )
+    def _get_llm_mode(self) -> str:
+        """LLM 모드 반환"""
+        mode = self.llm_config.mode
+        if mode and isinstance(mode, str):
+            return mode.lower()
+        return "basic"
 
-                content = response.choices[0].message.content or ""
+    def _create_response_data(
+        self,
+        response: str,
+        reasoning: str = "",
+        used_tools: List[str] = None
+    ) -> Dict[str, Any]:
+        """응답 데이터 생성"""
+        if used_tools is None:
+            used_tools = []
+            
+        # 어시스턴트 메시지 추가
+        self.add_assistant_message(response)
+        
+        return {
+            "response": response,
+            "reasoning": reasoning,
+            "used_tools": used_tools
+        }
 
-                return content
-            else:
-                # 스트리밍 모드
-                accumulated_content = ""
-                max_tokens_cfg = int(cfg.get("max_tokens", 2048))
-                if max_tokens_cfg > 8192:
-                    logger.warning(
-                        "max_tokens 값 %s 이(가) 허용 범위를 초과하여 8192로 조정됩니다.",
-                        max_tokens_cfg,
-                    )
-                    max_tokens_cfg = 8192
+    def _create_error_response(self, error_msg: str, detail: str = "") -> Dict[str, Any]:
+        """에러 응답 생성"""
+        response = f"죄송합니다. {error_msg}"
+        self.add_assistant_message(response)
+        
+        return {
+            "response": response,
+            "reasoning": detail,
+            "used_tools": []
+        }
 
-                async for chunk in await self.client.chat.completions.create(
-                    model=cfg["model"],
-                    messages=self.history,
-                    max_tokens=max_tokens_cfg,
-                    temperature=cfg["temperature"],
-                    stream=True,
-                ):
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        delta_content = chunk.choices[0].delta.content
-                        accumulated_content += delta_content
-                        streaming_cb(delta_content)
+    def add_user_message(self, message: str) -> None:
+        """사용자 메시지를 대화 히스토리에 추가"""
+        self.conversation_service.add_user_message(message)
+        # 하위 호환성
+        self.history.append({"role": "user", "content": message})
 
-                return accumulated_content
+    def add_assistant_message(self, message: str) -> None:
+        """어시스턴트 메시지를 대화 히스토리에 추가"""
+        self.conversation_service.add_assistant_message(message)
+        # 하위 호환성
+        self.history.append({"role": "assistant", "content": message})
 
-        except Exception as exc:
-            logger.error("기본 응답 생성 실패: %s", exc)
-            raise
+    def clear_conversation(self) -> None:
+        """대화 히스토리 초기화"""
+        self.conversation_service.clear_conversation()
+        # 하위 호환성
+        self.history.clear()
+        logger.info("대화 히스토리 초기화")
+
+    def get_conversation_history(self) -> List[Dict[str, str]]:
+        """대화 히스토리 반환"""
+        return self.conversation_service.get_messages_as_dict()
+
+    async def cleanup(self) -> None:
+        """리소스 정리"""
+        await self.llm_service.cleanup()
+        logger.info("LLM 에이전트 정리 완료")
+
+    def reinitialize_client(self) -> None:
+        """클라이언트 재초기화 - 프로필 변경 시 사용"""
+        try:
+            logger.info("LLM 에이전트 클라이언트 재초기화 시작")
+            
+            # 설정 다시 로드
+            self._load_config()
+            
+            # LLM 서비스 재초기화
+            self.llm_service = LLMService(self.llm_config)
+            
+            # 대화 서비스 재초기화 (히스토리는 유지)
+            # self.conversation_service는 그대로 유지하여 대화 맥락 보존
+            
+            logger.info(f"LLM 에이전트 재초기화 완료: 모델={self.llm_config.model}, 모드={self.llm_config.mode}")
+            
+        except Exception as e:
+            logger.error(f"LLM 에이전트 재초기화 실패: {e}")
+
+    # 컨텍스트 매니저 지원
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.cleanup() 

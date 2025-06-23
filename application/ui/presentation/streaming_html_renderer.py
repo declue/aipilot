@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-"""StreamingHtmlRenderer – Presentation Layer"""
-
 import markdown
 
 from application.util.markdown_manager import MarkdownManager
@@ -41,28 +39,33 @@ class StreamingHtmlRenderer:
             font-family: '{self.ui_config['font_family']}';
             font-size: {self.ui_config['font_size']}px;
         ">
-            <details style="margin-bottom: 16px; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px; background-color: #FFFBEB;">
+            <details style="margin-bottom: 16px; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px; background-color: #F9FAFB; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <summary style="
                     font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
-                    color: #F59E0B;
-                    font-weight: 500;
+                    color: #9CA3AF;
+                    font-weight: 400;
                     margin-bottom: 8px;
                     user-select: none;
                     display: flex;
                     align-items: center;
                     gap: 6px;
+                    opacity: 0.8;
+                    font-style: italic;
                 ">
                     <span style="font-size: 14px;">🤔</span>
                     <span>&lt;think&gt; 추론 과정 보기</span>
                 </summary>
                 <div style="
-                    font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
-                    color: #6B7280;
-                    background-color: #F9FAFB;
-                    padding: 12px;
-                    border-radius: 6px;
+                    font-size: {max(self.ui_config['font_size'] - 3, 9)}px;
+                    color: #9CA3AF;
+                    background-color: #FAFAFA;
+                    padding: 16px;
+                    border-radius: 8px;
                     margin-top: 8px;
-                    border-left: 3px solid #F59E0B;
+                    border-left: 2px solid #E5E7EB;
+                    font-style: italic;
+                    line-height: 1.4;
+                    opacity: 0.85;
                 ">
                     {reasoning_html}
                 </div>
@@ -117,21 +120,26 @@ class StreamingHtmlRenderer:
                 font-size: {self.ui_config['font_size']}px;
             ">
                 <div style="
-                    font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
-                    color: #6B7280;
-                    background-color: #F9FAFB;
-                    padding: 12px;
-                    border-radius: 6px;
-                    border-left: 3px solid #F59E0B;
+                    font-size: {max(self.ui_config['font_size'] - 3, 9)}px;
+                    color: #9CA3AF;
+                    background-color: #FAFAFA;
+                    padding: 16px;
+                    border-radius: 8px;
+                    border-left: 2px solid #E5E7EB;
                     margin-bottom: 12px;
+                    font-style: italic;
+                    line-height: 1.4;
+                    opacity: 0.85;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                 ">
                     <div style="
-                        font-weight: 500; 
+                        font-weight: 400; 
                         margin-bottom: 8px;
-                        color: #F59E0B;
+                        color: #9CA3AF;
                         display: flex;
                         align-items: center;
                         gap: 6px;
+                        opacity: 0.8;
                     ">
                         <span style="font-size: 14px;">{status_icon}</span>
                         <span>&lt;think&gt; {status_text}</span>
@@ -143,7 +151,7 @@ class StreamingHtmlRenderer:
             """
         # 스트리밍 중에는 추론 과정을 열린 상태로 표시
         details_state = "open" if not is_complete else ""
-        
+
         return f"""
             <div style="
                 color: #1F2937;
@@ -151,28 +159,33 @@ class StreamingHtmlRenderer:
                 font-family: '{self.ui_config['font_family']}';
                 font-size: {self.ui_config['font_size']}px;
             ">
-                <details {details_state} style="margin-bottom: 16px; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px; background-color: #FFFBEB;">
+                <details {details_state} style="margin-bottom: 16px; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px; background-color: #F9FAFB; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                     <summary style="
                         font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
-                        color: #F59E0B;
-                        font-weight: 500;
+                        color: #9CA3AF;
+                        font-weight: 400;
                         margin-bottom: 8px;
                         user-select: none;
                         display: flex;
                         align-items: center;
                         gap: 6px;
+                        opacity: 0.8;
+                        font-style: italic;
                     ">
                         <span style="font-size: 14px;">{status_icon}</span>
                         <span>&lt;think&gt; {status_text}</span>
                     </summary>
                     <div style="
-                        font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
-                        color: #6B7280;
-                        background-color: #F9FAFB;
-                        padding: 12px;
-                        border-radius: 6px;
+                        font-size: {max(self.ui_config['font_size'] - 3, 9)}px;
+                        color: #9CA3AF;
+                        background-color: #FAFAFA;
+                        padding: 16px;
+                        border-radius: 8px;
                         margin-top: 8px;
-                        border-left: 3px solid #F59E0B;
+                        border-left: 2px solid #E5E7EB;
+                        font-style: italic;
+                        line-height: 1.4;
+                        opacity: 0.85;
                     ">
                         {reasoning_html}
                         {cursor}

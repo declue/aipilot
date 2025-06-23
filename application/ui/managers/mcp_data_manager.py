@@ -3,7 +3,7 @@ from typing import Dict, List
 
 from PySide6.QtCore import QThread, Signal
 
-from application.llm.mcp.config.models.mcp_server_status import MCPServerStatus
+from application.llm.mcp.models.mcp_server_status import MCPServerStatus
 
 
 class MCPDataLoader(QThread):

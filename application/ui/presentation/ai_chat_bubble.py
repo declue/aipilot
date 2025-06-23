@@ -326,32 +326,38 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         ">
             <details {details_state} style="
                 margin-bottom: 16px; 
-                border: 1px solid #F59E0B; 
-                border-radius: 8px; 
-                padding: 12px; 
-                background-color: #FFFBEB;
+                border: 1px solid #E5E7EB; 
+                border-radius: 12px; 
+                padding: 16px; 
+                background-color: #F9FAFB;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             ">
                 <summary style="
                     font-size: {max(font_size - 2, 10)}px;
-                    color: #F59E0B;
-                    font-weight: 500;
+                    color: #9CA3AF;
+                    font-weight: 400;
                     margin-bottom: 8px;
                     user-select: none;
                     display: flex;
                     align-items: center;
                     gap: 6px;
+                    opacity: 0.8;
+                    font-style: italic;
                 ">
                     <span style="font-size: 14px;">{status_icon}</span>
                     <span>&lt;think&gt; {status_text}</span>
                 </summary>
                 <div style="
-                    font-size: {max(font_size - 2, 10)}px;
-                    color: #6B7280;
-                    background-color: #F9FAFB;
-                    padding: 12px;
-                    border-radius: 6px;
+                    font-size: {max(font_size - 3, 9)}px;
+                    color: #9CA3AF;
+                    background-color: #FAFAFA;
+                    padding: 16px;
+                    border-radius: 8px;
                     margin-top: 8px;
-                    border-left: 3px solid #F59E0B;
+                    border-left: 2px solid #E5E7EB;
+                    font-style: italic;
+                    line-height: 1.4;
+                    opacity: 0.85;
                 ">
                     {reasoning_html}
                     {cursor}

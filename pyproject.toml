@@ -49,6 +49,12 @@ dependencies = [
     "apscheduler",
     "twisted",
     "Pillow",
+    # Langchain dependencies
+    "langchain",
+    "langchain-openai",
+    "langchain-community",
+    "langchain-core",
+    "langchain-experimental",
     # Additional dependencies from MCP tools and servers
     "numpy",
     "scipy",

@@ -27,6 +27,7 @@ DEFAULT_LLM_PROFILES: Dict[str, Dict[str, Any]] = {
         "top_k": 50,
         "instruction_file": "instructions/default_agent_instructions.txt",
         "description": "기본 Ollama 설정",
+        "mode": "basic",
     },
     "openai": {
         "name": "OpenAI GPT",
@@ -38,6 +39,19 @@ DEFAULT_LLM_PROFILES: Dict[str, Dict[str, Any]] = {
         "top_k": 50,
         "instruction_file": "instructions/openai_agent_instructions.txt",
         "description": "OpenAI GPT 모델",
+        "mode": "basic",
+    },
+    "mcp_tools": {
+        "name": "MCP 도구 모드",
+        "api_key": "your-api-key-here",
+        "base_url": "http://localhost:11434/v1",
+        "model": "llama3.2",
+        "temperature": 0.7,
+        "max_tokens": 100000,
+        "top_k": 50,
+        "instruction_file": "instructions/default_agent_instructions.txt",
+        "description": "MCP 도구를 사용하여 실시간 정보 제공",
+        "mode": "mcp_tools",
     },
 }
 
@@ -52,6 +66,7 @@ DEFAULT_PROFILE_TEMPLATE: Dict[str, Any] = {
     "top_k": 50,
     "instruction_file": "instructions/default_agent_instructions.txt",
     "description": "",
+    "mode": "basic",
 }
 
 # LLM 프로필 파일 구조

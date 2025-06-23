@@ -297,4 +297,132 @@ async def test_get_openai_tools_from_cache(tmp_path):
     # 반환 형식 및 개수 확인
     assert isinstance(tools, list)
     assert len(tools) == 1
-    assert tools[0]["function"]["name"] == "srv_tool" 
+    assert tools[0]["function"]["name"] == "srv_tool"
+
+
+@pytest.mark.asyncio
+async def test_run_agent_with_tools_simple_with_streaming_callback(tmp_path):
+    """간소화 모드에서 streaming callback이 도구 실행 결과를 표시하는지 테스트"""
+    cm = ConfigManager(config_file=str(tmp_path / "cfg"))
+    tool_manager = MCPToolManager(DummyMCPManager({}), cm)
+    
+    # call_mcp_tool 모킹
+    async def fake_call_tool(tool_key, arguments):
+        return "도구 실행 결과: 성공"
+    
+    tool_manager.call_mcp_tool = fake_call_tool
+    
+    # streaming callback으로 전달된 메시지들을 수집
+    callback_messages = []
+    
+    def streaming_callback(msg):
+        callback_messages.append(msg)
+    
+    result = await tool_manager._run_agent_with_tools_simple(  # pylint: disable=protected-access
+        "test_tool(arg='value')", streaming_callback
+    )
+    
+    # 결과 검증
+    assert result["response"] == "도구 실행 결과: 성공"
+    assert "test_tool" in result["used_tools"]
+    
+    # streaming callback 메시지 검증
+    callback_text = "".join(callback_messages)
+    assert "🛠️ MCP 도구 'test_tool' 호출 중..." in callback_text
+    assert "📋 도구 실행 결과:" in callback_text
+    assert "도구 실행 결과: 성공" in callback_text
+
+
+@pytest.mark.asyncio  
+async def test_run_agent_with_tools_simple_streaming_with_long_result(tmp_path):
+    """간소화 모드에서 긴 도구 실행 결과가 적절히 요약되는지 테스트"""
+    cm = ConfigManager(config_file=str(tmp_path / "cfg"))
+    tool_manager = MCPToolManager(DummyMCPManager({}), cm)
+    
+    # 500자를 넘는 긴 결과를 반환하는 모킹
+    long_result = "A" * 600
+    async def fake_call_tool(tool_key, arguments):
+        return long_result
+    
+    tool_manager.call_mcp_tool = fake_call_tool
+    
+    callback_messages = []
+    def streaming_callback(msg):
+        callback_messages.append(msg)
+    
+    result = await tool_manager._run_agent_with_tools_simple(  # pylint: disable=protected-access
+        "test_tool(arg='value')", streaming_callback
+    )
+    
+    # 결과는 원본이어야 함
+    assert result["response"] == long_result
+    
+    # streaming callback에서는 요약된 버전이어야 함
+    callback_text = "".join(callback_messages)
+    assert "... (결과 생략)" in callback_text
+    assert len([msg for msg in callback_messages if "📋 도구 실행 결과:" in msg][0]) < 600 
+
+
+@pytest.mark.asyncio
+async def test_tool_key_mapping_with_prefix(tmp_path):
+    """도구 키 매핑 로직 테스트 - prefix가 있는 경우와 없는 경우"""
+    cm = ConfigManager(config_file=str(tmp_path / "cfg"))
+    mcp_manager = DummyMCPManager({"calc": DummyServerConfig()})
+    tool_manager = MCPToolManager(mcp_manager, cm)
+    
+    # 캐시에 서버명_도구명 형태로 도구 추가
+    cache: ToolCache = tool_manager._cache
+    cache.add(
+        "calc_add",  # 캐시 키
+        "calc",      # 서버 이름
+        "add",       # 실제 도구 이름
+        {"description": "Add two numbers", "inputSchema": {}}
+    )
+    
+    # ToolExecutor 테스트를 위한 모의 구현
+    class MockedToolExecutor:
+        def __init__(self, cache):
+            self._cache = cache
+            self.called_with = None
+            
+        async def __call__(self, tool_key, arguments):
+            self.called_with = (tool_key, arguments)
+            # 실제 매핑 로직 테스트
+            if tool_key not in self._cache:
+                # prefix가 있는 경우를 대비해 다른 형태로도 찾아보기
+                found_key = None
+                for cached_key in self._cache.keys():
+                    # 서버명_도구명 형태에서 도구명 부분만 비교
+                    if cached_key.endswith(f"_{tool_key}") or cached_key == tool_key:
+                        found_key = cached_key
+                        break
+                    # 도구명이 서버명 없이 직접 일치하는 경우
+                    cached_meta = self._cache.get(cached_key)
+                    if cached_meta and cached_meta.get("tool_name") == tool_key:
+                        found_key = cached_key
+                        break
+                
+                if found_key:
+                    tool_key = found_key
+                else:
+                    return f"오류: 도구 '{tool_key}'을 찾을 수 없습니다."
+            
+            return f"성공: {tool_key} 호출됨"
+    
+    # Executor 교체
+    mock_executor = MockedToolExecutor(cache)
+    tool_manager._executor = mock_executor
+    
+    # 테스트 케이스 1: 정확한 키로 호출
+    result1 = await tool_manager.call_mcp_tool("calc_add", {"a": 1, "b": 2})
+    assert "성공: calc_add 호출됨" in result1
+    assert mock_executor.called_with == ("calc_add", {"a": 1, "b": 2})
+    
+    # 테스트 케이스 2: prefix 없는 도구명으로 호출 (매핑되어야 함)
+    result2 = await tool_manager.call_mcp_tool("add", {"a": 3, "b": 4})
+    assert "성공: calc_add 호출됨" in result2
+    assert mock_executor.called_with == ("calc_add", {"a": 3, "b": 4})
+    
+    # 테스트 케이스 3: 존재하지 않는 도구 호출
+    result3 = await tool_manager.call_mcp_tool("nonexistent", {"x": 1})
+    assert "오류: 도구 'nonexistent'을 찾을 수 없습니다" in result3 

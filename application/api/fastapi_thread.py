@@ -181,5 +181,5 @@ class FastAPIThread(QThread):
         except Exception as e:
             logger.error(f"FastAPIThread 소멸자에서 오류 발생: {e}")
         finally:
-            # 부모 클래스의 소멸자 호출
-            super().__del__() if hasattr(super(), "__del__") else None
+            # Python 가비지 컬렉터가 자동으로 정리
+            pass
