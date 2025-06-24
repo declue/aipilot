@@ -48,6 +48,10 @@ dependencies = [
     "mcp",
     "apscheduler",
     "twisted",
+    "fastmcp",
+    "Pillow",
+    "pyautogui",
+    "nest-asyncio",
     "Pillow",
     # Langchain dependencies
     "langchain",
@@ -55,6 +59,8 @@ dependencies = [
     "langchain-community",
     "langchain-core",
     "langchain-experimental",
+    "langgraph",
+    "langchain-mcp-adapters",
     # Additional dependencies from MCP tools and servers
     "numpy",
     "scipy",

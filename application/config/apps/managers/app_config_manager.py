@@ -60,17 +60,19 @@ class AppConfigManager:
                 self.config.read(self.config_file, encoding="utf-8")
                 logger.debug("설정 파일 로드 완료: %s", self.config_file)
             except (configparser.Error, UnicodeDecodeError) as exception:
-                logger.error("설정 파일 파싱 실패: %s", exception)
-                self.create_default_config()
+                # 파일이 있지만 파싱에 실패한 경우, 원본 파일을 보존하고 예외를 다시 던집니다
+                logger.error("설정 파일 파싱 실패 (원본 파일 보존): %s", exception)
+                logger.error("설정 파일 경로: %s", self.config_file)
+                raise RuntimeError(f"설정 파일 '{self.config_file}' 파싱에 실패했습니다. 원본 파일을 확인하고 수정해주세요.") from exception
             except PermissionError as exception:
                 logger.error("설정 파일 접근 권한 없음: %s", exception)
-                self.create_default_config()
+                raise PermissionError(f"설정 파일 '{self.config_file}'에 접근할 수 있는 권한이 없습니다.") from exception
             except OSError as exception:
                 logger.error("설정 파일 읽기 실패: %s", exception)
-                self.create_default_config()
+                raise OSError(f"설정 파일 '{self.config_file}' 읽기에 실패했습니다.") from exception
             except Exception as exception:
                 logger.error("설정 파일 로드 중 예상치 못한 오류: %s", exception)
-                self.create_default_config()
+                raise RuntimeError(f"설정 파일 '{self.config_file}' 로드 중 예상치 못한 오류가 발생했습니다.") from exception
         else:
             logger.info("설정 파일이 존재하지 않음, 기본 설정 생성: %s", self.config_file)
             self.create_default_config()

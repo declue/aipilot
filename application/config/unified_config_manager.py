@@ -59,9 +59,14 @@ class UnifiedConfigManager:
                     # 기본 설정 생성
                     self._github_notification_config = GitHubNotificationConfig()
                     self._save_github_notification_config()
+        except (json.JSONDecodeError, UnicodeDecodeError) as exception:
+            # 파일이 있지만 파싱에 실패한 경우, 원본 파일을 보존하고 예외를 다시 던집니다
+            logger.error(f"GitHub 알림 설정 파일 파싱 실패 (원본 파일 보존): {exception}")
+            logger.error(f"GitHub 알림 설정 파일 경로: {self._github_notification_config_file}")
+            raise RuntimeError(f"GitHub 알림 설정 파일 '{self._github_notification_config_file}' 파싱에 실패했습니다. 원본 파일을 확인하고 수정해주세요.") from exception
         except Exception as exception:
-            logger.error(f"GitHub 알림 설정 로드 실패: {exception}")
-            self._github_notification_config = GitHubNotificationConfig()
+            logger.error(f"GitHub 알림 설정 로드 중 예상치 못한 오류: {exception}")
+            raise RuntimeError(f"GitHub 알림 설정 파일 '{self._github_notification_config_file}' 로드 중 예상치 못한 오류가 발생했습니다.") from exception
 
     def _save_github_notification_config(self) -> None:
         """GitHub 알림 설정 저장"""
@@ -220,15 +225,45 @@ class UnifiedConfigManager:
     # ========== 통합 메서드들 ==========
     def reload_all_configs(self) -> None:
         """모든 설정 파일 리로드"""
+        logger.info("모든 설정 파일 리로드 시작")
+        
+        reload_results = []
+        
+        # 각 설정을 개별적으로 리로드하여 하나가 실패해도 나머지는 계속 진행
         try:
             self.app_config_manager.load_config()
-            self.llm_profile_manager.load_llm_profiles()
-            self.mcp_config_manager.load_config()
-            if self._github_notification_config_file:
-                self._load_github_notification_config()
-            logger.info("모든 설정 파일 리로드 완료")
+            reload_results.append("app.config: 성공")
         except Exception as exception:
-            logger.error(f"설정 파일 리로드 실패: {exception}")
+            reload_results.append(f"app.config: 실패 - {exception}")
+            logger.error(f"app.config 리로드 실패: {exception}")
+
+        try:
+            self.llm_profile_manager.load_llm_profiles()
+            reload_results.append("llm_profiles.json: 성공")
+        except Exception as exception:
+            reload_results.append(f"llm_profiles.json: 실패 - {exception}")
+            logger.error(f"LLM 프로필 리로드 실패: {exception}")
+
+        try:
+            self.mcp_config_manager.load_config()
+            reload_results.append("mcp.json: 성공")
+        except Exception as exception:
+            reload_results.append(f"mcp.json: 실패 - {exception}")
+            logger.error(f"MCP 설정 리로드 실패: {exception}")
+
+        if self._github_notification_config_file:
+            try:
+                self._load_github_notification_config()
+                reload_results.append("GitHub 알림 설정: 성공")
+            except Exception as exception:
+                reload_results.append(f"GitHub 알림 설정: 실패 - {exception}")
+                logger.error(f"GitHub 알림 설정 리로드 실패: {exception}")
+
+        logger.info(f"설정 파일 리로드 완료: {', '.join(reload_results)}")
+        
+        # 모든 설정이 실패한 경우에만 예외 발생
+        if all("실패" in result for result in reload_results):
+            raise RuntimeError("모든 설정 파일 리로드에 실패했습니다. 설정 파일들을 확인해주세요.")
 
     def get_all_config_files(self) -> List[str]:
         """모든 설정 파일 경로 반환"""

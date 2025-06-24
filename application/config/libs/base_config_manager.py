@@ -3,8 +3,11 @@ import os
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from .config_change_notifier import ConfigChangeCallback, get_config_change_notifier
-from .interfaces import (
+from application.config.libs.config_change_notifier import (
+    ConfigChangeCallback,
+    get_config_change_notifier,
+)
+from application.config.libs.interfaces import (
     ConfigDict,
     ConfigType,
     ConfigValue,
@@ -13,8 +16,8 @@ from .interfaces import (
     IConfigValidator,
     ValidationResult,
 )
-from .serializers import SerializerFactory
-from .utils import (
+from application.config.libs.serializers import SerializerFactory
+from application.config.libs.utils import (
     backup_config_file,
     detect_config_type,
     ensure_config_dir,
@@ -153,7 +156,6 @@ class BaseConfigManager(IConfigManager, ABC):
                     self._config_data = self._serializer.deserialize(content)
                 else:
                     # 직렬화기가 없으면 파일 타입에 따라 자동 생성
-
                     serializer = SerializerFactory.create_serializer(self._config_type)
                     self._config_data = serializer.deserialize(content)
 
@@ -162,8 +164,10 @@ class BaseConfigManager(IConfigManager, ABC):
                 logger.info("설정 파일이 존재하지 않음, 기본 설정 생성: %s", self._config_file)
                 self.create_default_config()
         except Exception as exception:
-            logger.error("설정 파일 로드 실패: %s", exception)
-            self.create_default_config()
+            # 파일이 있지만 파싱에 실패한 경우, 원본 파일을 보존하고 예외를 다시 던집니다
+            logger.error("설정 파일 파싱 실패 (원본 파일 보존): %s", exception)
+            logger.error("설정 파일 경로: %s", self._config_file)
+            raise RuntimeError(f"설정 파일 '{self._config_file}' 파싱에 실패했습니다. 원본 파일을 확인하고 수정해주세요.") from exception
 
     def save_config(self) -> None:
         """설정 파일 저장 (기본 구현)"""
@@ -209,9 +213,16 @@ class BaseConfigManager(IConfigManager, ABC):
 
             if change_type == "deleted":
                 logger.warning("설정 파일이 삭제됨: %s", file_path)
+                # 파일이 삭제된 경우에만 기본 설정 생성
                 self.create_default_config()
             else:
-                self.load_config()
+                # 파일이 수정되었지만 파싱에 실패하면 기존 설정을 유지
+                try:
+                    self.load_config()
+                except Exception as load_exception:
+                    logger.error("변경된 설정 파일 로드 실패 (기존 설정 유지): %s", load_exception)
+                    # 기존 설정을 유지하고 사용자에게 알림
+                    return
 
             # 하위 클래스의 추가 처리
             self.on_config_changed(file_path, change_type)

@@ -67,12 +67,17 @@ class ConfigManager:
         try:
             with self._lock:
                 if change_type in ["modified", "created"]:
-                    self.app_config_manager.load_config()
-                    self.config = self.app_config_manager.config  # 참조 동기화
+                    try:
+                        self.app_config_manager.load_config()
+                        self.config = self.app_config_manager.config  # 참조 동기화
 
-                    # 등록된 콜백들에게 알림
-                    self._notify_config_changed(file_path, change_type)
-                    logger.debug("app.config 리로드 완료")
+                        # 등록된 콜백들에게 알림
+                        self._notify_config_changed(file_path, change_type)
+                        logger.debug("app.config 리로드 완료")
+                    except Exception as load_exception:
+                        logger.error(f"변경된 app.config 파일 로드 실패 (기존 설정 유지): {load_exception}")
+                        # 기존 설정을 유지하고 콜백 알림은 하지 않음
+                        return
 
                 elif change_type == "deleted":
                     logger.warning("app.config 파일이 삭제됨, 기본 설정으로 복원")
@@ -90,19 +95,24 @@ class ConfigManager:
         try:
             with self._lock:
                 if change_type in ["modified", "created"]:
-                    # 프로필 리로드
-                    self.llm_profile_manager.load_llm_profiles()
-                    # 참조 동기화
-                    self._llm_profiles = (
-                        self.llm_profile_manager._llm_profiles
-                    )  # pylint: disable=protected-access
-                    self._current_profile_name = (
-                        self.llm_profile_manager._current_profile_name
-                    )  # pylint: disable=protected-access
+                    try:
+                        # 프로필 리로드
+                        self.llm_profile_manager.load_llm_profiles()
+                        # 참조 동기화
+                        self._llm_profiles = (
+                            self.llm_profile_manager._llm_profiles
+                        )  # pylint: disable=protected-access
+                        self._current_profile_name = (
+                            self.llm_profile_manager._current_profile_name
+                        )  # pylint: disable=protected-access
 
-                    # 등록된 콜백들에게 알림
-                    self._notify_config_changed(file_path, change_type)
-                    logger.debug("LLM 프로필 리로드 완료")
+                        # 등록된 콜백들에게 알림
+                        self._notify_config_changed(file_path, change_type)
+                        logger.debug("LLM 프로필 리로드 완료")
+                    except Exception as load_exception:
+                        logger.error(f"변경된 LLM 프로필 파일 로드 실패 (기존 설정 유지): {load_exception}")
+                        # 기존 설정을 유지하고 콜백 알림은 하지 않음
+                        return
 
                 elif change_type == "deleted":
                     logger.warning("LLM 프로필 파일이 삭제됨, 기본 프로필로 복원")

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "remote-desktop": {
+      "command": "python",
+      "args": ["tools/remote_desktop.py"],
+      "env": {},
+      "cwd": "."
+    }
+  }
+}

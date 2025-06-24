@@ -28,6 +28,7 @@ class TrayApp(QObject):
         mcp_manager: Optional[Any] = None,
         mcp_tool_manager: Optional[Any] = None,
         app_instance: Optional[Any] = None,
+        theme_manager: Optional[Any] = None,
     ) -> None:
         super().__init__()
 
@@ -35,6 +36,7 @@ class TrayApp(QObject):
         self.mcp_manager = mcp_manager
         self.mcp_tool_manager = mcp_tool_manager
         self.app_instance = app_instance
+        self.theme_manager = theme_manager
 
         # 설정 관리자 초기화
         self.config_manager = ConfigManager()

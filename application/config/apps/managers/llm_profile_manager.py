@@ -45,9 +45,14 @@ class LLMProfileManager:
             else:
                 # 기본 프로필 생성
                 self.create_default_llm_profiles()
+        except (json.JSONDecodeError, UnicodeDecodeError) as exception:
+            # 파일이 있지만 파싱에 실패한 경우, 원본 파일을 보존하고 예외를 다시 던집니다
+            logger.error(f"LLM 프로필 파일 파싱 실패 (원본 파일 보존): {exception}")
+            logger.error(f"LLM 프로필 파일 경로: {self.llm_profiles_file}")
+            raise RuntimeError(f"LLM 프로필 파일 '{self.llm_profiles_file}' 파싱에 실패했습니다. 원본 파일을 확인하고 수정해주세요.") from exception
         except Exception as exception:
-            logger.error(f"LLM 프로필 로드 실패: {exception}")
-            self.create_default_llm_profiles()
+            logger.error(f"LLM 프로필 로드 중 예상치 못한 오류: {exception}")
+            raise RuntimeError(f"LLM 프로필 파일 '{self.llm_profiles_file}' 로드 중 예상치 못한 오류가 발생했습니다.") from exception
 
     def create_default_llm_profiles(self) -> None:
         """기본 LLM 프로필 생성"""

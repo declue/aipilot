@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication
 from application.api.api_server import APIServer
 from application.llm.mcp.mcp_manager import MCPManager
 from application.llm.mcp.mcp_tool_manager import MCPToolManager
+from application.ui.theme_manager import ThemeManager, ThemeType
 from application.ui.tray_app import TrayApp
 from application.util.logger import setup_logger
 
@@ -42,6 +43,7 @@ class QtApp:
         self.main_app_instance = main_app_instance  # 메인 App 인스턴스 저장
         self.qt_app: QApplication | None = None
         self.tray_app: TrayApp | None = None
+        self.theme_manager = ThemeManager()  # 테마 매니저 초기화
 
     def setup_qt_environment(self) -> None:
         """QT 환경 설정"""
@@ -103,56 +105,54 @@ class QtApp:
             # PySide6에서 지원하지 않는 경우 무시
             logger.debug("일부 DPI 설정을 사용할 수 없지만, 환경변수로 제어됩니다.")
 
-        self.apply_qt_styles()
+        # 테마 매니저를 통한 스타일 적용
+        self.apply_theme()
 
         # 윈도우에서는 트레이 아이콘만 켜져 있어도 앱이 살아있도록 설정해야 합니다.
         self.qt_app.setQuitOnLastWindowClosed(False)
 
-    def apply_qt_styles(self) -> None:
-        """QT 스타일 적용"""
+    def apply_theme(self, theme_type: ThemeType = None) -> None:
+        """테마 적용"""
         if not self.qt_app:
             return
+        
+        if theme_type:
+            self.theme_manager.set_theme(theme_type)
+        
+        self.theme_manager.apply_theme_to_application(self.qt_app)
 
-        # 시스템 테마와 무관하게 라이트 테마 강제 적용
-        self.qt_app.setStyle("Fusion")  # 일관된 스타일 사용
-        self.qt_app.setStyleSheet(
-            """
-            * {
-                background-color: #FFFFFF;
-                color: #1F2937;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                font-size: 12px;  /* 명시적으로 12px 고정 */
-            }
-            QMainWindow, QWidget {
-                background-color: #FFFFFF;
-                color: #1F2937;
-            }
-            QMenuBar {
-                background-color: #F9FAFB;
-                color: #1F2937;
-                border-bottom: 1px solid #E5E7EB;
-                font-size: 12px;
-            }
-            QMenuBar::item:selected {
-                background-color: #E5E7EB;
-            }
-            QMenu {
-                background-color: #FFFFFF;
-                color: #1F2937;
-                border: 1px solid #E5E7EB;
-                border-radius: 8px;
-                font-size: 12px;
-            }
-            QMenu::item:selected {
-                background-color: #F3F4F6;
-            }
-        """
-        )
+    def set_light_theme(self) -> None:
+        """라이트 테마로 변경"""
+        self.apply_theme(ThemeType.LIGHT)
+
+    def set_dark_theme(self) -> None:
+        """다크 테마로 변경"""
+        self.apply_theme(ThemeType.DARK)
+
+    def toggle_theme(self) -> None:
+        """현재 테마를 토글 (라이트 ↔ 다크)"""
+        current = self.theme_manager.get_current_theme()
+        if current == ThemeType.LIGHT:
+            self.set_dark_theme()
+        else:
+            self.set_light_theme()
+
+    def get_current_theme(self) -> ThemeType:
+        """현재 테마 반환"""
+        return self.theme_manager.get_current_theme()
+
+    def get_theme_colors(self) -> dict:
+        """현재 테마의 색상 정보 반환"""
+        return self.theme_manager.get_theme_colors()
+
+    def get_theme_manager(self) -> ThemeManager:
+        """테마 매니저 반환 (다른 컴포넌트에서 사용 가능)"""
+        return self.theme_manager
 
     def create_tray_app(self) -> None:
         """트레이 애플리케이션 생성"""
         self.tray_app = TrayApp(
-            self.qt_app, self.mcp_manager, self.mcp_tool_manager, self.main_app_instance
+            self.qt_app, self.mcp_manager, self.mcp_tool_manager, self.main_app_instance, self.theme_manager
         )
 
     def run(self) -> int:

@@ -12,17 +12,17 @@ from application.config.config_manager import ConfigManager
 class TestWindow(QMainWindow):
     """기능 테스트 전용 창"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.tray_app = None  # TrayApp 참조 저장용
         self.config_manager = ConfigManager()
         self.config_manager.load_config()
         self.host = self.config_manager.get_config_value("API", "host", "127.0.0.1")
-        self.port = self.config_manager.get_config_value("API", "port", 8000)
+        port_str = self.config_manager.get_config_value("API", "port", "8000")
 
         # 포트가 문자열로 올 수 있으므로 정수로 변환
         try:
-            self.port = int(self.port)
+            self.port = int(port_str) if port_str is not None else 8000
         except (ValueError, TypeError):
             self.port = 8000
 
@@ -134,7 +134,7 @@ class TestWindow(QMainWindow):
         # 초기 상태 확인
         QTimer.singleShot(1000, self.check_api_server_status)
 
-    def check_api_server_status(self):
+    def check_api_server_status(self) -> None:
         """API 서버 상태 상세 확인"""
         print(f"[DEBUG] API 서버 상태 확인 시작 - {self.host}:{self.port}")
 
@@ -187,7 +187,7 @@ class TestWindow(QMainWindow):
             print(f"[ERROR] API 상태 확인 중 오류: {e}")
             print(f"[ERROR] 전체 스택 트레이스: {traceback.format_exc()}")
 
-    def test_notification_api(self, notification_type="info"):
+    def test_notification_api(self, notification_type: str = "info") -> None:
         """API를 통해 시스템 알림 테스트"""
         print(f"[DEBUG] {notification_type} 시스템 알림 API 테스트 시작")
 
@@ -234,7 +234,7 @@ class TestWindow(QMainWindow):
             )
             print(f"[ERROR] {notification_type} 알림 API 호출 실패: {e}")
 
-    def test_dialog_api(self, dialog_type="info"):
+    def test_dialog_api(self, dialog_type: str = "info") -> None:
         """API를 통해 커스텀 다이얼로그 테스트"""
         print(f"[DEBUG] {dialog_type} 다이얼로그 API 테스트 시작")
 
@@ -283,7 +283,7 @@ class TestWindow(QMainWindow):
             )
             print(f"[ERROR] {dialog_type} 다이얼로그 API 호출 실패: {e}")
 
-    def test_html_dialog_api(self):
+    def test_html_dialog_api(self) -> None:
         """HTML 다이얼로그 알림 API 테스트"""
         try:
             api_url = f"http://{self.host}:{self.port}/notifications/dialog/html"
@@ -341,7 +341,7 @@ class TestWindow(QMainWindow):
             QMessageBox.critical(self, "HTML 알림 오류", f"❌ HTML 알림 요청 실패\n오류: {str(e)}")
             print(f"[ERROR] HTML 알림 API 호출 실패: {e}")
 
-    def test_image_dialog_api(self):
+    def test_image_dialog_api(self) -> None:
         """API를 통해 이미지 포함 다이얼로그 테스트"""
         print("[DEBUG] 이미지 포함 다이얼로그 API 테스트 시작")
 
@@ -404,7 +404,7 @@ class TestWindow(QMainWindow):
             )
             print(f"[ERROR] 이미지 다이얼로그 API 호출 실패: {e}")
 
-    def test_api_health(self):
+    def test_api_health(self) -> None:
         """API Health Check 테스트"""
         print("[DEBUG] API Health Check 테스트 시작")
 
@@ -433,7 +433,7 @@ class TestWindow(QMainWindow):
             QMessageBox.critical(self, "API Health Check 오류", f"❌ API 연결 실패\n오류: {str(e)}")
             print(f"[ERROR] API Health Check 오류: {e}")
 
-    def test_llm_simple(self):
+    def test_llm_simple(self) -> None:
         """LLM 간단한 질문 테스트"""
         api_url = f"http://{self.host}:{self.port}/llm"
         payload = {"prompt": "안녕하세요! 간단한 인사말을 해주세요."}
@@ -471,7 +471,7 @@ class TestWindow(QMainWindow):
             QMessageBox.critical(self, "LLM 요청 오류", f"❌ LLM 요청 실패\n오류: {str(exception)}")
             print(f"[ERROR] LLM 간단 질문 API 호출 실패: {exception}")
 
-    def test_llm_complex(self):
+    def test_llm_complex(self) -> None:
         """LLM 복잡한 질문 테스트"""
         api_url = f"http://{self.host}:{self.port}/llm"
         payload = {"prompt": "간단한 Python 함수 예제를 하나 보여주고 설명해주세요."}

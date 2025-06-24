@@ -36,19 +36,22 @@ class MCPConfigManager:
                 # 기본 MCP 설정 생성
                 self.create_default_config()
         except (json.JSONDecodeError, UnicodeDecodeError) as exception:
-            logger.error(f"MCP 설정 파일 파싱 실패: {exception}")
-            self.create_default_config()
+            # 파일이 있지만 파싱에 실패한 경우, 원본 파일을 보존하고 예외를 다시 던집니다
+            logger.error(f"MCP 설정 파일 파싱 실패 (원본 파일 보존): {exception}")
+            logger.error(f"MCP 설정 파일 경로: {self.config_file}")
+            raise RuntimeError(f"MCP 설정 파일 '{self.config_file}' 파싱에 실패했습니다. 원본 파일을 확인하고 수정해주세요.") from exception
         except PermissionError as exception:
             logger.error(f"MCP 설정 파일 접근 권한 없음: {exception}")
-            # 권한 문제 시 메모리에서만 기본 설정 사용
+            # 권한 문제 시 메모리에서만 기본 설정 사용 (원본 파일 훼손 없음)
             self._mcp_config = {
                 "mcpServers": {},
                 "defaultServer": None,
                 "enabled": True,
             }
+            logger.warning("권한 문제로 인해 메모리에서 기본 MCP 설정을 사용합니다")
         except Exception as exception:
             logger.error(f"MCP 설정 로드 중 예상치 못한 오류: {exception}")
-            self.create_default_config()
+            raise RuntimeError(f"MCP 설정 파일 '{self.config_file}' 로드 중 예상치 못한 오류가 발생했습니다.") from exception
 
     def create_default_config(self) -> None:
         """기본 MCP 설정 생성"""

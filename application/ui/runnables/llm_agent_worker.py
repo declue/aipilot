@@ -65,11 +65,13 @@ class LLMAgentWorker(QRunnable):
 
             try:
                 # LLM Agent로 응답 생성 (스트리밍 콜백 포함)
+                logger.debug("LLM Agent 응답 생성 시작...")
                 result = loop.run_until_complete(
                     self.llm_agent.generate_response_streaming(
                         self.user_message, self._streaming_callback
                     )
                 )
+                logger.debug(f"LLM Agent 응답 생성 원시 결과: {result}")
 
                 if self.is_running:
                     logger.info("LLM Agent 응답 생성 완료")
@@ -78,18 +80,32 @@ class LLMAgentWorker(QRunnable):
                     if isinstance(result, dict):
                         response = result.get("response", "")
                         used_tools = result.get("used_tools", [])
+                        reasoning = result.get("reasoning", "")
+                        logger.debug(f"응답 파싱 결과: response={len(response)}자, tools={used_tools}, reasoning={len(reasoning)}자")
                     else:
                         response = result
                         used_tools = []
+                        logger.debug(f"단순 응답: {len(str(response))}자")
+
+                    # 스트리밍 데이터 전송 여부 로그
+                    logger.debug(f"스트리밍 여부: has_streamed={self._has_streamed}, response_length={len(response) if response else 0}")
 
                     # 스트리밍 단계에서 단 한 글자도 전달되지 않은 경우(예: 비-스트리밍
                     # 워크플로우/도구 응답), 최종 응답 전체를 한 번에 스트리밍 청크로 전송해
                     # UI 버블이 내용을 갖도록 한다.
                     if not self._has_streamed and response:
+                        logger.info(f"비스트리밍 응답을 스트리밍 청크로 전송: {len(response)}자")
                         self.signals.streaming_chunk.emit(response)
+                        self._has_streamed = True
+                    elif not self._has_streamed and not response:
+                        logger.warning("⚠️ 스트리밍도 없고 최종 응답도 비어있음!")
+                    elif self._has_streamed:
+                        logger.debug("스트리밍으로 이미 전송됨")
 
                     # result(최종 응답) 신호를 먼저 전달
-                    self.signals.result.emit({"response": response, "used_tools": used_tools})
+                    final_result = {"response": response, "used_tools": used_tools}
+                    logger.debug(f"최종 결과 전송: {final_result}")
+                    self.signals.result.emit(final_result)
 
                     # 모든 데이터가 UI 측에 전달된 뒤에 스트리밍 종료 신호 전송
                     self.signals.streaming_finished.emit()
@@ -98,6 +114,8 @@ class LLMAgentWorker(QRunnable):
                 if self.is_running:
                     error_msg = f"LLM Agent 실행 중 내부 오류: {str(inner_exception)}"
                     logger.error(error_msg)
+                    import traceback
+                    logger.error(f"LLM Agent 내부 오류 상세: {traceback.format_exc()}")
                     self.signals.error.emit(error_msg)
             finally:
                 # 이벤트 루프 정리 (신중하게)
@@ -111,6 +129,8 @@ class LLMAgentWorker(QRunnable):
             if self.is_running:
                 error_msg = f"LLM Agent 실행 오류: {str(exception)}"
                 logger.error(error_msg)
+                import traceback
+                logger.error(f"LLM Agent 외부 오류 상세: {traceback.format_exc()}")
                 self.signals.error.emit(error_msg)
         finally:
             # 안전한 정리
@@ -118,10 +138,13 @@ class LLMAgentWorker(QRunnable):
 
     def _streaming_callback(self, chunk: str) -> None:
         """스트리밍 콜백"""
-        if self.is_running:
+        if self.is_running and chunk:  # 빈 청크 무시
             # 최소 한 번이라도 스트리밍 데이터가 전달되었음을 표시
             self._has_streamed = True
+            logger.debug(f"스트리밍 콜백 호출: {len(chunk)}자 - '{chunk[:50]}...'")
             self.signals.streaming_chunk.emit(chunk)
+        elif self.is_running and not chunk:
+            logger.debug("빈 스트리밍 청크 수신됨 (무시)")
 
     def stop(self) -> None:
         """워커 중지"""
