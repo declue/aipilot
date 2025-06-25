@@ -91,7 +91,7 @@ class DSPilotCLI:
             print(f"{StyleColors.SUCCESS}✓ MCP 관리자 초기화 완료{StyleColors.RESET_ALL}")
 
             # MCPToolManager 초기화 및 MCP 도구 로드
-            self.mcp_tool_manager = MCPToolManager(self.mcp_manager)
+            self.mcp_tool_manager = MCPToolManager(self.mcp_manager, self.config_manager)
             init_success = await self.mcp_tool_manager.initialize()
 
             if init_success:

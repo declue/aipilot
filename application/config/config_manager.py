@@ -6,11 +6,11 @@ from typing import Any, Dict, List, Optional
 
 from application.config.apps.managers.app_config_manager import AppConfigManager
 from application.config.apps.managers.llm_profile_manager import LLMProfileManager
+from application.config.apps.managers.mcp_config_manager import MCPConfigManager
 from application.config.libs.config_change_notifier import (
     ConfigChangeCallback,
     get_config_change_notifier,
 )
-from application.llm.mcp.config.mcp_config_manager import MCPConfigManager
 from application.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("config") or logging.getLogger("config")

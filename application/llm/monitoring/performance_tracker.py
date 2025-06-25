@@ -91,7 +91,7 @@ class PerformanceTracker:
                 model=self.model,
                 response_time=self.duration,
                 success=self.success,
-                error_message=self.error_message,
+                error_type=self.error_message,  # error_message -> error_type으로 수정
             )
 
 
