@@ -148,7 +148,7 @@ class BaseAgent(LLMInterface):
                 streaming_callback=streaming_callback
             )
             
-            return response.content
+            return response.response
             
         except Exception as e:
             logger.error(f"기본 응답 생성 실패: {e}")
@@ -213,10 +213,22 @@ class BaseAgent(LLMInterface):
                 "사용자가 이해하기 쉽고 실용적인 한국어 답변을 제공해주세요."
             )
 
+            # 빈 프롬프트 방지
+            if not analysis_prompt or not analysis_prompt.strip():
+                logger.warning("분석 프롬프트가 비어있음")
+                return formatted_results
+
             # ConversationMessage 객체 사용 (llm_service와 호환)
             temp_messages = [ConversationMessage(role="user", content=analysis_prompt)]
             response = await self.llm_service.generate_response(temp_messages, streaming_callback)
-            return response.response.strip() or formatted_results
+            
+            # 응답 검증
+            if not response or not hasattr(response, 'response'):
+                logger.warning("LLM 응답 객체가 유효하지 않음")
+                return formatted_results
+                
+            result = response.response.strip() if response.response else ""
+            return result or formatted_results
         except Exception as exc:  # pylint: disable=broad-except
             logger.error("LLM 분석 오류: %s", exc)
             return self._format_tool_results(used_tools, tool_results)

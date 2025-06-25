@@ -60,6 +60,17 @@ class ReactAgent(BaseAgent):
             # 사용 기록
             self.add_user_message(user_message)
 
+            # Gemini 모델의 경우 ReactAgent 우회하고 바로 자동 툴 라우팅 사용
+            model_name = str(self.llm_config.model).lower()
+            if "gemini" in model_name:
+                logger.info("Gemini 모델 감지 → ReactAgent 우회하고 자동 툴 라우팅 사용")
+                auto_tool_response = await self._auto_tool_flow(user_message, streaming_callback)
+                if auto_tool_response is not None:
+                    return auto_tool_response
+                # 자동 툴 라우팅도 실패하면 기본 응답 생성
+                basic_response = await self._generate_basic_response(user_message, streaming_callback)
+                return self._create_response_data(basic_response, "Gemini 기본 모드")
+
             if not self.is_available():
                 error_msg = "ReAct 모드를 사용할 수 없습니다. "
                 if not MemorySaver:
@@ -193,13 +204,30 @@ class ReactAgent(BaseAgent):
 
         try:
             config = RunnableConfig(recursion_limit=100, configurable={"thread_id": thread_id})
-            messages = [HumanMessage(content=user_message.strip())]
+            
+            # 메시지 내용 검증 및 정리
+            clean_message = user_message.strip()
+            if not clean_message:
+                logger.warning("빈 메시지 내용")
+                return {"response": "메시지를 입력해 주세요.", "used_tools": []}
+            
+            # Gemini 모델의 경우 더 엄격한 메시지 검증
+            model_name = str(self.llm_config.model).lower()
+            if "gemini" in model_name:
+                # Gemini는 특정 문자나 형식에 민감하므로 추가 정리
+                clean_message = clean_message.replace('\x00', '').replace('\n\n\n', '\n\n')
+                if len(clean_message) > 8000:  # Gemini 토큰 제한 고려
+                    clean_message = clean_message[:8000] + "..."
+                logger.debug("Gemini 모델용 메시지 정리 완료")
+            
+            messages = [HumanMessage(content=clean_message)]
             inputs = {"messages": messages}
 
             logger.debug(
-                "ReactAgent 실행 설정: thread_id=%s, message_length=%d",
+                "ReactAgent 실행 설정: thread_id=%s, message_length=%d, model=%s",
                 thread_id,
-                len(user_message),
+                len(clean_message),
+                model_name,
             )
         except Exception as exc:
             logger.error("ReactAgent 설정 생성 실패: %s", exc)
@@ -248,6 +276,7 @@ class ReactAgent(BaseAgent):
 
         # 비스트리밍 모드
         try:
+            logger.debug("비스트리밍 모드로 ReactAgent 실행")
             result = await self.react_agent.ainvoke(inputs, config=config)
             response_text = ""
             used_tools: List[str] = []
@@ -279,6 +308,15 @@ class ReactAgent(BaseAgent):
             return {"response": response_text, "used_tools": used_tools}
         except Exception as exc:
             logger.error("ReactAgent 비스트리밍 실행 중 오류: %s", exc)
+            
+            # 400 에러 등 특정 에러의 경우 자동 툴 라우팅으로 폴백
+            error_str = str(exc).lower()
+            if any(keyword in error_str for keyword in ["400", "null", "invalid_argument", "expected string"]):
+                logger.info("ReAct 결과가 비어있거나 오류임 → 자동 툴 라우팅 시도")
+                fallback_result = await self._auto_tool_flow(user_message, streaming_callback)
+                if fallback_result:
+                    return fallback_result
+            
             return {"response": f"ReAct 처리 중 오류 발생: {str(exc)}", "used_tools": []}
 
     # ------------------------------------------------------------------
