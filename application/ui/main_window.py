@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from application.config.config_manager import ConfigManager
-from application.llm.llm_agent import LLMAgent
+from application.llm.agents.agent_factory import AgentFactory
 from application.llm.mcp.mcp_manager import MCPManager
 from application.llm.mcp.mcp_tool_manager import MCPToolManager
 from application.tasks.task_thread import TaskThread
@@ -109,8 +109,8 @@ class MainWindow(QMainWindow):
         self.message_manager = MessageManager(self)
         self.streaming_manager = StreamingManager(self)
 
-        # LLM Agent 초기화
-        self.llm_agent = LLMAgent(
+        # Agent 초기화
+        self.llm_agent = AgentFactory.create_agent(
             config_manager=self.config_manager, mcp_tool_manager=self.mcp_tool_manager
         )
 

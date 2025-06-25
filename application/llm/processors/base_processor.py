@@ -36,6 +36,7 @@ class DefaultToolResultProcessor(ToolResultProcessor):
         """Basic processing for generic tools"""
         try:
             import json
+
             data = json.loads(tool_result)
             result_str = data.get("result", tool_result)
             cleaned = str(result_str).strip()
@@ -89,4 +90,4 @@ class ToolResultProcessorRegistry:
 
         if output_lines:
             return "\n".join(output_lines)
-        return "도구 결과를 처리하는 중 문제가 발생했습니다." 
+        return "도구 결과를 처리하는 중 문제가 발생했습니다."

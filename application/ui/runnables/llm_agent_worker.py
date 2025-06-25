@@ -1,15 +1,14 @@
 """
-LLM Agent Worker
-LLMAgent를 QThreadPool에서 실행하기 위한 QRunnable 래퍼
+BaseAgent를 QThreadPool에서 실행하기 위한 QRunnable 래퍼
 """
 
 import asyncio
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
-from PySide6.QtCore import QRunnable
+from PyQt5.QtCore import QRunnable, pyqtSlot
 
-from application.llm.llm_agent import LLMAgent
+from application.llm.agents.base_agent import BaseAgent
 from application.ui.signals.worker_signals import WorkerSignals
 from application.util.logger import setup_logger
 
@@ -17,20 +16,20 @@ logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 
 class LLMAgentWorker(QRunnable):
-    """LLMAgent를 QThreadPool에서 실행하기 위한 워커"""
+    """BaseAgent를 QThreadPool에서 실행하기 위한 워커"""
 
     def __init__(
         self: "LLMAgentWorker",
         user_message: str,
-        llm_agent: LLMAgent,
-        callback: Callable[[Any], None],
+        llm_agent: BaseAgent,
+        streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> None:
         super().__init__()
         self.user_message = user_message
         self.llm_agent = llm_agent
-        self.callback = callback
+        self.streaming_callback = streaming_callback
         self.signals = WorkerSignals()
-        self.signals.result.connect(callback)
+        self.signals.result.connect(self.handle_result)
         self.signals.error.connect(self.handle_error)
         # 스트리밍 시그널 연결
         self.signals.streaming_started.connect(self.on_streaming_started)
@@ -41,8 +40,9 @@ class LLMAgentWorker(QRunnable):
         self._has_streamed: bool = False
         self.is_running = True
 
+    @pyqtSlot()
     def run(self) -> None:
-        """백그라운드에서 LLM Agent 실행"""
+        """워커 실행"""
         if not self.is_running:
             return
 
@@ -53,25 +53,16 @@ class LLMAgentWorker(QRunnable):
             if self.is_running:
                 self.signals.streaming_started.emit()
 
-            # 기존 이벤트 루프가 있는지 확인
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_closed():
-                    raise RuntimeError("Event loop is closed")
-            except RuntimeError:
-                # 새 이벤트 루프 생성
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+            # 새 이벤트 루프 생성
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
             try:
-                # LLM Agent로 응답 생성 (스트리밍 콜백 포함)
-                logger.debug("LLM Agent 응답 생성 시작...")
+                # 비동기 메서드 실행
                 result = loop.run_until_complete(
-                    self.llm_agent.generate_response_streaming(
-                        self.user_message, self._streaming_callback
-                    )
+                    self.llm_agent.generate_response(self.user_message, self.streaming_callback)
                 )
-                logger.debug(f"LLM Agent 응답 생성 원시 결과: {result}")
+                self.signals.finished.emit(result)
 
                 if self.is_running:
                     logger.info("LLM Agent 응답 생성 완료")
@@ -118,12 +109,7 @@ class LLMAgentWorker(QRunnable):
                     logger.error(f"LLM Agent 내부 오류 상세: {traceback.format_exc()}")
                     self.signals.error.emit(error_msg)
             finally:
-                # 이벤트 루프 정리 (신중하게)
-                try:
-                    if not loop.is_closed():
-                        loop.close()
-                except Exception as cleanup_exception:
-                    logger.warning(f"이벤트 루프 정리 중 경고: {cleanup_exception}")
+                loop.close()
 
         except Exception as exception:
             if self.is_running:
@@ -135,21 +121,6 @@ class LLMAgentWorker(QRunnable):
         finally:
             # 안전한 정리
             self.is_running = False
-
-    def _streaming_callback(self, chunk: str) -> None:
-        """스트리밍 콜백"""
-        if self.is_running and chunk:  # 빈 청크 무시
-            # 최소 한 번이라도 스트리밍 데이터가 전달되었음을 표시
-            self._has_streamed = True
-            logger.debug(f"스트리밍 콜백 호출: {len(chunk)}자 - '{chunk[:50]}...'")
-            self.signals.streaming_chunk.emit(chunk)
-        elif self.is_running and not chunk:
-            logger.debug("빈 스트리밍 청크 수신됨 (무시)")
-
-    def stop(self) -> None:
-        """워커 중지"""
-        logger.debug("LLM Agent 워커 중지 요청")
-        self.is_running = False
 
     def on_streaming_started(self) -> None:
         """스트리밍 시작 처리"""
@@ -169,6 +140,14 @@ class LLMAgentWorker(QRunnable):
         if self.is_running:
             logger.info("LLM Agent 스트리밍 응답 완료")
 
+    def handle_result(self, result: Any) -> None:
+        """결과 처리"""
+        if self.is_running:
+            logger.info("LLM Agent 응답 생성 완료")
+            self.signals.finished.emit(result)
+
     def handle_error(self, error_msg: str) -> None:
         """에러 처리"""
         logger.error(f"LLM Agent 워커 에러: {error_msg}")
+        self.signals.error.emit(error_msg)
+        self.signals.finished.emit({"response": f"오류가 발생했습니다: {error_msg}", "used_tools": []})

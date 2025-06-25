@@ -17,11 +17,11 @@ class LLMInterface(ABC):
     ) -> Dict[str, Any]:
         """
         사용자 메시지에 대한 응답 생성
-        
+
         Args:
             user_message: 사용자 입력 메시지
             streaming_callback: 스트리밍 콜백 함수
-            
+
         Returns:
             Dict[str, Any]: 응답 데이터 (response, reasoning, used_tools)
         """
@@ -50,4 +50,4 @@ class LLMInterface(ABC):
     @abstractmethod
     async def cleanup(self) -> None:
         """리소스 정리"""
-        pass 
+        pass

@@ -234,14 +234,10 @@ class WebhookClient:
     async def _generate_llm_summary(self, messages: List[Dict[str, Any]]) -> tuple[str, str]:
         """LLM을 사용하여 메시지들을 요약"""
         try:
-            from application.llm.llm_agent import LLMAgent
-            from application.llm.mcp.mcp_tool_manager import MCPToolManager
+            from application.llm.agents.agent_factory import AgentFactory
 
-            # MCP 도구 관리자 초기화 (None으로 설정하여 기본 응답만 사용)
-            mcp_tool_manager = None
-
-            # LLM 에이전트 초기화
-            llm_agent = LLMAgent(self.config_manager, mcp_tool_manager)  # type: ignore
+            # Agent 초기화 (기본 모드로 사용)
+            llm_agent = AgentFactory.create_agent(self.config_manager, None)
 
             # 메시지 정보를 텍스트로 변환
             message_details = []

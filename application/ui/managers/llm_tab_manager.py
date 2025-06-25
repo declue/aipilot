@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from application.llm.llm_agent import LLMAgent
+from application.llm.agents.basic_agent import BasicAgent
 from application.ui.common.style_manager import StyleManager
 
 
@@ -497,7 +497,7 @@ class LLMTabManager:
     def test_llm_connection(self, api_key: str, base_url: str, model: str) -> None:
         """LLM 연결 테스트"""
         try:
-            result = asyncio.run(LLMAgent.test_connection(api_key, base_url, model))
+            result = asyncio.run(BasicAgent.test_connection(api_key, base_url, model))
         except Exception as e:
             QMessageBox.critical(
                 self.parent,
@@ -543,7 +543,7 @@ class LLMTabManager:
 
         # 모델 목록 가져오기
         try:
-            result = asyncio.run(LLMAgent.get_available_models(api_key, base_url))
+            result = asyncio.run(BasicAgent.get_available_models(api_key, base_url))
         except Exception as e:
             QMessageBox.critical(
                 self.parent,
