@@ -314,34 +314,46 @@ class LLMAgent(LLMInterface):
     def _get_system_prompt(self) -> str:
         """시스템 프롬프트 반환"""
         return """<ROLE>
-You are a smart agent with an ability to use tools. 
-You will be given a question and you will use the tools to answer the question.
-Pick the most relevant tool to answer the question. 
-If you are failed to answer the question, try different tools to get context.
-Your answer should be very polite and professional.
+You are a smart agent with powerful tools to analyze and summarize information.
+You excel at using tools to gather rich data and then providing comprehensive, intelligent analysis.
+Your specialty is transforming raw data into meaningful insights for users.
 </ROLE>
 
 <INSTRUCTIONS>
-Step 1: Analyze the question
-- Analyze user's question and final goal.
-- If the user's question is consist of multiple sub-questions, split them into smaller sub-questions.
+Step 1: Understand the user's request
+- Carefully analyze what the user wants to know or achieve
+- Determine if tools are needed to gather information
 
-Step 2: Pick the most relevant tool
-- Pick the most relevant tool to answer the question.
-- If you are failed to answer the question, try different tools to get context.
+Step 2: Use tools strategically 
+- Select the most appropriate tool for gathering information
+- When using search tools, you will receive rich content data including full article text
+- Always wait for tool results before proceeding
 
-Step 3: Answer the question
-- Answer the question in Korean.
-- Your answer should be very polite and professional.
+Step 3: Analyze and synthesize tool results
+- **CRITICAL**: When you receive tool results (especially search results), thoroughly analyze the full content
+- Don't just list the results - provide meaningful analysis, summaries, and insights
+- Extract key themes, trends, and important information from the data
+- Synthesize information from multiple sources when available
 
-Step 4: Provide the source of the answer(if applicable)
-- If you've used the tool, provide the source of the answer.
-- Valid sources are either a website(URL) or a document(PDF, etc).
+Step 4: Provide comprehensive answers
+- Give detailed, informative responses based on the tool data
+- Include relevant quotes, statistics, or key points from the sources
+- Organize information logically (e.g., by topic, importance, chronology)
+- Always cite sources with URLs when applicable
 
 Guidelines:
-- If you've used the tool, your answer should be based on the tool's output(tool's output is more important than your own knowledge).
-- Answer in Korean.
-- Answer should be concise and to the point.
+- **Tool data is authoritative** - base your analysis primarily on tool results, not pre-existing knowledge
+- **Be comprehensive** - don't just summarize, provide analysis and context
+- **Answer in Korean** - all responses should be in Korean
+- **Professional tone** - maintain a helpful, informative style
+- **Rich content utilization** - when tools provide full article content, use it extensively in your analysis
+
+Example for news requests:
+- Summarize main stories and themes
+- Identify trending topics or patterns
+- Provide context and analysis
+- Quote important statements or data points
+- Organize by categories or importance
 </INSTRUCTIONS>
 """
 
@@ -634,28 +646,37 @@ Guidelines:
                         except Exception as e:
                             logger.error(f"❌ 비스트리밍 폴백 실행 실패: {e}")
 
-                            # 도구 결과가 있다면 직접 자연스럽게 포맷팅
+                            # 도구 사용 후 AI 응답이 없으면 LLM에게 분석 요청
                             if len(used_tools) > 0 and not accumulated_response.strip():
-                                logger.info("🔧 스트리밍 도구 결과 직접 포맷팅 시도...")
-
-                                formatted_response = self._format_tool_results(
-                                    used_tools, tool_results
-                                )
-                                accumulated_response = formatted_response
-                                logger.info(
-                                    f"🔧 스트리밍 도구 결과 포맷팅 완료: {formatted_response}"
-                                )
-                                if streaming_callback is not None:
-                                    streaming_callback(formatted_response)
+                                logger.info("🧠 스트리밍: 도구 결과 분석을 위한 LLM 호출...")
+                                try:
+                                    formatted_response = await self._analyze_tool_results_with_llm(
+                                        user_message, used_tools, tool_results, streaming_callback
+                                    )
+                                    accumulated_response = formatted_response
+                                    logger.info(f"✅ 스트리밍 LLM 분석 완료: {len(formatted_response)}자")
+                                except Exception as e:
+                                    logger.error(f"❌ 스트리밍 LLM 분석 실패: {e}")
+                                    # 최후 수단으로 포맷팅된 결과 사용
+                                    formatted_response = self._format_tool_results(used_tools, tool_results)
+                                    accumulated_response = formatted_response
+                                    if streaming_callback is not None:
+                                        streaming_callback(formatted_response)
 
                     # 도구를 사용하지 않았더라도 특정 키워드가 포함된 질문에서 응답이 없다면 폴백
                     elif not final_response_found and not accumulated_response.strip():
-                        # 더 이상 특정 키워드로 폴백하지 않고, 도구 결과가 있으면 이를 요약해 사용
+                        # 도구 결과가 있으면 LLM 분석 요청
                         if tool_results:
-                            logger.info("🔧 도구 결과 기반 일반 폴백 적용 (스트리밍)")
-                            accumulated_response = self._format_tool_results(used_tools, tool_results)
-                            if streaming_callback is not None:
-                                streaming_callback(accumulated_response)
+                            logger.info("🧠 스트리밍: 일반 폴백에서 LLM 분석 요청")
+                            try:
+                                accumulated_response = await self._analyze_tool_results_with_llm(
+                                    user_message, used_tools, tool_results, streaming_callback
+                                )
+                            except Exception as e:
+                                logger.error(f"❌ 스트리밍 일반 폴백 LLM 분석 실패: {e}")
+                                accumulated_response = self._format_tool_results(used_tools, tool_results)
+                                if streaming_callback is not None:
+                                    streaming_callback(accumulated_response)
                         else:
                             accumulated_response = "죄송합니다. 요청을 처리하는 중 문제가 발생했습니다."
                             if streaming_callback is not None:
@@ -773,17 +794,18 @@ Guidelines:
                         except Exception as e:
                             logger.error(f"❌ 재시도 실패: {e}")
 
-                            # 도구 결과가 있다면 직접 자연스럽게 포맷팅
-                            if len(used_tools) > 0 and not response_text.strip():
-                                logger.info("🔧 비스트리밍 도구 결과 직접 포맷팅 시도...")
-
-                                response_text = self._format_tool_results(used_tools, tool_results)
-                                logger.info(f"🔧 비스트리밍 도구 결과 포맷팅 완료: {response_text}")
-
-                    # 최종 확인: 도구를 사용했는데 여전히 응답이 없다면 폴백
+                    # 도구 사용 후 AI 응답이 없으면 LLM에게 분석 요청
                     if not response_text.strip() and len(used_tools) > 0:
-                        logger.warning("⚠️ 모든 시도 후에도 응답이 없음 - 최종 폴백 적용")
-                        response_text = self._format_tool_results(used_tools, tool_results)
+                        logger.info("🧠 도구 결과 분석을 위한 LLM 호출...")
+                        try:
+                            response_text = await self._analyze_tool_results_with_llm(
+                                user_message, used_tools, tool_results, streaming_callback
+                            )
+                            logger.info(f"✅ LLM 분석 완료: {len(response_text)}자")
+                        except Exception as e:
+                            logger.error(f"❌ LLM 분석 실패: {e}")
+                            # 최후 수단으로 포맷팅된 결과 사용
+                            response_text = self._format_tool_results(used_tools, tool_results)
 
                 else:
                     logger.warning("❌ 결과에 'messages' 키가 없음")
@@ -928,7 +950,7 @@ Guidelines:
         await self.cleanup()
 
     def _format_tool_results(self, used_tools: List[str], tool_results: Dict[str, str]) -> str:
-        """도구 결과(JSON)를 단순 가공하여 나열형 문장으로 반환 (범용)"""
+        """도구 결과를 LLM이 분석할 수 있는 형태로 포맷팅 (풍부한 데이터 포함)"""
         try:
             if not used_tools or not tool_results:
                 return "도구 결과가 없습니다."
@@ -938,15 +960,65 @@ Guidelines:
             output_lines: List[str] = []
             for tool_name in used_tools:
                 raw = tool_results.get(tool_name, "")
-                result_str = raw
                 try:
                     data = json.loads(raw)
-                    # 대부분의 MCP 도구는 result 키에 주요 정보를 담도록 작성됨
-                    result_str = data.get("result", raw)
                 except Exception:
-                    pass  # JSON 파싱 실패 시 raw 그대로 사용
+                    # JSON 파싱 실패 → 그대로 출력
+                    output_lines.append(f"- {raw.strip()}")
+                    continue
 
-                # 각 도구 결과를 "- 내용" 형식으로 추가
+                # 1️⃣ search_web / search_with_time_filter 결과 특수 처리
+                if tool_name in {"search_web", "search_with_time_filter"} and "result" in data:
+                    result_obj = data["result"]
+                    results_list = result_obj.get("results", [])
+                    if not results_list:
+                        output_lines.append("- 검색 결과가 없습니다.")
+                        continue
+
+                    # 검색 결과 헤더
+                    total_chars = result_obj.get("total_content_chars", 0)
+                    output_lines.append(f"\n🔍 웹 검색 결과 ({len(results_list)}개, 총 {total_chars:,}자 본문):")
+                    
+                    # 본문이 있는 결과 우선 처리 (LLM이 분석할 수 있도록 본문 포함)
+                    content_results = [r for r in results_list if r.get("full_content")]
+                    
+                    if content_results:
+                        output_lines.append("\n📰 주요 뉴스 본문:")
+                        for i, item in enumerate(content_results[:5], 1):  # 상위 5개만
+                            title = item.get("title", "(제목 없음)")
+                            url = item.get("url", "")
+                            full_content = item.get("full_content", "")
+                            published_date = item.get("published_date", "")
+                            source = item.get("source", "")
+                            
+                            output_lines.append(f"\n[{i}] {title}")
+                            if published_date:
+                                output_lines.append(f"📅 발행일: {published_date}")
+                            output_lines.append(f"🔗 출처: {source}")
+                            output_lines.append(f"🌐 URL: {url}")
+                            
+                            if full_content and len(full_content.strip()) > 50:
+                                # 본문이 충분히 길면 포함 (LLM이 분석할 수 있도록)
+                                output_lines.append(f"📝 본문: {full_content.strip()}")
+                            else:
+                                # 본문이 짧으면 description 사용
+                                description = item.get("description", "")
+                                if description:
+                                    output_lines.append(f"📝 요약: {description}")
+                    
+                    # 본문이 없는 결과들은 간단히 제목만
+                    other_results = [r for r in results_list if not r.get("full_content")]
+                    if other_results:
+                        output_lines.append(f"\n📋 추가 검색 결과 ({len(other_results)}개):")
+                        for item in other_results[:3]:  # 상위 3개만
+                            title = item.get("title", "(제목 없음)")
+                            url = item.get("url", "")
+                            output_lines.append(f"- {title} | {url}")
+                    
+                    continue
+
+                # 2️⃣ 기타 도구: result 필드를 바로 출력
+                result_str = data.get("result", raw)
                 cleaned = str(result_str).strip()
                 if cleaned:
                     output_lines.append(f"- {cleaned}")
@@ -957,6 +1029,61 @@ Guidelines:
         except Exception as e:
             logger.error(f"도구 결과 포맷팅 오류: {e}")
             return "도구 결과를 처리하는 중 오류가 발생했습니다."
+
+    async def _analyze_tool_results_with_llm(
+        self,
+        user_message: str,
+        used_tools: List[str],
+        tool_results: Dict[str, str],
+        streaming_callback: Optional[Callable[[str], None]] = None,
+    ) -> str:
+        """도구 결과를 LLM이 분석하여 사용자 요청에 맞는 응답 생성"""
+        try:
+            logger.info(f"🧠 LLM 분석 시작: {len(used_tools)}개 도구, {user_message[:50]}...")
+
+            # 도구 결과를 분석용 프롬프트에 포함
+            formatted_results = self._format_tool_results(used_tools, tool_results)
+            
+            analysis_prompt = f"""사용자 요청: {user_message}
+
+다음 도구를 사용하여 정보를 수집했습니다:
+{formatted_results}
+
+위 정보를 바탕으로 사용자의 요청에 대해 종합적이고 유용한 분석을 제공해주세요. 
+단순히 정보를 나열하지 말고, 다음과 같이 처리해주세요:
+
+1. **주요 내용 요약**: 핵심 정보와 트렌드 정리
+2. **분석 및 인사이트**: 데이터에서 발견한 패턴이나 중요한 점들
+3. **맥락 제공**: 필요시 배경 정보나 연관성 설명  
+4. **출처 명시**: 중요한 정보의 출처 URL 포함
+
+한국어로 전문적이고 도움이 되는 답변을 제공해주세요."""
+
+            # 새로운 대화 컨텍스트로 LLM 호출
+            from application.llm.models.conversation_message import ConversationMessage
+            
+            temp_messages = [
+                ConversationMessage(role="user", content=analysis_prompt)
+            ]
+            
+            logger.info(f"🔄 LLM 분석 요청: {len(analysis_prompt)}자 프롬프트")
+            
+            response = await self.llm_service.generate_response(temp_messages, streaming_callback)
+            analysis_result = response.response.strip()
+            
+            if analysis_result:
+                logger.info(f"✅ LLM 분석 성공: {len(analysis_result)}자")
+                return analysis_result
+            else:
+                logger.warning("⚠️ LLM 분석 결과가 비어있음")
+                return self._format_tool_results(used_tools, tool_results)
+                
+        except Exception as e:
+            logger.error(f"❌ LLM 분석 중 오류: {e}")
+            import traceback
+            logger.error(f"❌ LLM 분석 상세 오류: {traceback.format_exc()}")
+            # 오류 시 기본 포맷팅 반환
+            return self._format_tool_results(used_tools, tool_results)
 
     def _substitute_tool_placeholders(self, text: str, tool_results: Dict[str, str]) -> str:
         """AI 응답 안의 `default_api.xxx()` 식 플레이스홀더를 실제 도구 결과로 치환"""

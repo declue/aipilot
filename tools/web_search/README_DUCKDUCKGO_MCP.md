@@ -1,6 +1,7 @@
 # 🔍 DuckDuckGo Search MCP Server
 
-FastMCP를 이용한 웹 검색 도구입니다. DuckDuckGo 검색 엔진을 사용하여 프라이버시를 보호하면서 검색 결과를 얻을 수 있습니다.
+- FastMCP를 이용한 웹 검색 도구입니다.
+- DuckDuckGo 검색 엔진을 사용하여 프라이버시를 보호하면서 검색 결과를 얻을 수 있습니다.
 
 ## ✨ 주요 기능
 
@@ -15,7 +16,7 @@ FastMCP를 이용한 웹 검색 도구입니다. DuckDuckGo 검색 엔진을 사
 필요한 패키지를 설치합니다:
 
 ```bash
-pip install fastmcp requests beautifulsoup4
+pip install fastmcp requests beautifulsoup4 duckduckgo_search
 ```
 
 ## 🚀 사용 방법
@@ -77,7 +78,7 @@ result = await mcp_client.call_tool("get_search_info")
 
 모든 도구는 다음과 같은 형식으로 응답합니다:
 
-### 성공 시:
+### 성공 시
 
 ```json
 {
@@ -97,7 +98,7 @@ result = await mcp_client.call_tool("get_search_info")
 }
 ```
 
-### 오류 발생 시:
+### 오류 발생 시
 
 ```json
 {
@@ -226,22 +227,3 @@ DuckDuckGo는 사용자의 프라이버시를 보호하는 검색 엔진으로, 
 - 광고 추적 차단
 
 이 MCP 도구는 DuckDuckGo의 HTML 검색 인터페이스를 사용하여 검색 결과를 가져오므로, DuckDuckGo의 프라이버시 보호 기능을 그대로 활용할 수 있습니다.
-
-## 🤝 기여
-
-1. 이 저장소를 포크합니다
-2. 기능 브랜치를 생성합니다 (`git checkout -b feature/AmazingFeature`)
-3. 변경사항을 커밋합니다 (`git commit -m 'Add some AmazingFeature'`)
-4. 브랜치에 푸시합니다 (`git push origin feature/AmazingFeature`)
-5. Pull Request를 생성합니다
-
-## 📄 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
-
-## 🔗 관련 링크
-
-- [FastMCP](https://github.com/jlowin/fastmcp)
-- [DuckDuckGo](https://duckduckgo.com/)
-- [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/)
-- [Requests](https://requests.readthedocs.io/)
