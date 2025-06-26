@@ -500,7 +500,14 @@ GitHub 관련 키워드("이슈", "issue", "PR", "pull request", "커밋", "comm
     def get_mcp_config(self) -> Dict[str, Any]:
         """MCP 설정 반환 (하위 호환성을 위해 제공)"""
         try:
-            return self.mcp_config_manager.get_config().model_dump()
+            # MCPConfigManager는 dict를 반환하므로 model_dump() 호출하지 않음
+            config = self.mcp_config_manager.get_config()
+            if hasattr(config, 'model_dump'):
+                # Pydantic 모델인 경우
+                return config.model_dump()
+            else:
+                # dict인 경우 그대로 반환
+                return config if isinstance(config, dict) else {}
         except Exception as exc:  # pragma: no cover – 예상치 못한 오류 로그
             logger.error("MCP 설정 가져오기 실패: %s", exc)
             return {}

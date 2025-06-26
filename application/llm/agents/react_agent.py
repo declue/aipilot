@@ -360,10 +360,17 @@ class ReactAgent(BaseAgent):
 사용 가능한 도구들:
 {tools_desc}
 
-위 요청에 가장 적합한 도구를 선택하고 필요한 매개변수를 결정하세요.
-응답 형식: {{"tool_name": "도구명", "arguments": {{"param": "value"}}}}
+위 요청을 처리하기 위해 필요한 도구를 선택하고 매개변수를 결정하세요.
 
-JSON 형식으로만 응답하세요."""
+**중요 지침:**
+1. 단일 도구가 충분한 경우: {{"tool_name": "도구명", "arguments": {{"param": "value"}}}}
+2. 여러 도구가 필요한 경우: [{{"tool_name": "도구1", "arguments": {{}}}}, {{"tool_name": "도구2", "arguments": {{}}}}]
+3. 시간/날짜 질문: get_current_time 또는 get_current_date 사용
+4. 날씨 질문: get_current_weather 또는 get_detailed_weather 사용
+5. 검색이 필요한 경우: search_web 사용
+6. "시간과 날씨"처럼 두 가지 정보가 필요하면 배열 형식으로 두 도구 모두 포함
+
+반드시 JSON 형식으로만 응답하세요."""
 
             try:
                 response = await llm.ainvoke(prompt)
@@ -376,9 +383,12 @@ JSON 형식으로만 응답하세요."""
                 # 마크다운 코드 블록을 찾아서 JSON 추출
                 # ```json {...} ``` 또는 ``` {...} ``` 패턴 모두 지원
                 json_patterns = [
-                    r'```(?:json)?\s*(\{[^`]*\})\s*```',  # 마크다운 블록 내 JSON
-                    r'(\{[^{}]*"tool_name"[^{}]*\})',     # tool_name을 포함한 JSON 객체
-                    r'(\{.*?\})'                           # 일반 JSON 객체
+                    r'```(?:json)?\s*(\[[^\]]*\])\s*```',  # 마크다운 블록 내 JSON 배열
+                    r'```(?:json)?\s*(\{[^`]*\})\s*```',   # 마크다운 블록 내 JSON 객체
+                    r'(\[[^\]]*"tool_name"[^\]]*\])',      # tool_name을 포함한 JSON 배열
+                    r'(\{[^{}]*"tool_name"[^{}]*\})',      # tool_name을 포함한 JSON 객체
+                    r'(\{.*?\})',                          # 일반 JSON 객체
+                    r'(\[.*?\])'                           # 일반 JSON 배열
                 ]
                 
                 json_text = None
@@ -395,19 +405,51 @@ JSON 형식으로만 응답하세요."""
                 logger.debug("추출된 JSON 텍스트: %s", json_text)
                 tool_selection = json.loads(json_text)
                 
-                selected_tool = tool_selection.get("tool_name")
-                arguments = tool_selection.get("arguments", {})
+                # 배열 형식인 경우 여러 도구 순차 실행 지원
+                tools_to_execute = []
+                if isinstance(tool_selection, list):
+                    if tool_selection:
+                        logger.info("배열 형식 도구 선택 감지: %d개 도구를 순차 실행합니다", len(tool_selection))
+                        tools_to_execute = tool_selection
+                    else:
+                        logger.warning("빈 배열이 반환되었습니다")
+                        return None
+                else:
+                    # 단일 도구 객체
+                    tools_to_execute = [tool_selection]
                 
-                if not selected_tool:
-                    logger.warning("LLM이 도구를 선택하지 못했습니다")
+                # 여러 도구 실행
+                tool_results = {}
+                used_tools = []
+                
+                for i, tool_spec in enumerate(tools_to_execute):
+                    selected_tool = tool_spec.get("tool_name")
+                    arguments = tool_spec.get("arguments", {})
+                    
+                    if not selected_tool:
+                        logger.warning("도구 %d: tool_name이 없습니다", i+1)
+                        continue
+                    
+                    logger.info("도구 %d/%d 실행: %s, 매개변수: %s", i+1, len(tools_to_execute), selected_tool, arguments)
+                    
+                    try:
+                        # 도구 실행
+                        tool_result_raw = await self.mcp_tool_manager.call_mcp_tool(selected_tool, arguments)
+                        tool_results[selected_tool] = tool_result_raw
+                        used_tools.append(selected_tool)
+                        
+                        # 스트리밍 피드백 (선택사항)
+                        if streaming_callback and len(tools_to_execute) > 1:
+                            streaming_callback(f"🔧 {selected_tool} 완료 ({i+1}/{len(tools_to_execute)})\n")
+                            
+                    except Exception as tool_exc:
+                        logger.error("도구 %s 실행 실패: %s", selected_tool, tool_exc)
+                        tool_results[selected_tool] = json.dumps({"error": f"도구 실행 실패: {str(tool_exc)}"})
+                        used_tools.append(selected_tool)
+                
+                if not used_tools:
+                    logger.warning("실행할 수 있는 도구가 없습니다")
                     return None
-                
-                logger.info("LLM 선택 도구: %s, 매개변수: %s", selected_tool, arguments)
-                
-                # 도구 실행
-                tool_result_raw = await self.mcp_tool_manager.call_mcp_tool(selected_tool, arguments)
-                tool_results = {selected_tool: tool_result_raw}
-                used_tools = [selected_tool]
 
                 # 결과 분석
                 analyzed = await self._analyze_tool_results_with_llm(

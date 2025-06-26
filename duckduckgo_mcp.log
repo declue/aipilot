@@ -1,5 +1,5 @@
-2025-06-26 08:26:00,686 [INFO] server_module: DuckDuckGo MCP º≠πˆ «¡∑ŒººΩ∫ Ω√¿€ (PID: 4224)
-2025-06-26 08:26:00,687 [INFO] server_module: Python Executable: c:\Users\qmoix\git\dspilot\venv\Scripts\python.exe
-2025-06-26 08:26:00,687 [INFO] server_module: sys.path: ['C:\\Users\\qmoix\\git\\dspilot\\tools\\web_search', 'C:\\Users\\qmoix\\git\\dspilot\\venv\\Scripts\\fastmcp.EXE', 'C:\\Users\\qmoix\\anaconda3\\python311.zip', 'C:\\Users\\qmoix\\anaconda3\\DLLs', 'C:\\Users\\qmoix\\anaconda3\\Lib', 'C:\\Users\\qmoix\\anaconda3', 'c:\\Users\\qmoix\\git\\dspilot\\venv', 'c:\\Users\\qmoix\\git\\dspilot\\venv\\Lib\\site-packages']
-2025-06-26 08:26:01,205 [INFO] server_module: duckduckgo_search ∂Û¿Ã∫Í∑Ø∏Æ (DDGS) ¿”∆˜∆Æ º∫∞¯
-2025-06-26 08:26:01,230 [INFO] mcp.server.lowlevel.server: Processing request of type ListToolsRequest
+2025-06-26 19:47:23,035 [INFO] server_module: DuckDuckGo MCP ÏÑúÎ≤Ñ ÌîÑÎ°úÏÑ∏Ïä§ ÏãúÏûë (PID: 59472)
+2025-06-26 19:47:23,035 [INFO] server_module: Python Executable: /Users/clue/git/dspilot/venv/bin/python
+2025-06-26 19:47:23,035 [INFO] server_module: sys.path: ['/Users/clue/git/dspilot/tools/web_search', '/Users/clue/git/dspilot/venv/bin', '/opt/anaconda3/lib/python312.zip', '/opt/anaconda3/lib/python3.12', '/opt/anaconda3/lib/python3.12/lib-dynload', '/Users/clue/git/dspilot/venv/lib/python3.12/site-packages']
+2025-06-26 19:47:23,688 [INFO] server_module: duckduckgo_search ÎùºÏù¥Î∏åÎü¨Î¶¨ (DDGS) ÏûÑÌè¨Ìä∏ ÏÑ±Í≥µ
+2025-06-26 19:47:23,701 [INFO] mcp.server.lowlevel.server: Processing request of type ListToolsRequest
