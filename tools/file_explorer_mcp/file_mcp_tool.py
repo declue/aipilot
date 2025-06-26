@@ -374,6 +374,22 @@ def write_file(path: str, content: str, mode: str = "w", encoding: str = DEFAULT
         # 경로 정규화
         abs_path = os.path.abspath(path)
 
+        # content 타입 검증 및 변환
+        if not isinstance(content, str):
+            if isinstance(content, dict):
+                # 딕셔너리인 경우 JSON 형태로 변환
+                import json
+                try:
+                    content = json.dumps(content, indent=2, ensure_ascii=False)
+                except Exception:
+                    content = str(content)
+            elif isinstance(content, (list, tuple)):
+                # 리스트나 튜플인 경우 줄바꿈으로 연결
+                content = '\n'.join(str(item) for item in content)
+            else:
+                # 기타 타입은 문자열로 변환
+                content = str(content)
+
         # 디렉토리 확인
         dir_path = os.path.dirname(abs_path)
         if not os.path.exists(dir_path):

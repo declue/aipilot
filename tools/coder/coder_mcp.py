@@ -1772,7 +1772,7 @@ def write_file_with_content(file_path: str, content: str, create_backup: bool = 
 
     Args:
         file_path: 쓸 파일 경로
-        content: 파일에 쓸 전체 내용
+        content: 파일에 쓸 전체 내용 (문자열)
         create_backup: 기존 파일의 백업 생성 여부 (기본값: True)
 
     Returns:
@@ -1780,6 +1780,22 @@ def write_file_with_content(file_path: str, content: str, create_backup: bool = 
     """
     try:
         abs_path = os.path.abspath(file_path)
+
+        # content 타입 검증 및 변환
+        if not isinstance(content, str):
+            if isinstance(content, dict):
+                # 딕셔너리인 경우 JSON 형태로 변환
+                import json
+                try:
+                    content = json.dumps(content, indent=2, ensure_ascii=False)
+                except Exception:
+                    content = str(content)
+            elif isinstance(content, (list, tuple)):
+                # 리스트나 튜플인 경우 줄바꿈으로 연결
+                content = '\n'.join(str(item) for item in content)
+            else:
+                # 기타 타입은 문자열로 변환
+                content = str(content)
 
         # 백업 생성 (파일이 존재하는 경우)
         backup_path = None

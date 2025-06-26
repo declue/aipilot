@@ -61,8 +61,83 @@ class DSPilotCLI:
         self.mcp_tool_manager: Optional[MCPToolManager] = None
         self.session_start = datetime.now()
         self.query_count = 0
-
+        
+        # 대화 히스토리 관리
+        self.conversation_history = []
+        self.pending_actions = []  # 보류 중인 작업들
+        
         logger.info("DSPilotCLI 초기화")
+
+    def add_to_history(self, role: str, content: str, metadata: dict = None) -> None:
+        """대화 히스토리에 메시지 추가"""
+        entry = {
+            "role": role,
+            "content": content,
+            "timestamp": datetime.now().isoformat(),
+            "metadata": metadata or {}
+        }
+        self.conversation_history.append(entry)
+
+    def get_recent_context(self, max_turns: int = 5) -> str:
+        """최근 대화 컨텍스트를 문자열로 반환"""
+        if not self.conversation_history:
+            return ""
+        
+        # 최근 N턴의 대화만 가져오기
+        recent_messages = self.conversation_history[-max_turns*2:] if len(self.conversation_history) > max_turns*2 else self.conversation_history
+        
+        context_parts = []
+        for entry in recent_messages:
+            role_prefix = "👤 User" if entry["role"] == "user" else "🤖 Assistant"
+            context_parts.append(f"{role_prefix}: {entry['content']}")
+            
+            # 도구 사용 정보가 있으면 추가
+            if entry["metadata"].get("used_tools"):
+                tools = ", ".join(entry["metadata"]["used_tools"])
+                context_parts.append(f"   [사용된 도구: {tools}]")
+        
+        return "\n".join(context_parts)
+
+    def build_enhanced_prompt(self, user_input: str) -> str:
+        """이전 대화 맥락을 포함한 향상된 프롬프트 생성"""
+        context = self.get_recent_context()
+        
+        if not context:
+            return user_input
+        
+        # 보류 중인 작업이 있으면 포함
+        pending_context = ""
+        if self.pending_actions:
+            pending_context = "\n\n[보류 중인 작업들]:\n" + "\n".join(f"- {action}" for action in self.pending_actions)
+        
+        enhanced_prompt = f"""이전 대화 맥락:
+{context}
+
+{pending_context}
+
+현재 사용자 요청: {user_input}
+
+위의 대화 맥락을 고려하여 응답해주세요. 특히 이전에 제안한 작업이나 변경사항을 사용자가 확인/적용을 요청하는 경우, 해당 내용을 바탕으로 즉시 실행해주세요."""
+
+        return enhanced_prompt
+
+    def extract_pending_actions(self, response_data: dict) -> None:
+        """응답에서 보류 중인 작업들을 추출하여 저장"""
+        response = response_data.get("response", "")
+        
+        # 간단한 패턴으로 제안된 변경사항 감지 (범용적 접근)
+        if any(keyword in response.lower() for keyword in ["수정하겠습니다", "변경하겠습니다", "적용하겠습니다", "수정할까요", "변경할까요"]):
+            # 코드 블록이나 파일 경로가 포함된 경우
+            if "```" in response or any(ext in response for ext in [".py", ".js", ".ts", ".java", ".cpp", ".txt"]):
+                self.pending_actions.append("파일 수정/생성 작업")
+        
+        # 최대 3개의 보류 작업만 유지
+        if len(self.pending_actions) > 3:
+            self.pending_actions = self.pending_actions[-3:]
+
+    def clear_pending_actions(self) -> None:
+        """보류 중인 작업들 초기화"""
+        self.pending_actions.clear()
 
     def print_banner(self) -> None:
         """CLI 시작 배너 출력"""
@@ -135,6 +210,15 @@ class DSPilotCLI:
         print(f"\n{StyleColors.INFO}📈 세션 정보:{StyleColors.RESET_ALL}")
         print(f"  실행 시간: {runtime}")
         print(f"  처리된 쿼리: {self.query_count}개")
+        print(f"  대화 히스토리: {len(self.conversation_history)}개 메시지")
+        
+        # 보류 중인 작업 정보
+        if self.pending_actions:
+            print(f"\n{StyleColors.WARNING}⏳ 보류 중인 작업:{StyleColors.RESET_ALL}")
+            for i, action in enumerate(self.pending_actions, 1):
+                print(f"  {i}. {action}")
+        else:
+            print(f"\n{StyleColors.SUCCESS}✅ 보류 중인 작업 없음{StyleColors.RESET_ALL}")
 
     def print_help(self) -> None:
         """도움말 출력"""
@@ -142,12 +226,13 @@ class DSPilotCLI:
 {StyleColors.INFO}📖 사용 가능한 명령어:{StyleColors.RESET_ALL}
 
   {StyleColors.SYSTEM}help{StyleColors.RESET_ALL}     - 이 도움말 표시
-  {StyleColors.SYSTEM}status{StyleColors.RESET_ALL}   - 시스템 상태 확인
-  {StyleColors.SYSTEM}clear{StyleColors.RESET_ALL}    - 대화 기록 초기화
+  {StyleColors.SYSTEM}status{StyleColors.RESET_ALL}   - 시스템 상태 및 대화 히스토리 확인
+  {StyleColors.SYSTEM}clear{StyleColors.RESET_ALL}    - 대화 기록 및 보류 작업 초기화
   {StyleColors.SYSTEM}exit{StyleColors.RESET_ALL}     - 프로그램 종료
   {StyleColors.SYSTEM}quit{StyleColors.RESET_ALL}     - 프로그램 종료
 
   {StyleColors.INFO}💡 일반 질문이나 요청을 입력하면 AI가 응답합니다.{StyleColors.RESET_ALL}
+  {StyleColors.SUCCESS}🔄 멀티턴 대화: 이전 대화 맥락을 기억하여 연속된 작업을 처리합니다.{StyleColors.RESET_ALL}
         """
         print(help_text)
 
@@ -175,26 +260,47 @@ class DSPilotCLI:
                 elif user_input.lower() == "clear":
                     if self.llm_agent:
                         self.llm_agent.clear_conversation()
+                        # CLI 히스토리도 초기화
+                        self.conversation_history.clear()
+                        self.clear_pending_actions()
                         print(f"{StyleColors.SUCCESS}✓ 대화 기록이 초기화되었습니다.{StyleColors.RESET_ALL}")
                     continue
                 elif not user_input:
                     continue
 
-                # AI 응답 생성
+                # 사용자 입력을 히스토리에 추가
+                self.add_to_history("user", user_input)
+
+                # AI 응답 생성 (향상된 프롬프트 사용)
                 if self.llm_agent:
                     print(f"{StyleColors.SYSTEM}🤖 처리 중...{StyleColors.RESET_ALL}")
-                    response_data = await self.llm_agent.generate_response(user_input)
+                    
+                    # 이전 대화 맥락을 포함한 프롬프트 생성
+                    enhanced_prompt = self.build_enhanced_prompt(user_input)
+                    response_data = await self.llm_agent.generate_response(enhanced_prompt)
 
                     # 응답 출력
                     response = response_data.get("response", "응답을 생성할 수 없습니다.")
                     print(f"{StyleColors.ASSISTANT}🤖 Assistant: {response}{StyleColors.RESET_ALL}")
 
-                    # 추가 정보 출력
-                    if response_data.get("used_tools"):
-                        tools = ", ".join(response_data["used_tools"])
+                    # 사용된 도구 정보
+                    used_tools = response_data.get("used_tools", [])
+                    if used_tools:
+                        tools = ", ".join(used_tools)
                         print(f"{StyleColors.INFO}🔧 사용된 도구: {tools}{StyleColors.RESET_ALL}")
 
+                    # Assistant 응답을 히스토리에 추가
+                    self.add_to_history("assistant", response, {"used_tools": used_tools})
+
                     self.query_count += 1
+
+                    # 응답에서 보류 중인 작업들 추출
+                    self.extract_pending_actions(response_data)
+                    
+                    # 도구가 실제로 사용되었다면 보류 작업 클리어 (실행 완료로 간주)
+                    if used_tools:
+                        self.clear_pending_actions()
+                        
                 else:
                     print(f"{StyleColors.ERROR}❌ Agent가 초기화되지 않았습니다.{StyleColors.RESET_ALL}")
 
