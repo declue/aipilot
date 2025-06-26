@@ -8,6 +8,7 @@ from typing import Any, AsyncGenerator, Callable, Dict, Optional, Type
 
 from langchain_core.runnables import RunnableConfig
 
+from application.llm.workflow.adaptive_workflow import AdaptiveWorkflow
 from application.llm.workflow.base_workflow import BaseWorkflow
 from application.llm.workflow.basic_chat_workflow import BasicChatWorkflow
 from application.llm.workflow.multi_step_workflow import MultiStepWorkflow
@@ -19,11 +20,12 @@ logger = setup_logger("workflow_utils") or logging.getLogger("workflow_utils")
 
 
 # 워크플로우 레지스트리
-WORKFLOW_REGISTRY: Dict[str, Type[BaseWorkflow]] = {
-    "basic_chat": BasicChatWorkflow,
-    "research": ResearchWorkflow,
+_WORKFLOW_REGISTRY: Dict[str, Type[BaseWorkflow]] = {
+    "basic": BasicChatWorkflow,
     "multi_step": MultiStepWorkflow,
     "problem_solving": ProblemSolvingWorkflow,
+    "research": ResearchWorkflow,
+    "adaptive": AdaptiveWorkflow,
 }
 
 
@@ -42,15 +44,15 @@ def get_workflow(workflow_name: str) -> Type[BaseWorkflow]:
     """
     workflow_name = workflow_name.lower()
 
-    if workflow_name not in WORKFLOW_REGISTRY:
-        available_workflows = ", ".join(WORKFLOW_REGISTRY.keys())
+    if workflow_name not in _WORKFLOW_REGISTRY:
+        available_workflows = ", ".join(_WORKFLOW_REGISTRY.keys())
         raise ValueError(
             f"지원하지 않는 워크플로우: {workflow_name}. "
             f"사용 가능한 워크플로우: {available_workflows}"
         )
 
     logger.debug(f"워크플로우 반환: {workflow_name}")
-    return WORKFLOW_REGISTRY[workflow_name]
+    return _WORKFLOW_REGISTRY[workflow_name]
 
 
 def register_workflow(name: str, workflow_class: Type[BaseWorkflow]) -> None:
@@ -61,13 +63,13 @@ def register_workflow(name: str, workflow_class: Type[BaseWorkflow]) -> None:
         name: 워크플로우 이름
         workflow_class: 워크플로우 클래스
     """
-    WORKFLOW_REGISTRY[name.lower()] = workflow_class
+    _WORKFLOW_REGISTRY[name.lower()] = workflow_class
     logger.info(f"워크플로우 등록: {name}")
 
 
 def get_available_workflows() -> list[str]:
     """사용 가능한 워크플로우 목록 반환"""
-    return list(WORKFLOW_REGISTRY.keys())
+    return list(_WORKFLOW_REGISTRY.keys())
 
 
 def random_uuid() -> str:

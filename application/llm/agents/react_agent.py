@@ -44,80 +44,60 @@ class ReactAgent(BaseAgent):
         user_message: str,
         streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> Dict[str, Any]:
-        """ReAct 기반 응답 생성. 기존 LLMAgent._handle_react_agent_mode 와 동일한 흐름"""
-        from application.llm.monitoring.performance_tracker import PerformanceTracker
-
-        # 성능 추적 시작
-        tracker = PerformanceTracker(
-            operation_name="ReactAgent.generate_response",
-            agent_type="ReactAgent",
-            model=getattr(self.llm_config, "model", "unknown"),
-            track_metrics=True,
-        )
-        
-        async with tracker.atrack():
-            logger.info("ReactAgent.generate_response: %s", user_message[:50])
-            # 사용 기록
+        """ReAct Agent 응답 생성 - 적응형 워크플로우 우선 시도"""
+        try:
+            # 사용자 메시지 추가
             self.add_user_message(user_message)
 
-            # Gemini 모델의 경우 ReactAgent 우회하고 바로 자동 툴 라우팅 사용
-            model_name = str(self.llm_config.model).lower()
-            if "gemini" in model_name:
-                logger.info("Gemini 모델 감지 → ReactAgent 우회하고 자동 툴 라우팅 사용")
-                auto_tool_response = await self._auto_tool_flow(user_message, streaming_callback)
-                if auto_tool_response is not None:
-                    return auto_tool_response
-                # 자동 툴 라우팅도 실패하면 기본 응답 생성
-                basic_response = await self._generate_basic_response(user_message, streaming_callback)
-                return self._create_response_data(basic_response, "Gemini 기본 모드")
-
-            if not self.is_available():
-                error_msg = "ReAct 모드를 사용할 수 없습니다. "
-                if not MemorySaver:
-                    error_msg += "langgraph 라이브러리가 설치되지 않았습니다."
-                elif self.mcp_tool_manager is None:
-                    error_msg += "MCP 도구 관리자가 초기화되지 않았습니다."
-
-                logger.error(error_msg)
-                return self._create_error_response(error_msg)
-
-            # React 에이전트 초기화 (최초 1회)
-            if not self.react_agent:
-                init_ok = await self._initialize_react_agent()
-                if not init_ok:
-                    error_msg = "ReactAgent 초기화에 실패했습니다."
-                    logger.error(error_msg)
-                    return self._create_error_response(error_msg)
-
-            # 실제 실행
-            result = await self._run_react_agent(user_message, streaming_callback)
-
-            # ReAct 실행 결과 확인: 비어있거나 오류 메시지인 경우 자동 툴 라우팅 시도
-            response_text = result.get("response", "").strip()
-            is_empty = not response_text
-            is_error = any(
-                keyword in response_text.lower() for keyword in ["오류", "error", "실패", "fail"]
-            )
-
-            if is_empty or is_error:
-                logger.warning("ReAct 결과가 비어있거나 오류임 → 자동 툴 라우팅 시도")
-                logger.debug("ReAct 응답: %s", response_text[:100])
-
-                auto_tool_response = await self._auto_tool_flow(user_message, streaming_callback)
-                if auto_tool_response is not None:
-                    logger.info("자동 툴 라우팅 성공")
-                    return auto_tool_response
-
-                logger.warning("자동 툴 라우팅 실패")
-                return self._create_error_response(
-                    "요청을 처리할 수 없습니다", "ReAct 및 자동 툴 라우팅 모두 실패"
+            logger.info("ReactAgent: 적응형 워크플로우 우선 시도")
+            
+            # 1. 먼저 적응형 워크플로우 시도
+            try:
+                from application.llm.workflow.adaptive_workflow import AdaptiveWorkflow
+                adaptive_workflow = AdaptiveWorkflow()
+                
+                # 적응형 워크플로우 실행
+                workflow_response = await adaptive_workflow.run(self, user_message, streaming_callback)
+                
+                if workflow_response and len(workflow_response.strip()) > 10:  # 의미있는 응답인지 확인
+                    logger.info("적응형 워크플로우로 성공적으로 처리됨")
+                    return self._create_response_data(
+                        workflow_response, 
+                        reasoning="적응형 워크플로우 실행", 
+                        used_tools=["adaptive_workflow"]
+                    )
+                else:
+                    logger.warning("적응형 워크플로우 응답이 불충분함")
+                    
+            except Exception as workflow_exc:
+                logger.warning("적응형 워크플로우 실행 실패: %s", workflow_exc)
+            
+            # 2. 적응형 워크플로우 실패 시 기존 ReAct 에이전트 시도
+            logger.info("기존 ReAct 에이전트로 폴백")
+            react_result = await self._run_react_agent(user_message, streaming_callback)
+            
+            if react_result and react_result.get("response"):
+                return self._create_response_data(
+                    react_result["response"],
+                    reasoning="ReAct 에이전트 실행",
+                    used_tools=react_result.get("used_tools", [])
                 )
-
-            return {
-                "response": result.get("response", ""),
-                "reasoning": "ReAct 에이전트를 사용한 응답",
-                "used_tools": result.get("used_tools", []),
-            }
+            
+            # 3. ReAct 에이전트도 실패 시 자동 도구 플로우 시도
+            logger.info("자동 도구 플로우로 최종 시도")
+            auto_result = await self._auto_tool_flow(user_message, streaming_callback)
+            
+            if auto_result:
+                return auto_result
+            
+            # 4. 모든 방법 실패 시 기본 응답
+            logger.warning("모든 처리 방법 실패, 기본 응답 생성")
+            basic_response = await self._generate_basic_response(user_message, streaming_callback)
+            return self._create_response_data(basic_response, reasoning="기본 LLM 응답")
+            
+        except Exception as e:
+            logger.error("ReactAgent 전체 처리 실패: %s", e)
+            return self._handle_exceptions(e)
 
     def _handle_exceptions(self, exc: Exception) -> Dict[str, Any]:
         """예외 처리 통합"""

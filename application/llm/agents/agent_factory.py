@@ -22,9 +22,11 @@ class AgentFactory:
 
             logger.info(f"Agent 생성: mode={mode}")
 
-            if mode == "mcp_tools":
+            if mode in ["mcp_tools", "adaptive"]:
+                # ReactAgent with Adaptive Workflow (기본값)
                 agent = ReactAgent(config_manager, mcp_tool_manager)
                 if agent.is_available():
+                    logger.info("ReactAgent 생성 완료 (적응형 워크플로우 지원)")
                     return agent
                 else:
                     logger.warning("ReAct Agent를 사용할 수 없어 Basic Agent로 폴백")

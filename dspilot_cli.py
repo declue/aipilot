@@ -110,16 +110,60 @@ class DSPilotCLI:
         if self.pending_actions:
             pending_context = "\n\n[보류 중인 작업들]:\n" + "\n".join(f"- {action}" for action in self.pending_actions)
         
+        # 사용자 요청 패턴 분석을 위한 힌트 추가
+        workflow_hints = self._analyze_request_pattern(user_input)
+        
         enhanced_prompt = f"""이전 대화 맥락:
 {context}
 
 {pending_context}
 
+{workflow_hints}
+
 현재 사용자 요청: {user_input}
 
-위의 대화 맥락을 고려하여 응답해주세요. 특히 이전에 제안한 작업이나 변경사항을 사용자가 확인/적용을 요청하는 경우, 해당 내용을 바탕으로 즉시 실행해주세요."""
+위의 대화 맥락과 워크플로우 힌트를 고려하여 응답해주세요. 특히:
+1. 이전에 제안한 작업이나 변경사항을 사용자가 확인/적용을 요청하는 경우, 해당 내용을 바탕으로 즉시 실행해주세요.
+2. 복합적인 요청의 경우 단계별로 계획을 수립하고 순차적으로 실행해주세요.
+3. 데이터 수집, 처리, 저장이 모두 필요한 경우 각 단계를 완료한 후 다음 단계로 진행해주세요."""
 
         return enhanced_prompt
+
+    def _analyze_request_pattern(self, user_input: str) -> str:
+        """사용자 요청 패턴을 분석하여 워크플로우 힌트 제공"""
+        hints = []
+        input_lower = user_input.lower()
+        
+        # 파일 저장 관련 패턴
+        if any(keyword in input_lower for keyword in ["저장", "save", "파일", "file", ".json", ".txt", ".csv"]):
+            hints.append("📁 파일 저장 작업이 감지됨 → 데이터 수집 후 적절한 형식으로 파일 저장 필요")
+        
+        # 검색 및 정보 수집 패턴
+        if any(keyword in input_lower for keyword in ["뉴스", "검색", "찾아", "정보", "현재", "오늘", "최신"]):
+            hints.append("🔍 정보 수집 작업이 감지됨 → 웹 검색 또는 실시간 데이터 조회 필요")
+        
+        # 복합 작업 패턴 (수집 + 저장)
+        has_collection = any(keyword in input_lower for keyword in ["뉴스", "검색", "정보", "데이터"])
+        has_storage = any(keyword in input_lower for keyword in ["저장", "파일", ".json", ".txt"])
+        if has_collection and has_storage:
+            hints.append("🔄 복합 워크플로우 감지됨 → 1단계: 데이터 수집, 2단계: 처리/정제, 3단계: 파일 저장")
+        
+        # 시간 관련 패턴
+        if any(keyword in input_lower for keyword in ["시간", "time", "날짜", "date", "현재", "지금"]):
+            hints.append("⏰ 시간 정보 요청 감지됨 → 현재 시간/날짜 조회 필요")
+        
+        # 날씨 관련 패턴
+        if any(keyword in input_lower for keyword in ["날씨", "weather", "기온", "온도"]):
+            hints.append("🌤️ 날씨 정보 요청 감지됨 → 날씨 데이터 조회 필요")
+        
+        # 연속 작업 패턴 (이전 작업 참조)
+        if any(keyword in input_lower for keyword in ["적용", "실행", "해줘", "진행", "계속"]):
+            hints.append("▶️ 이전 작업 연속 실행 요청 감지됨 → 보류된 작업 또는 제안된 변경사항 실행")
+        
+        if not hints:
+            hints.append("💭 일반적인 요청 → 사용자 의도에 따라 적절한 도구 선택")
+        
+        return "\n[워크플로우 힌트]:\n" + "\n".join(f"  {hint}" for hint in hints)
 
     def extract_pending_actions(self, response_data: dict) -> None:
         """응답에서 보류 중인 작업들을 추출하여 저장"""
