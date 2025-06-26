@@ -19,3 +19,4 @@ build
 .coverage
 task.json
 .pytest_cache
+*.log
