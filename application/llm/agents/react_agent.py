@@ -154,33 +154,39 @@ class ReactAgent(BaseAgent):
 
     def _get_system_prompt(self) -> str:  # noqa: D401
         return (
-            "당신은 다양한 도구를 활용하여 정보를 수집하고 분석하는 지능형 AI 어시스턴트입니다.\n\n"
+            "당신은 범용 MCP 도구를 활용하는 지능형 AI 어시스턴트입니다.\n\n"
             "**핵심 역할:**\n"
             "- 사용자의 요청을 정확히 이해하고 적절한 도구를 선택하여 정보를 수집\n"
-            "- 수집된 정보를 분석하여 사용자에게 맞춤화된 유용한 답변 제공\n"
-            "- 단순한 나열이 아닌 깊이 있는 분석과 인사이트 제공\n\n"
-            "**작업 절차:**\n\n"
-            "1. **요청 분석**: 사용자가 원하는 것을 정확히 파악하고 필요한 도구 결정\n\n"
-            "2. **도구 활용**: 적절한 도구를 사용하여 관련 정보 수집\n\n"
-            "3. **정보 분석 및 가공** (매우 중요):\n"
-            "   - 도구로부터 받은 원시 데이터를 철저히 분석\n"
-            "   - 핵심 정보와 패턴을 추출하고 의미있는 인사이트 도출\n"
-            "   - 여러 소스의 정보를 연결하고 비교 분석\n"
-            "   - 사용자의 원래 질문에 맞게 정보를 재구성\n\n"
-            "4. **맞춤형 응답 생성**:\n"
-            "   - 수집된 정보를 기반으로 상세하고 유용한 답변 작성\n"
-            "   - 관련 세부사항, 인용구, 통계 등을 포함\n"
-            "   - 명확하고 논리적으로 정보 구성\n"
-            "   - 출처 명시 및 맥락 제공\n\n"
-            "**중요 원칙:**\n"
+            "- 사용자 요청의 성격에 따라 간결하거나 자세한 답변을 제공\n"
+            "- 범용 MCP 도구 시스템의 확장성과 호환성을 고려한 응답 생성\n\n"
+            "**응답 스타일 가이드라인:**\n\n"
+            "1. **단순 정보 요청**:\n"
+            "   - 핵심 정보만 간결하게 제공\n"
+            "   - 불필요한 분석이나 부가 설명 생략\n"
+            "   - 직접적이고 명확한 답변\n\n"
+            "2. **복잡한 분석 요청**:\n"
+            "   - 상세한 분석과 인사이트 제공\n"
+            "   - 다각도 검토 및 맥락 정보 포함\n"
+            "   - 구조화된 형태의 포괄적 답변\n\n"
+            "3. **일반적인 질문**:\n"
+            "   - 질문 범위에 맞는 적절한 수준의 답변\n"
+            "   - 필요에 따라 간결하거나 상세하게 조절\n\n"
+            "**작업 절차:**\n"
+            "1. **요청 분석**: 사용자 질문의 복잡도와 기대 응답 수준 파악\n"
+            "2. **도구 활용**: 필요한 정보 수집\n"
+            "3. **적절한 응답 생성**: 요청 성격에 맞는 답변 길이와 상세도 조절\n\n"
+            "**🚨 중요 원칙 - 반드시 준수:**\n"
+            "- **시간/날짜 정보**: 현재 시간, 오늘 날짜, 몇 시, 몇 일 등 모든 시간 관련 질문에는 반드시 해당 도구를 사용하세요. 절대 추측하지 마세요.\n"
             "- **도구 결과 우선**: 도구로 수집한 데이터를 주요 근거로 사용\n"
-            "- **분석적 접근**: 단순 요약이 아닌 해석과 맥락 제공\n"
             "- **한국어 응답**: 모든 응답은 자연스러운 한국어로 작성\n"
-            "- **전문적이고 도움이 되는 톤**: 명확하고 유익한 정보 전달\n"
-            "- **풍부한 콘텐츠**: 도구가 제공하는 상세 정보를 최대한 활용\n\n"
+            "- **범용성 고려**: 다양한 MCP 도구와 호환되는 일관된 접근 방식\n"
+            "- **요청 맞춤형 응답**: 사용자가 원하는 수준의 정보만 제공\n\n"
             "**특별 지침:**\n"
-            "도구를 사용한 후에는 반드시 결과를 분석하여 사용자 요청에 맞는 유용한 답변을 생성해야 합니다.\n"
-            "원시 데이터를 그대로 나열하지 말고, 사용자가 이해하기 쉽고 실용적인 형태로 가공하여 제공하세요."
+            "- 시간, 날짜, 현재 정보 관련 질문에는 반드시 적절한 도구를 사용하세요\n"
+            "- 사용자의 질문이 간단하면 간단하게, 복잡하면 상세하게 답변하세요\n"
+            "- 도구 사용 후 결과를 사용자 요청 수준에 맞게 적절히 가공하여 제공하세요\n"
+            "- 추측하지 말고 항상 최신 정보를 위해 도구를 활용하세요\n"
+            "- '오늘 몇 일?', '지금 날짜?', '현재 시간?' 같은 질문에는 100% 도구를 사용하세요"
         )
 
     async def _run_react_agent(
@@ -320,90 +326,117 @@ class ReactAgent(BaseAgent):
             return {"response": f"ReAct 처리 중 오류 발생: {str(exc)}", "used_tools": []}
 
     # ------------------------------------------------------------------
-    # 간단 자동 툴 라우팅 ---------------------------------------------------
+    # 범용 자동 툴 라우팅 ---------------------------------------------------
     # ------------------------------------------------------------------
     async def _auto_tool_flow(
         self,
         user_message: str,
         streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> Optional[Dict[str, Any]]:
-        """ReAct 실패 시 간단한 규칙 기반으로 MCP 도구를 선택해 실행한다."""
+        """ReAct 실패 시 LLM이 직접 도구를 선택하게 하는 범용적 접근 방식."""
         try:
             if self.mcp_tool_manager is None:
                 return None
 
-            # 1) 사용할 도구 결정 ------------------------------------------------
-            lowered = user_message.lower()
-            selected_tool = None
-            arguments: Dict[str, Any] = {}
-
+            logger.info("범용 자동 라우팅: LLM이 적절한 도구를 직접 선택하도록 처리")
+            
+            # 사용 가능한 모든 도구 목록 가져오기
             langchain_tools = await self.mcp_tool_manager.get_langchain_tools()
             if not langchain_tools:
+                logger.warning("사용 가능한 도구가 없습니다")
                 return None
 
-            def find_tool(keyword: str):
-                for t in langchain_tools:
-                    if keyword in t.name.lower():
-                        return t.name
+            # LLM이 직접 도구를 선택하고 실행하도록 위임
+            # 기본 LLM 모델을 사용해서 도구 선택 및 실행
+            llm = self._create_llm_model()
+            if llm is None:
                 return None
 
-            if any(k in lowered for k in ["날씨", "weather"]):
-                selected_tool = find_tool("weather") or find_tool("get_current_weather")
-                city_kwds = ["서울", "seoul", "오산", "osan"]
-                for ck in city_kwds:
-                    if ck in user_message:
-                        arguments = {"city": ck}
+            # 도구 설명 포함한 프롬프트 생성
+            tools_desc = "\n".join([f"- {tool.name}: {tool.description}" for tool in langchain_tools])
+            
+            prompt = f"""사용자 요청: {user_message}
+
+사용 가능한 도구들:
+{tools_desc}
+
+위 요청에 가장 적합한 도구를 선택하고 필요한 매개변수를 결정하세요.
+응답 형식: {{"tool_name": "도구명", "arguments": {{"param": "value"}}}}
+
+JSON 형식으로만 응답하세요."""
+
+            try:
+                response = await llm.ainvoke(prompt)
+                response_text = response.content if hasattr(response, 'content') else str(response)
+                
+                # 마크다운 코드 블록 제거하고 JSON 추출
+                import json
+                import re
+
+                # 마크다운 코드 블록을 찾아서 JSON 추출
+                # ```json {...} ``` 또는 ``` {...} ``` 패턴 모두 지원
+                json_patterns = [
+                    r'```(?:json)?\s*(\{[^`]*\})\s*```',  # 마크다운 블록 내 JSON
+                    r'(\{[^{}]*"tool_name"[^{}]*\})',     # tool_name을 포함한 JSON 객체
+                    r'(\{.*?\})'                           # 일반 JSON 객체
+                ]
+                
+                json_text = None
+                for pattern in json_patterns:
+                    match = re.search(pattern, response_text, re.DOTALL)
+                    if match:
+                        json_text = match.group(1).strip()
                         break
-            elif any(k in lowered for k in ["시간", "time"]):
-                selected_tool = find_tool("time") or find_tool("current_time")
-            else:
-                selected_tool = (
-                    find_tool("search") or find_tool("duckduckgo") or find_tool("web_search")
+                
+                if not json_text:
+                    # 패턴 매칭 실패 시 전체 텍스트 사용
+                    json_text = response_text.strip()
+                
+                logger.debug("추출된 JSON 텍스트: %s", json_text)
+                tool_selection = json.loads(json_text)
+                
+                selected_tool = tool_selection.get("tool_name")
+                arguments = tool_selection.get("arguments", {})
+                
+                if not selected_tool:
+                    logger.warning("LLM이 도구를 선택하지 못했습니다")
+                    return None
+                
+                logger.info("LLM 선택 도구: %s, 매개변수: %s", selected_tool, arguments)
+                
+                # 도구 실행
+                tool_result_raw = await self.mcp_tool_manager.call_mcp_tool(selected_tool, arguments)
+                tool_results = {selected_tool: tool_result_raw}
+                used_tools = [selected_tool]
+
+                # 결과 분석
+                analyzed = await self._analyze_tool_results_with_llm(
+                    user_message, used_tools, tool_results, streaming_callback
                 )
-                if selected_tool:
-                    arguments = {"query": user_message}
-
-            if selected_tool is None:
-                logger.info("자동 라우팅: 적절한 도구를 찾지 못함")
+                if analyzed:
+                    return {
+                        "response": analyzed,
+                        "reasoning": "범용 자동 툴 라우팅",
+                        "used_tools": used_tools,
+                    }
+                
+                # 분석 실패 시 포맷팅된 결과 반환
+                formatted = self._format_tool_results(used_tools, tool_results)
+                return {
+                    "response": formatted,
+                    "reasoning": "범용 자동 툴 라우팅 (포맷팅)",
+                    "used_tools": used_tools,
+                }
+                
+            except json.JSONDecodeError:
+                logger.error("LLM 응답의 JSON 파싱 실패: %s", response_text)
                 return None
-
-            logger.info("자동 라우팅 선택 도구: %s", selected_tool)
-
-            # 2) 도구 호출 -----------------------------------------------------
-            tool_result_raw = await self.mcp_tool_manager.call_mcp_tool(selected_tool, arguments)
-            tool_results = {selected_tool: tool_result_raw}
-            used_tools = [selected_tool]
-
-            # 3) 결과 검사 및 오류 처리 -----------------------------------------
-            # 도구 결과에 오류가 있는지 먼저 확인
-            if self._has_tool_error(tool_result_raw):
-                error_message = self._extract_error_message(tool_result_raw)
-                logger.warning("자동 라우팅 도구 오류: %s", error_message)
-                return {
-                    "response": error_message,
-                    "reasoning": "자동 툴 라우팅 (오류)",
-                    "used_tools": used_tools,
-                }
-
-            # 4) 결과 분석 (오류가 없는 경우에만) ---------------------------------
-            analyzed = await self._analyze_tool_results_with_llm(
-                user_message, used_tools, tool_results, streaming_callback
-            )
-            if analyzed:
-                return {
-                    "response": analyzed,
-                    "reasoning": "자동 툴 라우팅",
-                    "used_tools": used_tools,
-                }
-            # 분석 실패 시 원시 결과 포맷팅
-            formatted = self._format_tool_results(used_tools, tool_results)
-            return {
-                "response": formatted,
-                "reasoning": "자동 툴 라우팅 (포맷팅)",
-                "used_tools": used_tools,
-            }
+            except Exception as inner_exc:
+                logger.error("도구 선택/실행 중 오류: %s", inner_exc)
+                return None
+                
         except Exception as exc:  # pylint: disable=broad-except
-            logger.error("자동 툴 라우팅 오류: %s", exc)
+            logger.error("범용 자동 툴 라우팅 오류: %s", exc)
             return None
 
     def _has_tool_error(self, tool_result: Any) -> bool:

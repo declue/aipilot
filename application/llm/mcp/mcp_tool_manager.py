@@ -112,7 +112,7 @@ class MCPToolManager:
 
             logger.info(f"Langchain 도구 {len(self.langchain_tools)}개 로드 완료")
             for tool in self.langchain_tools:
-                logger.info(f"  - {tool.name}: {tool.description}")
+                logger.debug(f"  - {tool.name}: {tool.description}")
 
         except Exception as e:
             logger.error(f"도구 로드 실패: {e}")
