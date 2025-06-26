@@ -1,15 +1,46 @@
 {
   "mcpServers": {
-    "github": {
-      "command": "tools/github-mcp-server.exe",
-      "args": ["stdio"],
+    "time": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/common/time.py"
+      ],
+      "env": {},
+      "description": "Time and timezone management",
+      "enabled": true
+    },
+    "weather": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/common/weather.py"
+      ],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "GITHUB_TOKEN"
+        "OPENWEATHER_API_KEY": "40c77b6946209551ef8273368a753822"
       },
-      "description": "GitHub repository and issue management",
+      "description": "Weather information MCP server",
+      "enabled": true
+    },
+    "web_search": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/web_search/duckduckgo.py"
+      ],
+      "description": "Web search MCP server",
+      "enabled": true
+    },
+    "coder": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/coder/coder.py"
+      ],
+      "description": "Coding assistant",
       "enabled": true
     }
   },
-  "defaultServer": "test",
+  "defaultServer": null,
   "enabled": true
-} 
+}
