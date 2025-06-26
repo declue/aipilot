@@ -10,7 +10,7 @@
       "top_k": 50,
       "instruction_file": "instructions/openai_agent_instructions.txt",
       "description": "gemini-2.5-pro 모델",
-      "mode": "adaptive"
+      "mode": "workflow"
     }
   },
   "current_profile": "default"

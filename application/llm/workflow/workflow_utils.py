@@ -8,11 +8,9 @@ from typing import Any, AsyncGenerator, Callable, Dict, Optional, Type
 
 from langchain_core.runnables import RunnableConfig
 
-from application.llm.workflow.adaptive_workflow import AdaptiveWorkflow
+from application.llm.workflow.agent_workflow import AgentWorkflow
 from application.llm.workflow.base_workflow import BaseWorkflow
 from application.llm.workflow.basic_chat_workflow import BasicChatWorkflow
-from application.llm.workflow.multi_step_workflow import MultiStepWorkflow
-from application.llm.workflow.problem_solving_workflow import ProblemSolvingWorkflow
 from application.llm.workflow.research_workflow import ResearchWorkflow
 from application.util.logger import setup_logger
 
@@ -22,10 +20,8 @@ logger = setup_logger("workflow_utils") or logging.getLogger("workflow_utils")
 # 워크플로우 레지스트리
 _WORKFLOW_REGISTRY: Dict[str, Type[BaseWorkflow]] = {
     "basic": BasicChatWorkflow,
-    "multi_step": MultiStepWorkflow,
-    "problem_solving": ProblemSolvingWorkflow,
     "research": ResearchWorkflow,
-    "adaptive": AdaptiveWorkflow,
+    "agent": AgentWorkflow,
 }
 
 

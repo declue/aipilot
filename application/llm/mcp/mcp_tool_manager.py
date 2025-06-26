@@ -1,10 +1,11 @@
 """
-MCP 도구 관리자 - langchain-mcp-adapters 0.1.0+ 사용
+MCP 도구 관리자 - langchain-mcp-adapters 0.1.0+ 사용 + 캐싱 시스템
 """
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
@@ -14,19 +15,93 @@ from application.util.logger import setup_logger
 logger = setup_logger("mcp_tool_manager") or logging.getLogger("mcp_tool_manager")
 
 
+class MCPToolCache:
+    """MCP 도구 캐싱 시스템"""
+    
+    def __init__(self, cache_ttl: int = 300):  # 5분 TTL
+        self.cache_ttl = cache_ttl
+        self._tools_cache: Optional[Tuple[List[Any], float]] = None  # (tools, timestamp)
+        self._descriptions_cache: Optional[Tuple[str, float]] = None
+        self._openai_tools_cache: Optional[Tuple[List[Dict[str, Any]], float]] = None
+        self._tool_name_mapping: Dict[str, Any] = {}  # 빠른 이름 기반 조회
+        
+    def is_expired(self, timestamp: float) -> bool:
+        """캐시가 만료되었는지 확인"""
+        return time.time() - timestamp > self.cache_ttl
+        
+    def get_tools(self) -> Optional[List[Any]]:
+        """캐시된 도구 목록 반환"""
+        if self._tools_cache and not self.is_expired(self._tools_cache[1]):
+            return self._tools_cache[0]
+        return None
+        
+    def set_tools(self, tools: List[Any]) -> None:
+        """도구 목록 캐싱"""
+        self._tools_cache = (tools, time.time())
+        # 이름 매핑도 업데이트
+        self._tool_name_mapping = {tool.name: tool for tool in tools}
+        logger.debug(f"도구 캐시 업데이트: {len(tools)}개 도구")
+        
+    def get_tool_by_name(self, name: str) -> Optional[Any]:
+        """이름으로 도구 빠른 조회"""
+        if self._tools_cache and not self.is_expired(self._tools_cache[1]):
+            return self._tool_name_mapping.get(name)
+        return None
+        
+    def get_descriptions(self) -> Optional[str]:
+        """캐시된 도구 설명 반환"""
+        if self._descriptions_cache and not self.is_expired(self._descriptions_cache[1]):
+            return self._descriptions_cache[0]
+        return None
+        
+    def set_descriptions(self, descriptions: str) -> None:
+        """도구 설명 캐싱"""
+        self._descriptions_cache = (descriptions, time.time())
+        
+    def get_openai_tools(self) -> Optional[List[Dict[str, Any]]]:
+        """캐시된 OpenAI 형식 도구 반환"""
+        if self._openai_tools_cache and not self.is_expired(self._openai_tools_cache[1]):
+            return self._openai_tools_cache[0]
+        return None
+        
+    def set_openai_tools(self, openai_tools: List[Dict[str, Any]]) -> None:
+        """OpenAI 형식 도구 캐싱"""
+        self._openai_tools_cache = (openai_tools, time.time())
+        
+    def clear_cache(self) -> None:
+        """모든 캐시 초기화"""
+        self._tools_cache = None
+        self._descriptions_cache = None
+        self._openai_tools_cache = None
+        self._tool_name_mapping.clear()
+        logger.info("MCP 도구 캐시 초기화 완료")
+
+
 class MCPToolManager:
     """
     진정한 MCP 통합을 위한 도구 관리자
-    langchain-mcp-adapters 0.1.0+ 사용
+    langchain-mcp-adapters 0.1.0+ 사용 + 고성능 캐싱 시스템
     """
 
-    def __init__(self, mcp_manager: MCPManager, config_manager: Any):
+    def __init__(self, mcp_manager: MCPManager, config_manager: Any, cache_ttl: int = 300):
         self.mcp_manager = mcp_manager
         self.config_manager = config_manager
         self.mcp_client: Optional[MultiServerMCPClient] = None
         self.langchain_tools: List[Any] = []
         self._initialized = False
         self._lock = asyncio.Lock()
+        
+        # 캐싱 시스템 추가
+        self.cache = MCPToolCache(cache_ttl)
+        logger.info(f"MCP 도구 관리자 초기화 (캐시 TTL: {cache_ttl}초)")
+
+    @property
+    def tools(self) -> List[Any]:
+        """tools 속성 - CLI에서 참조용"""
+        cached_tools = self.cache.get_tools()
+        if cached_tools:
+            return cached_tools
+        return self.langchain_tools
 
     async def initialize(self) -> bool:
         """MCP 클라이언트 초기화"""
@@ -101,7 +176,7 @@ class MCPToolManager:
         return server_configs
 
     async def _load_tools(self) -> None:
-        """Langchain 도구 로드 (새로운 API 사용)"""
+        """Langchain 도구 로드 (새로운 API 사용) + 캐싱"""
         try:
             if not self.mcp_client:
                 logger.warning("MCP 클라이언트가 초기화되지 않았습니다")
@@ -110,7 +185,10 @@ class MCPToolManager:
             # langchain-mcp-adapters 0.1.0+ 방식: 직접 get_tools() 호출
             self.langchain_tools = await self.mcp_client.get_tools()
 
-            logger.info(f"Langchain 도구 {len(self.langchain_tools)}개 로드 완료")
+            # 캐시에 저장
+            self.cache.set_tools(self.langchain_tools)
+
+            logger.info(f"Langchain 도구 {len(self.langchain_tools)}개 로드 완료 (캐시됨)")
             for tool in self.langchain_tools:
                 logger.debug(f"  - {tool.name}: {tool.description}")
 
@@ -123,40 +201,89 @@ class MCPToolManager:
             self.langchain_tools = []
 
     async def get_langchain_tools(self) -> List[Any]:
-        """Langchain 도구 목록 반환"""
+        """Langchain 도구 목록 반환 (캐시 우선)"""
+        # 캐시에서 먼저 확인
+        cached_tools = self.cache.get_tools()
+        if cached_tools:
+            logger.debug(f"캐시에서 도구 목록 반환: {len(cached_tools)}개")
+            return cached_tools.copy()
+        
+        # 캐시 미스 시 초기화 후 반환
         if not self._initialized:
             await self.initialize()
+        
+        # 다시 캐시 확인
+        cached_tools = self.cache.get_tools()
+        if cached_tools:
+            return cached_tools.copy()
+            
         return self.langchain_tools.copy()
 
+    def get_tool_by_name(self, name: str) -> Optional[Any]:
+        """이름으로 도구 빠른 조회 (캐시 사용)"""
+        cached_tool = self.cache.get_tool_by_name(name)
+        if cached_tool:
+            logger.debug(f"캐시에서 도구 조회: {name}")
+            return cached_tool
+        
+        # 캐시 미스 시 직접 검색
+        for tool in self.langchain_tools:
+            if tool.name == name:
+                return tool
+        return None
+
     async def refresh_tools(self) -> None:
-        """도구 목록 새로고침"""
+        """도구 목록 새로고침 (캐시 초기화 포함)"""
         async with self._lock:
             try:
+                # 캐시 초기화
+                self.cache.clear_cache()
+                
                 if self.mcp_client and self._initialized:
                     await self._load_tools()
-                    logger.info("MCP 도구 목록 새로고침 완료")
+                    logger.info("MCP 도구 목록 새로고침 완료 (캐시 재생성)")
                 else:
                     logger.warning("MCP 클라이언트가 초기화되지 않아 새로고침을 건너뜁니다")
             except Exception as e:
                 logger.error(f"도구 새로고침 실패: {e}")
 
     def get_tool_descriptions(self) -> str:
-        """도구 설명 텍스트 반환"""
+        """도구 설명 텍스트 반환 (캐시 사용)"""
+        # 캐시에서 먼저 확인
+        cached_descriptions = self.cache.get_descriptions()
+        if cached_descriptions:
+            logger.debug("캐시에서 도구 설명 반환")
+            return cached_descriptions
+        
+        # 캐시 미스 시 생성
         if not self.langchain_tools:
-            return "사용 가능한 MCP 도구가 없습니다."
-
-        descriptions = []
-        for tool in self.langchain_tools:
-            descriptions.append(f"- {tool.name}: {tool.description}")
-
-        return "\n".join(descriptions)
+            descriptions = "사용 가능한 MCP 도구가 없습니다."
+        else:
+            descriptions_list = []
+            for tool in self.langchain_tools:
+                descriptions_list.append(f"- {tool.name}: {tool.description}")
+            descriptions = "\n".join(descriptions_list)
+        
+        # 캐시에 저장
+        self.cache.set_descriptions(descriptions)
+        return descriptions
 
     def get_tool_count(self) -> int:
-        """도구 개수 반환"""
+        """도구 개수 반환 (캐시 우선)"""
+        cached_tools = self.cache.get_tools()
+        if cached_tools:
+            return len(cached_tools)
         return len(self.langchain_tools)
 
     async def get_openai_tools(self) -> List[Dict[str, Any]]:
-        """OpenAI 형식의 도구 스키마 반환 (하위 호환성)"""
+        """OpenAI 형식의 도구 스키마 반환 (캐시 사용)"""
+        # 캐시에서 먼저 확인
+        cached_openai_tools = self.cache.get_openai_tools()
+        if cached_openai_tools:
+            logger.debug(f"캐시에서 OpenAI 도구 스키마 반환: {len(cached_openai_tools)}개")
+            return cached_openai_tools.copy()
+        
+        # 캐시 미스 시 생성
         tools = []
         for langchain_tool in self.langchain_tools:
             try:
@@ -182,18 +309,17 @@ class MCPToolManager:
             except Exception as e:
                 logger.warning(f"도구 {langchain_tool.name} 스키마 변환 실패: {e}")
 
+        # 캐시에 저장
+        self.cache.set_openai_tools(tools)
+        logger.debug(f"OpenAI 도구 스키마 생성 및 캐시 저장: {len(tools)}개")
         return tools
 
     async def call_mcp_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
-        """MCP 도구 호출 (하위 호환성 - 직접 호출하지 말고 Langchain을 통해 사용)"""
+        """MCP 도구 호출 (빠른 이름 조회 사용)"""
         try:
-            # Langchain 도구 찾기
-            target_tool = None
-            for tool in self.langchain_tools:
-                if tool.name == tool_name:
-                    target_tool = tool
-                    break
-
+            # 캐시를 통한 빠른 도구 조회
+            target_tool = self.get_tool_by_name(tool_name)
+            
             if not target_tool:
                 return f"도구 '{tool_name}'을 찾을 수 없습니다."
 
