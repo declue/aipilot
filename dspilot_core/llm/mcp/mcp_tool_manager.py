@@ -5,6 +5,7 @@ MCP 도구 관리자 - langchain-mcp-adapters 0.1.0+ 사용 + 캐싱 시스템
 import asyncio
 import logging
 import os
+import subprocess
 import sys
 import time
 from contextlib import contextmanager
@@ -15,7 +16,69 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from dspilot_core.llm.mcp.mcp_manager import MCPManager
 from dspilot_core.util.logger import setup_logger
 
-logger = setup_logger("mcp_tool_manager") or logging.getLogger("mcp_tool_manager")
+logger = setup_logger("mcp_tool_manager") or logging.getLogger(
+    "mcp_tool_manager")
+
+# MCP 서버 프로세스의 출력을 완전히 차단하기 위한 전역 패치
+_original_popen = subprocess.Popen
+
+
+def _silent_popen(*args, **kwargs):
+    """MCP 서버 관련 프로세스의 출력을 자동으로 숨기는 Popen 래퍼"""
+    # 명령어 확인
+    if args and len(args) > 0:
+        cmd = args[0]
+        if isinstance(cmd, (list, tuple)) and len(cmd) > 0:
+            cmd_str = str(cmd[0])
+        else:
+            cmd_str = str(cmd)
+
+        # MCP 도구 관련 프로세스인지 확인
+        mcp_indicators = [
+            "mcp", "duckduckgo.py", "coder_mcp.py", "file_mcp_tool.py",
+            "time.py", "weather.py", "github-mcp-server", "process_mcp.py",
+            "chrome_mcp_tool.py", "remote_desktop.py", "bitbucket_mcp_tool.py"
+        ]
+
+        is_mcp_process = any(indicator in cmd_str.lower()
+                             for indicator in mcp_indicators)
+
+        if is_mcp_process:
+            # MCP 프로세스의 경우 stdout/stderr를 DEVNULL로 리다이렉트
+            kwargs.setdefault('stdout', subprocess.DEVNULL)
+            kwargs.setdefault('stderr', subprocess.DEVNULL)
+
+    return _original_popen(*args, **kwargs)
+
+
+# 전역 패치 적용 (한 번만 실행)
+if not hasattr(subprocess.Popen, '_mcp_patched'):
+    subprocess.Popen = _silent_popen
+    subprocess.Popen._mcp_patched = True
+
+# MCP 관련 로거들의 출력 레벨을 ERROR로 설정하여 불필요한 로그 억제
+
+
+def _suppress_mcp_logging():
+    """MCP 관련 로거들의 출력을 억제"""
+    mcp_loggers = [
+        "mcp.server.lowlevel.server",
+        "mcp.server.fastmcp",
+        "fastmcp",
+        "langchain_mcp_adapters",
+        "langchain_mcp_adapters.client",
+        "stdio_server",
+        "__main__",  # MCP 도구들이 직접 실행될 때
+    ]
+
+    for logger_name in mcp_loggers:
+        mcp_logger = logging.getLogger(logger_name)
+        mcp_logger.setLevel(logging.ERROR)
+        mcp_logger.propagate = False  # 상위 로거로 전파 방지
+
+
+# 로깅 억제 적용
+_suppress_mcp_logging()
 
 
 @contextmanager
@@ -24,7 +87,7 @@ def suppress_stdout():
     # 원본 stdout 저장
     original_stdout = sys.stdout
     original_stderr = sys.stderr
-    
+
     try:
         # devnull로 리디렉션
         with open(os.devnull, 'w') as devnull:
@@ -44,15 +107,15 @@ def suppress_subprocess_output():
     original_stdout_fd = os.dup(1)  # stdout 복사
     original_stderr_fd = os.dup(2)  # stderr 복사
     devnull_fd = None
-    
+
     try:
         # devnull로 리디렉션
         devnull_fd = os.open(os.devnull, os.O_WRONLY)
         os.dup2(devnull_fd, 1)  # stdout을 devnull로
         os.dup2(devnull_fd, 2)  # stderr을 devnull로
-        
+
         yield
-        
+
     finally:
         # 원본 파일 디스크립터 복원
         os.dup2(original_stdout_fd, 1)
@@ -63,59 +126,118 @@ def suppress_subprocess_output():
             os.close(devnull_fd)
 
 
+@contextmanager
+def suppress_all_output():
+    """모든 출력을 완전히 차단하는 더 강력한 컨텍스트 매니저"""
+    import contextlib
+    import io
+
+    # 원본 출력 스트림 저장
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+
+    # 파일 디스크립터 레벨 억제
+    original_stdout_fd = os.dup(1)
+    original_stderr_fd = os.dup(2)
+    devnull_fd = None
+
+    try:
+        # Python 레벨 출력 억제
+        sys.stdout = io.StringIO()
+        sys.stderr = io.StringIO()
+
+        # 파일 디스크립터 레벨 출력 억제
+        devnull_fd = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull_fd, 1)
+        os.dup2(devnull_fd, 2)
+
+        # 로그 핸들러 임시 비활성화
+        root_logger = logging.getLogger()
+        handlers_states = []
+        for handler in root_logger.handlers:
+            handlers_states.append(handler.disabled)
+            handler.disabled = True
+
+        yield
+
+    finally:
+        # 로그 핸들러 복원
+        try:
+            for handler, was_disabled in zip(root_logger.handlers, handlers_states):
+                handler.disabled = was_disabled
+        except:
+            pass
+
+        # 파일 디스크립터 복원
+        try:
+            os.dup2(original_stdout_fd, 1)
+            os.dup2(original_stderr_fd, 2)
+            os.close(original_stdout_fd)
+            os.close(original_stderr_fd)
+            if devnull_fd is not None:
+                os.close(devnull_fd)
+        except:
+            pass
+
+        # Python 출력 스트림 복원
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+
+
 class MCPToolCache:
     """MCP 도구 캐싱 시스템"""
-    
+
     def __init__(self, cache_ttl: int = 300):  # 5분 TTL
         self.cache_ttl = cache_ttl
-        self._tools_cache: Optional[Tuple[List[Any], float]] = None  # (tools, timestamp)
+        # (tools, timestamp)
+        self._tools_cache: Optional[Tuple[List[Any], float]] = None
         self._descriptions_cache: Optional[Tuple[str, float]] = None
         self._openai_tools_cache: Optional[Tuple[List[Dict[str, Any]], float]] = None
         self._tool_name_mapping: Dict[str, Any] = {}  # 빠른 이름 기반 조회
-        
+
     def is_expired(self, timestamp: float) -> bool:
         """캐시가 만료되었는지 확인"""
         return time.time() - timestamp > self.cache_ttl
-        
+
     def get_tools(self) -> Optional[List[Any]]:
         """캐시된 도구 목록 반환"""
         if self._tools_cache and not self.is_expired(self._tools_cache[1]):
             return self._tools_cache[0]
         return None
-        
+
     def set_tools(self, tools: List[Any]) -> None:
         """도구 목록 캐싱"""
         self._tools_cache = (tools, time.time())
         # 이름 매핑도 업데이트
         self._tool_name_mapping = {tool.name: tool for tool in tools}
         logger.debug(f"도구 캐시 업데이트: {len(tools)}개 도구")
-        
+
     def get_tool_by_name(self, name: str) -> Optional[Any]:
         """이름으로 도구 빠른 조회"""
         if self._tools_cache and not self.is_expired(self._tools_cache[1]):
             return self._tool_name_mapping.get(name)
         return None
-        
+
     def get_descriptions(self) -> Optional[str]:
         """캐시된 도구 설명 반환"""
         if self._descriptions_cache and not self.is_expired(self._descriptions_cache[1]):
             return self._descriptions_cache[0]
         return None
-        
+
     def set_descriptions(self, descriptions: str) -> None:
         """도구 설명 캐싱"""
         self._descriptions_cache = (descriptions, time.time())
-        
+
     def get_openai_tools(self) -> Optional[List[Dict[str, Any]]]:
         """캐시된 OpenAI 형식 도구 반환"""
         if self._openai_tools_cache and not self.is_expired(self._openai_tools_cache[1]):
             return self._openai_tools_cache[0]
         return None
-        
+
     def set_openai_tools(self, openai_tools: List[Dict[str, Any]]) -> None:
         """OpenAI 형식 도구 캐싱"""
         self._openai_tools_cache = (openai_tools, time.time())
-        
+
     def clear_cache(self) -> None:
         """모든 캐시 초기화"""
         self._tools_cache = None
@@ -138,7 +260,7 @@ class MCPToolManager:
         self.langchain_tools: List[Any] = []
         self._initialized = False
         self._lock = asyncio.Lock()
-        
+
         # 캐싱 시스템 추가
         self.cache = MCPToolCache(cache_ttl)
         logger.debug(f"MCP 도구 관리자 초기화 (캐시 TTL: {cache_ttl}초)")
@@ -176,14 +298,16 @@ class MCPToolManager:
 
                 logger.debug(f"MCP 서버 설정: {list(server_configs.keys())}")
 
-                # MultiServerMCPClient 초기화 (컨텍스트 매니저 사용 안 함)
-                self.mcp_client = MultiServerMCPClient(server_configs)
+                # MultiServerMCPClient 초기화 시 모든 출력 완전 억제
+                with suppress_all_output():
+                    self.mcp_client = MultiServerMCPClient(server_configs)
 
                 # 직접 도구 로드 (langchain-mcp-adapters 0.1.0+ 방식)
                 await self._load_tools()
 
                 self._initialized = True
-                logger.debug(f"MCP 도구 관리자 초기화 완료: {len(self.langchain_tools)}개 도구")
+                logger.debug(
+                    f"MCP 도구 관리자 초기화 완료: {len(self.langchain_tools)}개 도구")
                 return True
 
             except Exception as e:
@@ -193,6 +317,7 @@ class MCPToolManager:
 
     def _build_server_configs(self, mcp_config: Any) -> Dict[str, Dict[str, Any]]:
         """서버 설정 구성"""
+        import subprocess
         server_configs = {}
         enabled_servers = mcp_config.get_enabled_servers()
 
@@ -204,6 +329,11 @@ class MCPToolManager:
                 if "command" in server_data:
                     config["command"] = server_data["command"]
                     config["args"] = server_data.get("args", [])
+
+                    # subprocess 출력을 완전히 숨기기 위한 설정 추가
+                    config["stdout"] = subprocess.DEVNULL
+                    config["stderr"] = subprocess.DEVNULL
+
                 elif "url" in server_data:
                     # SSE 전송 방식
                     config["url"] = server_data["url"]
@@ -214,15 +344,29 @@ class MCPToolManager:
 
                 # 환경 변수 설정 (기존 + 로그 제어)
                 env = server_data.get("env", {}).copy()
-                
-                # MCP 도구들의 로그를 숨기기 위한 환경 변수 추가
+
+                # 모든 MCP 도구들의 출력을 최소화하기 위한 환경 변수 설정
+                env.update({
+                    "PYTHONUNBUFFERED": "0",  # Python 출력 버퍼링 비활성화
+                    "PYTHONIOENCODING": "utf-8",  # 인코딩 설정
+                })
+
+                # 개별 도구별 로그 제어
                 if server_name == "web_search":
-                    env["DUCKDUCKGO_LOG_LEVEL"] = "WARNING"
+                    env["DUCKDUCKGO_LOG_LEVEL"] = "ERROR"
                 elif server_name == "coder":
                     env["CODER_MCP_VERBOSE"] = "false"
                 elif server_name == "file_explorer":
                     env["FILE_MCP_VERBOSE"] = "false"
-                
+                elif server_name == "time":
+                    env["TIME_MCP_VERBOSE"] = "false"
+                elif server_name == "weather":
+                    env["WEATHER_MCP_VERBOSE"] = "false"
+                elif server_name == "github":
+                    env["GITHUB_MCP_VERBOSE"] = "false"
+                elif server_name == "process":
+                    env["PROCESS_MCP_VERBOSE"] = "false"
+
                 config["env"] = env
 
                 server_configs[server_name] = config
@@ -240,14 +384,15 @@ class MCPToolManager:
                 return
 
             # langchain-mcp-adapters 0.1.0+ 방식: 직접 get_tools() 호출
-            # subprocess 출력을 숨기기 위해 컨텍스트 매니저 사용
-            with suppress_subprocess_output():
+            # 모든 출력을 완전히 숨기기 위해 강력한 컨텍스트 매니저 사용
+            with suppress_all_output():
                 self.langchain_tools = await self.mcp_client.get_tools()
 
             # 캐시에 저장
             self.cache.set_tools(self.langchain_tools)
 
-            logger.debug(f"Langchain 도구 {len(self.langchain_tools)}개 로드 완료 (캐시됨)")
+            logger.debug(
+                f"Langchain 도구 {len(self.langchain_tools)}개 로드 완료 (캐시됨)")
             for tool in self.langchain_tools:
                 logger.debug(f"  - {tool.name}: {tool.description}")
 
@@ -266,16 +411,16 @@ class MCPToolManager:
         if cached_tools:
             logger.debug(f"캐시에서 도구 목록 반환: {len(cached_tools)}개")
             return cached_tools.copy()
-        
+
         # 캐시 미스 시 초기화 후 반환
         if not self._initialized:
             await self.initialize()
-        
+
         # 다시 캐시 확인
         cached_tools = self.cache.get_tools()
         if cached_tools:
             return cached_tools.copy()
-            
+
         return self.langchain_tools.copy()
 
     def get_tool_by_name(self, name: str) -> Optional[Any]:
@@ -284,7 +429,7 @@ class MCPToolManager:
         if cached_tool:
             logger.debug(f"캐시에서 도구 조회: {name}")
             return cached_tool
-        
+
         # 캐시 미스 시 직접 검색
         for tool in self.langchain_tools:
             if tool.name == name:
@@ -297,7 +442,7 @@ class MCPToolManager:
             try:
                 # 캐시 초기화
                 self.cache.clear_cache()
-                
+
                 if self.mcp_client and self._initialized:
                     await self._load_tools()
                     logger.info("MCP 도구 목록 새로고침 완료 (캐시 재생성)")
@@ -313,7 +458,7 @@ class MCPToolManager:
         if cached_descriptions:
             logger.debug("캐시에서 도구 설명 반환")
             return cached_descriptions
-        
+
         # 캐시 미스 시 생성
         if not self.langchain_tools:
             descriptions = "사용 가능한 MCP 도구가 없습니다."
@@ -322,7 +467,7 @@ class MCPToolManager:
             for tool in self.langchain_tools:
                 descriptions_list.append(f"- {tool.name}: {tool.description}")
             descriptions = "\n".join(descriptions_list)
-        
+
         # 캐시에 저장
         self.cache.set_descriptions(descriptions)
         return descriptions
@@ -341,7 +486,7 @@ class MCPToolManager:
         if cached_openai_tools:
             logger.debug(f"캐시에서 OpenAI 도구 스키마 반환: {len(cached_openai_tools)}개")
             return cached_openai_tools.copy()
-        
+
         # 캐시 미스 시 생성
         tools = []
         for langchain_tool in self.langchain_tools:
@@ -352,8 +497,10 @@ class MCPToolManager:
                     try:
                         args_schema = langchain_tool.args_schema.model_json_schema()
                     except Exception as schema_e:
-                        logger.warning(f"도구 {langchain_tool.name} 스키마 변환 실패: {schema_e}")
-                        args_schema = {"type": "object", "properties": {}, "required": []}
+                        logger.warning(
+                            f"도구 {langchain_tool.name} 스키마 변환 실패: {schema_e}")
+                        args_schema = {"type": "object",
+                                       "properties": {}, "required": []}
 
                 tool_schema = {
                     "type": "function",
@@ -378,12 +525,13 @@ class MCPToolManager:
         try:
             # 캐시를 통한 빠른 도구 조회
             target_tool = self.get_tool_by_name(tool_name)
-            
+
             if not target_tool:
                 return f"도구 '{tool_name}'을 찾을 수 없습니다."
 
-            # 도구 실행
-            result = await target_tool.ainvoke(arguments)
+            # 도구 실행 시 출력 억제 (특히 GitHub MCP Server 같은 바이너리 도구)
+            with suppress_all_output():
+                result = await target_tool.ainvoke(arguments)
             return str(result)
 
         except Exception as e:
