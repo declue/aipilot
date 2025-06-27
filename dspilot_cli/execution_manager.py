@@ -4,7 +4,7 @@ DSPilot CLI 실행 관리 모듈
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from dspilot_cli.constants import (
     ANALYSIS_PROMPT_TEMPLATE,
@@ -87,13 +87,15 @@ class ExecutionManager:
 
         return None
 
-    async def execute_interactive_plan(self, plan: ExecutionPlan, original_prompt: str) -> None:
+    async def execute_interactive_plan(self, plan: ExecutionPlan, original_prompt: str, 
+                                      streaming_callback: Optional[Callable[[str], None]] = None) -> None:
         """
         대화형 계획 실행
 
         Args:
             plan: 실행 계획
             original_prompt: 원본 프롬프트
+            streaming_callback: 스트리밍 콜백 함수
         """
         if not plan.steps:
             return
@@ -106,7 +108,7 @@ class ExecutionManager:
                 return
 
         # 최종 결과 분석 및 출력
-        await self._generate_final_response(original_prompt, step_results)
+        await self._generate_final_response(original_prompt, step_results, streaming_callback)
 
     async def _execute_step(self, step: ExecutionStep, step_results: Dict[int, Any]) -> bool:
         """
@@ -239,13 +241,15 @@ class ExecutionManager:
 
     async def _generate_final_response(self,
                                        original_prompt: str,
-                                       step_results: Dict[int, Any]) -> None:
+                                       step_results: Dict[int, Any],
+                                       streaming_callback: Optional[Callable[[str], None]] = None) -> None:
         """
         최종 응답 생성
 
         Args:
             original_prompt: 원본 프롬프트
             step_results: 단계 실행 결과들
+            streaming_callback: 스트리밍 콜백 함수
         """
         if not step_results:
             return
@@ -266,17 +270,27 @@ class ExecutionManager:
 
         try:
             context = [ConversationMessage(role="user", content=final_prompt)]
-            response = await self.llm_agent.llm_service.generate_response(context)
+            
+            # 스트리밍 모드인 경우 콜백과 함께 응답 생성
+            if streaming_callback:
+                self.output_manager.start_streaming_output()
+                response = await self.llm_agent.llm_service.generate_response(context, streaming_callback)
+                self.output_manager.finish_streaming_output()
+            else:
+                response = await self.llm_agent.llm_service.generate_response(context)
 
             response_data = {
                 "response": response.response,
                 "used_tools": list(step_results.keys()),
                 "step_results": step_results
             }
-            self.output_manager.print_response(
-                response.response,
-                response_data.get("used_tools", [])
-            )
+            
+            # 스트리밍 모드가 아닌 경우에만 응답 출력 (스트리밍 모드에서는 이미 출력됨)
+            if not streaming_callback:
+                self.output_manager.print_response(
+                    response.response,
+                    response_data.get("used_tools", [])
+                )
 
         except Exception as e:
             self.output_manager.log_if_debug(f"최종 응답 생성 실패: {e}", "error")

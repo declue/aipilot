@@ -6,6 +6,7 @@ SOLID 원칙과 단일 책임 원칙을 적용한 모듈화된 CLI 시스템
 사용법:
   python -m dspilot_cli                    # 대화형 모드
   python -m dspilot_cli "질문"             # 단일 질문 모드  
+  python -m dspilot_cli "질문" --stream    # 단일 질문 모드 (스트리밍 출력)
   python -m dspilot_cli --diagnose         # 시스템 진단
   python -m dspilot_cli --tools            # MCP 도구 목록
 """

@@ -13,17 +13,25 @@ from dspilot_cli.constants import Messages, StyleColors
 class OutputManager:
     """출력 관리를 담당하는 클래스"""
 
-    def __init__(self, quiet_mode: bool = False, debug_mode: bool = False) -> None:
+    def __init__(self, quiet_mode: bool = False, debug_mode: bool = False, stream_mode: bool = False, verbose_mode: bool = False) -> None:
         """
         출력 관리자 초기화
 
         Args:
             quiet_mode: 조용한 모드 여부
             debug_mode: 디버그 모드 여부
+            stream_mode: 스트리밍 모드 여부
+            verbose_mode: 상세 출력 모드 여부
         """
         self.quiet_mode = quiet_mode
         self.debug_mode = debug_mode
+        self.stream_mode = stream_mode
+        self.verbose_mode = verbose_mode
         self.logger = logging.getLogger("dspilot_cli")
+        
+        # 스트리밍 관련 상태
+        self._streaming_active = False
+        self._streaming_buffer = ""
 
     def print_if_not_quiet(self, message: str) -> None:
         """조용한 모드가 아닐 때만 출력"""
@@ -44,16 +52,6 @@ class OutputManager:
         """CLI 시작 배너 출력"""
         if self.quiet_mode:
             return
-
-        banner = f"""
-{StyleColors.HEADER}
-╔════════════════════════════════════════════════════════════════╗
-║                          🚀 DSPilot CLI                        ║
-║                    AI-Powered Development Assistant            ║
-╚════════════════════════════════════════════════════════════════╝
-{StyleColors.RESET_ALL}
-        """
-        print(banner)
 
     def print_help(self) -> None:
         """도움말 출력"""
@@ -119,7 +117,7 @@ class OutputManager:
     def print_execution_plan(self, plan: Dict[str, Any]) -> None:
         """실행 계획 출력"""
         steps = plan.get("steps", [])
-        if not self.quiet_mode:
+        if not self.quiet_mode or self.verbose_mode:
             plan_text = plan.get("description", "도구 실행 계획")
             print(
                 f"{StyleColors.INFO}📋 실행 계획: {plan_text}{StyleColors.RESET_ALL}")
@@ -128,18 +126,18 @@ class OutputManager:
 
     def print_step_info(self, step_num: int, description: str) -> None:
         """단계 정보 출력"""
-        if not self.quiet_mode:
+        if not self.quiet_mode or self.verbose_mode:
             print(
                 f"{StyleColors.SYSTEM}🔄 단계 {step_num}: {description}{StyleColors.RESET_ALL}")
 
     def print_step_execution(self, tool_name: str) -> None:
         """단계 실행 정보 출력"""
-        if not self.quiet_mode:
+        if not self.quiet_mode or self.verbose_mode:
             print(f"{StyleColors.SYSTEM}⚡ {tool_name} 실행 중...{StyleColors.RESET_ALL}")
 
     def print_step_completed(self, step_num: int) -> None:
         """단계 완료 정보 출력"""
-        if not self.quiet_mode:
+        if not self.quiet_mode or self.verbose_mode:
             print(f"{StyleColors.SUCCESS}✅ 단계 {step_num} 완료{StyleColors.RESET_ALL}")
 
     def print_step_skipped(self, step_num: int) -> None:
@@ -223,3 +221,22 @@ class OutputManager:
         """시스템 메시지 출력"""
         if not self.quiet_mode:
             print(f"{StyleColors.SYSTEM}{message}{StyleColors.RESET_ALL}")
+
+    def start_streaming_output(self) -> None:
+        """스트리밍 출력 시작"""
+        if self.stream_mode:
+            self._streaming_active = True
+            self._streaming_buffer = ""
+            # "Assistant:" 레이블 제거 - 바로 응답만 출력
+
+    def handle_streaming_chunk(self, chunk: str) -> None:
+        """스트리밍 청크 처리"""
+        if self.stream_mode and self._streaming_active:
+            print(chunk, end="", flush=True)
+            self._streaming_buffer += chunk
+
+    def finish_streaming_output(self) -> None:
+        """스트리밍 출력 완료"""
+        if self.stream_mode and self._streaming_active:
+            print()  # 단순히 줄바꿈만 추가
+            self._streaming_active = False

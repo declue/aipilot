@@ -169,9 +169,9 @@ class MCPManager:
     async def cleanup(self) -> None:
         """리소스 정리"""
         try:
-            logger.info("MCP 관리자 리소스 정리 중...")
+            logger.debug("MCP 관리자 리소스 정리 중...")
             # 서버 상태 초기화
             self._server_statuses.clear()
-            logger.info("MCP 관리자 리소스 정리 완료")
+            logger.debug("MCP 관리자 리소스 정리 완료")
         except Exception as e:
             logger.error(f"MCP 관리자 정리 중 오류: {e}")

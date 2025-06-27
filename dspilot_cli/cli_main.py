@@ -35,7 +35,7 @@ class DSPilotCLI:
     """
 
     def __init__(self, debug_mode: bool = False, quiet_mode: bool = False,
-                 full_auto_mode: bool = False) -> None:
+                 full_auto_mode: bool = False, stream_mode: bool = False, verbose_mode: bool = False) -> None:
         """
         DSPilot CLI 초기화
 
@@ -43,18 +43,22 @@ class DSPilotCLI:
             debug_mode: 디버그 모드 여부
             quiet_mode: 조용한 모드 여부
             full_auto_mode: 전체 자동 모드 여부
+            stream_mode: 스트리밍 모드 여부
+            verbose_mode: 상세 출력 모드 여부
         """
         # 기본 설정
         self.debug_mode = debug_mode
         self.quiet_mode = quiet_mode
         self.full_auto_mode = full_auto_mode
+        self.stream_mode = stream_mode
+        self.verbose_mode = verbose_mode
 
         # 세션 정보
         self.session_start = datetime.now()
         self.query_count = 0
 
         # 의존성 주입으로 관리자들 초기화
-        self.output_manager = OutputManager(quiet_mode, debug_mode)
+        self.output_manager = OutputManager(quiet_mode, debug_mode, stream_mode, verbose_mode)
         self.conversation_manager = ConversationManager()
         self.interaction_manager = InteractionManager(
             self.output_manager, full_auto_mode)
@@ -206,7 +210,6 @@ class DSPilotCLI:
 
         self.output_manager.log_if_debug(
             f"=== CLI: 대화형 Agent 처리 시작: '{user_input}' ===")
-        self.output_manager.print_system(Messages.ANALYZING)
 
         try:
             await self._run_interactive_agent(user_input)
@@ -233,6 +236,11 @@ class DSPilotCLI:
             f"=== CLI: 향상된 프롬프트 생성: '{enhanced_prompt[:100]}...' ==="
         )
 
+        # 스트리밍 콜백 설정
+        streaming_callback = None
+        if self.stream_mode:
+            streaming_callback = self.output_manager.handle_streaming_chunk
+
         # 1단계: 요청 분석 및 계획 수립
         plan = await self.execution_manager.analyze_request_and_plan(enhanced_prompt)
 
@@ -240,12 +248,19 @@ class DSPilotCLI:
             # 도구가 필요하지 않은 경우 직접 응답
             llm_agent = self.system_manager.get_llm_agent()
             if llm_agent:
-                response_data = await llm_agent.generate_response(enhanced_prompt)
+                if self.stream_mode:
+                    self.output_manager.start_streaming_output()
+                
+                response_data = await llm_agent.generate_response(enhanced_prompt, streaming_callback)
+                
+                if self.stream_mode:
+                    self.output_manager.finish_streaming_output()
+                
                 await self._display_response(response_data)
             return
 
-        # 2단계: 대화형 실행
-        await self.execution_manager.execute_interactive_plan(plan, enhanced_prompt)
+        # 2단계: 대화형 실행 (스트리밍 콜백 전달)
+        await self.execution_manager.execute_interactive_plan(plan, enhanced_prompt, streaming_callback)
 
     async def _display_response(self, response_data: dict) -> None:
         """
@@ -257,7 +272,9 @@ class DSPilotCLI:
         response = response_data.get("response", "응답을 생성할 수 없습니다.")
         used_tools = response_data.get("used_tools", [])
 
-        self.output_manager.print_response(response, used_tools)
+        # 스트리밍 모드가 아닌 경우에만 응답 출력 (스트리밍 모드에서는 이미 출력됨)
+        if not self.stream_mode:
+            self.output_manager.print_response(response, used_tools)
 
         # Assistant 응답을 히스토리에 추가
         self.conversation_manager.add_to_history(
@@ -316,6 +333,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
   python -m dspilot_cli.cli_main --full-auto              # 대화형 모드 (도구 자동 실행)
   python -m dspilot_cli.cli_main "현재 시간은?"             # 단일 질문 (간결 출력)
   python -m dspilot_cli.cli_main "현재 시간은?" --full-auto # 단일 질문 (자동 실행)
+  python -m dspilot_cli.cli_main "현재 시간은?" --stream    # 단일 질문 (스트리밍 출력)
   python -m dspilot_cli.cli_main "현재 시간은?" --debug     # 단일 질문 (상세 로그)
   python -m dspilot_cli.cli_main --tools                  # 도구 목록
         """
@@ -355,6 +373,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--full-auto",
         action="store_true",
         help="전체 자동 모드 (사용자 확인 없이 도구 자동 실행)"
+    )
+
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="스트리밍 모드 (LLM 응답을 실시간으로 출력)"
     )
 
     return parser
@@ -403,17 +427,21 @@ async def main() -> None:
     args = create_argument_parser().parse_args()
 
     # 모드 설정
-    debug_mode = args.debug or args.verbose
-    quiet_mode = bool(args.query) and not debug_mode
+    debug_mode = args.debug
+    verbose_mode = args.verbose
+    quiet_mode = bool(args.query) and not debug_mode  # verbose는 debug_mode에서 제외
     full_auto_mode = args.full_auto
+    stream_mode = args.stream
 
     # 로깅 설정
-    setup_logging(debug_mode, quiet_mode)
+    setup_logging(debug_mode or verbose_mode, quiet_mode)  # verbose 모드도 로깅 레벨 조정
 
     cli = DSPilotCLI(
         debug_mode=debug_mode,
         quiet_mode=quiet_mode,
-        full_auto_mode=full_auto_mode
+        full_auto_mode=full_auto_mode,
+        stream_mode=stream_mode,
+        verbose_mode=verbose_mode
     )
 
     try:

@@ -1,4 +1,4 @@
-from application.app import App
+from dspilot_app.app import App
 
 
 def main() -> None:

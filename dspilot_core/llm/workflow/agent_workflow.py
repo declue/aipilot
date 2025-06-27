@@ -270,7 +270,7 @@ class AgentWorkflow(BaseWorkflow):
         try:
             if self.llm_service:
                 context = [ConversationMessage(role="user", content=user_message)]
-                response = await self.llm_service.generate_response(context)
+                response = await self.llm_service.generate_response(context, streaming_callback)
                 return response.response if hasattr(response, 'response') else str(response)
             elif hasattr(agent, '_generate_basic_response'):
                 return await agent._generate_basic_response(user_message, streaming_callback)
@@ -290,5 +290,5 @@ class AgentWorkflow(BaseWorkflow):
             "max_iterations": self.max_iterations,
             "context_window": self.context_window,
             "supports_tools": True,
-            "supports_streaming": False
+            "supports_streaming": True  # 스트리밍 지원 표시
         } 
