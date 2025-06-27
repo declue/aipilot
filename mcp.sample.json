@@ -1,29 +1,67 @@
 {
-    "mcpServers": {
-      "github": {
-        "command": "tools/github-mcp-server.exe",
-        "args": [
-          "stdio"
-        ],
-        "env": {
-          "GITHUB_PERSONAL_ACCESS_TOKEN": ""
-        },
-        "description": "GitHub repository and issue management",
-        "enabled": true,
-        "name": "github"
-      },
-      "local_mcp_stdio": {
-        "command": "fastmcp",
-        "args": [
-          "run",
-          "tools/local_mcp_stdio.py"
-        ],
-        "env": {},
-        "description": "Time and timezone management",
-        "enabled": true,
-        "name": "local_mcp_stdio"
-      }
+  "mcpServers": {
+    "time": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/common/time.py"
+      ],
+      "env": {},
+      "description": "시간 및 날짜 관리",
+      "enabled": true
     },
-    "defaultServer": null,
-    "enabled": true
-  }
+    "weather": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/common/weather.py"
+      ],
+      "env": {},
+      "description": "날씨 정보 및 예보",
+      "enabled": true
+    },
+    "web_search": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/web_search/duckduckgo.py"
+      ],
+      "env": {},
+      "description": "DuckDuckGo 웹 검색",
+      "enabled": true
+    },
+    "file_explorer": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/file_explorer_mcp/file_mcp_tool.py"
+      ],
+      "env": {},
+      "description": "파일 조작 도구",
+      "enabled": true
+    },
+    "coder": {
+      "command": "fastmcp",
+      "args": [
+        "run",
+        "tools/coder/coder_mcp.py"
+      ],
+      "env": {},
+      "description": "코딩 도구",
+      "enabled": true
+    },
+    "github": {
+      "command": "tools/github-mcp-server-osx",
+      "args": [
+        "stdio"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+      },
+      "description": "GitHub 도구",
+      "enabled": true
+    }
+  },
+  "defaultServer": null,
+  "enabled": true
+}

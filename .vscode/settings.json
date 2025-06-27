@@ -16,6 +16,8 @@
         "**/.coverage.*": true,
         "**/__pycache__": true,
         "**/**.egg-info": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true
     },
     "editor.codeActionsOnSave": {
         "source.convertImportFormat": "always",

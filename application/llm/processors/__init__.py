@@ -1,1 +1,0 @@
-# Tool result processors for different MCP tools 
