@@ -55,7 +55,7 @@ class StyleColors:
 class DSPilotCLI:
     """DSPilot CLI 메인 클래스"""
 
-    def __init__(self, debug_mode: bool = False, quiet_mode: bool = False) -> None:
+    def __init__(self, debug_mode: bool = False, quiet_mode: bool = False, full_auto_mode: bool = False) -> None:
         self.config_manager: Optional[ConfigManager] = None
         self.llm_agent: Optional[BaseAgent] = None
         self.mcp_manager: Optional[MCPManager] = None
@@ -66,6 +66,7 @@ class DSPilotCLI:
         # 출력 모드 설정
         self.debug_mode = debug_mode
         self.quiet_mode = quiet_mode
+        self.full_auto_mode = full_auto_mode
         
         # 대화 히스토리 관리
         self.conversation_history = []
@@ -114,7 +115,7 @@ class DSPilotCLI:
             
             # 도구 사용 정보가 있으면 추가
             if entry["metadata"].get("used_tools"):
-                tools = ", ".join(entry["metadata"]["used_tools"])
+                tools = ", ".join(str(tool) for tool in entry["metadata"]["used_tools"])
                 context_parts.append(f"   [사용된 도구: {tools}]")
         
         return "\n".join(context_parts)
@@ -263,6 +264,8 @@ class DSPilotCLI:
 
   {StyleColors.INFO}💡 일반 질문이나 요청을 입력하면 AI가 응답합니다.{StyleColors.RESET_ALL}
   {StyleColors.SUCCESS}🔄 멀티턴 대화: 이전 대화 맥락을 기억하여 연속된 작업을 처리합니다.{StyleColors.RESET_ALL}
+  {StyleColors.WARNING}🤝 대화형 모드: MCP 도구 사용 시 사용자 확인 후 실행합니다.{StyleColors.RESET_ALL}
+  {StyleColors.SYSTEM}⚡ --full-auto 옵션: 도구를 자동으로 실행합니다.{StyleColors.RESET_ALL}
         """
         print(help_text)
 
@@ -339,61 +342,20 @@ class DSPilotCLI:
         await self.process_query(query)
 
     async def process_query(self, user_input: str) -> None:
-        """사용자 질문 처리"""
+        """사용자 질문 처리 - 대화형 Agent 모드"""
         # 사용자 입력을 히스토리에 추가
         self.add_to_history("user", user_input)
 
-        # AI 응답 생성 (향상된 프롬프트 사용)
+        # AI 응답 생성 (대화형 모드)
         if self.llm_agent:
-            self.log_if_debug(f"=== CLI: AI 질문 처리 시작: '{user_input}' ===")
+            self.log_if_debug(f"=== CLI: 대화형 Agent 처리 시작: '{user_input}' ===")
             
-            # 이전 대화 맥락을 포함한 프롬프트 생성
-            enhanced_prompt = self.build_enhanced_prompt(user_input)
-            self.log_if_debug(f"=== CLI: 향상된 프롬프트 생성: '{enhanced_prompt[:100]}...' ===")
-            self.log_if_debug(f"=== CLI: 사용할 Agent: {type(self.llm_agent).__name__} ===")
+            # full-auto 모드 여부를 Agent에게 전달
+            if hasattr(self.llm_agent, 'set_interaction_mode'):
+                self.llm_agent.set_interaction_mode(not self.full_auto_mode)
             
-            if not self.quiet_mode:
-                print(f"{StyleColors.SYSTEM}🤖 처리 중...{StyleColors.RESET_ALL}")
-            
-            try:
-                response_data = await self.llm_agent.generate_response(enhanced_prompt)
-                self.log_if_debug(f"=== CLI: Agent 응답 수신 완료 ===")
-
-                # 응답 출력
-                response = response_data.get("response", "응답을 생성할 수 없습니다.")
-                
-                if self.quiet_mode:
-                    # 조용한 모드에서는 응답만 출력
-                    print(response)
-                else:
-                    # 일반 모드에서는 스타일링 적용
-                    print(f"{StyleColors.ASSISTANT}🤖 Assistant: {response}{StyleColors.RESET_ALL}")
-
-                # 사용된 도구 정보
-                used_tools = response_data.get("used_tools", [])
-                if used_tools and not self.quiet_mode:
-                    tools = ", ".join(used_tools)
-                    print(f"{StyleColors.INFO}🔧 사용된 도구: {tools}{StyleColors.RESET_ALL}")
-
-                # Assistant 응답을 히스토리에 추가
-                self.add_to_history("assistant", response, {"used_tools": used_tools})
-
-                self.query_count += 1
-
-                # 응답에서 보류 중인 작업들 추출
-                self.extract_pending_actions(response_data)
-                
-                # 도구가 실제로 사용되었다면 보류 작업 클리어 (실행 완료로 간주)
-                if used_tools:
-                    self.clear_pending_actions()
-                    
-            except Exception as e:
-                self.log_if_debug(f"=== CLI: AI 질문 처리 실패: {e} ===", "error")
-                error_msg = f"처리 중 오류가 발생했습니다: {str(e)}"
-                if self.quiet_mode:
-                    print(error_msg)
-                else:
-                    print(f"{StyleColors.ERROR}❌ {error_msg}{StyleColors.RESET_ALL}")
+            # 대화형 처리 시작
+            await self.run_interactive_agent(user_input)
                 
         else:
             error_msg = "Agent가 초기화되지 않았습니다."
@@ -401,6 +363,289 @@ class DSPilotCLI:
                 print(error_msg)
             else:
                 print(f"{StyleColors.ERROR}❌ {error_msg}{StyleColors.RESET_ALL}")
+
+    async def run_interactive_agent(self, user_input: str) -> None:
+        """대화형 Agent 실행"""
+        try:
+            # 이전 대화 맥락을 포함한 프롬프트 생성
+            enhanced_prompt = self.build_enhanced_prompt(user_input)
+            self.log_if_debug(f"=== CLI: 향상된 프롬프트 생성: '{enhanced_prompt[:100]}...' ===")
+            
+            if not self.quiet_mode:
+                print(f"{StyleColors.SYSTEM}🤖 분석 중...{StyleColors.RESET_ALL}")
+            
+            # 1단계: 요청 분석 및 계획 수립
+            plan = await self.analyze_request_and_plan(enhanced_prompt)
+            
+            if not plan:
+                # 도구가 필요하지 않은 경우 직접 응답
+                response_data = await self.llm_agent.generate_response(enhanced_prompt)
+                await self.display_response(response_data)
+                return
+            
+            # 2단계: 대화형 실행
+            await self.execute_interactive_plan(plan, enhanced_prompt)
+            
+        except Exception as e:
+            self.log_if_debug(f"=== CLI: 대화형 Agent 처리 실패: {e} ===", "error")
+            error_msg = f"처리 중 오류가 발생했습니다: {str(e)}"
+            if self.quiet_mode:
+                print(error_msg)
+            else:
+                print(f"{StyleColors.ERROR}❌ {error_msg}{StyleColors.RESET_ALL}")
+
+    async def analyze_request_and_plan(self, user_message: str) -> Optional[dict]:
+        """요청 분석 및 실행 계획 수립"""
+        try:
+            # 사용 가능한 도구 목록 확인
+            available_tools = []
+            if self.mcp_tool_manager and hasattr(self.mcp_tool_manager, 'get_langchain_tools'):
+                try:
+                    available_tools = await self.mcp_tool_manager.get_langchain_tools()
+                except Exception as e:
+                    self.log_if_debug(f"도구 목록 가져오기 실패: {e}", "warning")
+            
+            if not available_tools:
+                return None
+            
+            # 도구 목록 생성
+            tools_desc = "\n".join([
+                f"- {tool.name}: {tool.description}" 
+                for tool in available_tools
+            ])
+            
+            # 계획 수립 프롬프트
+            analysis_prompt = f"""다음 사용자 요청을 분석하여 실행 계획을 수립해주세요.
+
+사용자 요청: {user_message}
+
+사용 가능한 도구들:
+{tools_desc}
+
+도구 사용이 필요한 경우 실행 계획을 수립하세요. 그렇지 않으면 null을 반환하세요.
+
+**응답 형식 (JSON):**
+{{
+    "need_tools": true/false,
+    "plan": {{
+        "description": "실행 계획 설명",
+        "steps": [
+            {{
+                "step": 1,
+                "description": "단계 설명",
+                "tool_name": "도구명",
+                "arguments": {{"arg": "value"}},
+                "confirm_message": "사용자에게 표시할 확인 메시지"
+            }}
+        ]
+    }}
+}}
+
+반드시 JSON 형식으로만 응답하세요."""
+
+            from application.llm.models.conversation_message import ConversationMessage
+            context = [ConversationMessage(role="user", content=analysis_prompt)]
+            response = await self.llm_agent.llm_service.generate_response(context)
+            
+            # JSON 파싱
+            import json
+            response_text = response.response
+            start_idx = response_text.find("{")
+            end_idx = response_text.rfind("}") + 1
+            if start_idx != -1 and end_idx != 0:
+                json_str = response_text[start_idx:end_idx]
+                result = json.loads(json_str)
+                
+                if result.get("need_tools", False):
+                    return result.get("plan")
+                    
+        except Exception as e:
+            self.log_if_debug(f"계획 수립 실패: {e}", "warning")
+        
+        return None
+
+    async def execute_interactive_plan(self, plan: dict, original_prompt: str) -> None:
+        """대화형 계획 실행"""
+        if not plan or "steps" not in plan:
+            return
+            
+        steps = plan["steps"]
+        step_results = {}
+        
+        if not self.quiet_mode:
+            print(f"{StyleColors.INFO}📋 실행 계획: {plan.get('description', '도구 실행 계획')}{StyleColors.RESET_ALL}")
+            print(f"{StyleColors.INFO}총 {len(steps)}개 단계가 있습니다.{StyleColors.RESET_ALL}\n")
+        
+        for step in steps:
+            step_num = step.get("step", 0)
+            description = step.get("description", f"단계 {step_num}")
+            tool_name = step.get("tool_name", "")
+            arguments = step.get("arguments", {})
+            confirm_message = step.get("confirm_message", f"{tool_name} 도구를 실행하시겠습니까?")
+            
+            if not self.quiet_mode:
+                print(f"{StyleColors.SYSTEM}🔄 단계 {step_num}: {description}{StyleColors.RESET_ALL}")
+            
+            # 사용자 확인 (full-auto 모드가 아닌 경우)
+            if not self.full_auto_mode and not self.quiet_mode:
+                user_choice = self.get_user_confirmation(confirm_message, tool_name, arguments)
+                
+                if user_choice == "skip":
+                    print(f"{StyleColors.WARNING}⏭️ 단계 {step_num} 건너뛰기{StyleColors.RESET_ALL}")
+                    continue
+                elif user_choice == "modify":
+                    # 사용자가 수정을 원하는 경우
+                    new_prompt = input(f"{StyleColors.USER}새로운 요청을 입력하세요: {StyleColors.RESET_ALL}").strip()
+                    if new_prompt:
+                        await self.process_query(new_prompt)
+                        return
+                elif user_choice != "proceed":
+                    print(f"{StyleColors.INFO}✅ 작업을 중단합니다.{StyleColors.RESET_ALL}")
+                    return
+            
+            # 도구 실행
+            try:
+                if not self.quiet_mode:
+                    print(f"{StyleColors.SYSTEM}⚡ {tool_name} 실행 중...{StyleColors.RESET_ALL}")
+                
+                # 이전 단계 결과 참조 처리
+                processed_args = self.process_step_arguments(arguments, step_results)
+                
+                # 도구 실행
+                result = await self.mcp_tool_manager.call_mcp_tool(tool_name, processed_args)
+                step_results[step_num] = result
+                
+                if not self.quiet_mode:
+                    print(f"{StyleColors.SUCCESS}✅ 단계 {step_num} 완료{StyleColors.RESET_ALL}")
+                
+            except Exception as e:
+                error_msg = f"단계 {step_num} 실행 실패: {str(e)}"
+                if not self.quiet_mode:
+                    print(f"{StyleColors.ERROR}❌ {error_msg}{StyleColors.RESET_ALL}")
+                
+                # 오류 발생 시 사용자에게 계속 진행할지 묻기
+                if not self.full_auto_mode and not self.quiet_mode:
+                    continue_choice = input(f"{StyleColors.WARNING}계속 진행하시겠습니까? (y/n): {StyleColors.RESET_ALL}").strip().lower()
+                    if continue_choice != 'y':
+                        return
+        
+        # 최종 결과 분석 및 출력
+        await self.generate_final_response(original_prompt, step_results)
+
+    def get_user_confirmation(self, message: str, tool_name: str, arguments: dict) -> str:
+        """사용자 확인 받기"""
+        print(f"\n{StyleColors.WARNING}🔍 {message}{StyleColors.RESET_ALL}")
+        print(f"{StyleColors.INFO}도구: {tool_name}{StyleColors.RESET_ALL}")
+        if arguments:
+            print(f"{StyleColors.INFO}매개변수: {arguments}{StyleColors.RESET_ALL}")
+        
+        print(f"{StyleColors.USER}선택:{StyleColors.RESET_ALL}")
+        print(f"  {StyleColors.SUCCESS}y{StyleColors.RESET_ALL} - 실행")
+        print(f"  {StyleColors.WARNING}s{StyleColors.RESET_ALL} - 건너뛰기")
+        print(f"  {StyleColors.INFO}m{StyleColors.RESET_ALL} - 새로운 요청으로 수정")
+        print(f"  {StyleColors.ERROR}n{StyleColors.RESET_ALL} - 중단")
+        
+        while True:
+            choice = input(f"{StyleColors.USER}선택 (y/s/m/n): {StyleColors.RESET_ALL}").strip().lower()
+            
+            if choice in ['y', 'yes']:
+                return "proceed"
+            elif choice in ['s', 'skip']:
+                return "skip"
+            elif choice in ['m', 'modify']:
+                return "modify"
+            elif choice in ['n', 'no']:
+                return "cancel"
+            else:
+                print(f"{StyleColors.ERROR}잘못된 선택입니다. y/s/m/n 중 하나를 입력하세요.{StyleColors.RESET_ALL}")
+
+    def process_step_arguments(self, arguments: dict, step_results: dict) -> dict:
+        """단계 매개변수 처리 (이전 단계 결과 참조)"""
+        processed = {}
+        
+        for key, value in arguments.items():
+            if isinstance(value, str) and value.startswith("$step_"):
+                # 이전 단계 결과 참조
+                try:
+                    step_num = int(value.split("_")[1])
+                    if step_num in step_results:
+                        processed[key] = step_results[step_num]
+                    else:
+                        processed[key] = value  # 참조 실패 시 원본 유지
+                except:
+                    processed[key] = value
+            else:
+                processed[key] = value
+        
+        return processed
+
+    async def generate_final_response(self, original_prompt: str, step_results: dict) -> None:
+        """최종 응답 생성"""
+        if not step_results:
+            return
+        
+        # 결과 요약
+        results_summary = "\n".join([
+            f"단계 {step}: {str(result)[:200]}..." if len(str(result)) > 200 else f"단계 {step}: {result}"
+            for step, result in step_results.items()
+        ])
+        
+        # 최종 분석 프롬프트
+        final_prompt = f"""다음은 사용자 요청에 대한 도구 실행 결과입니다.
+
+원래 요청: {original_prompt}
+
+실행 결과:
+{results_summary}
+
+위 결과를 바탕으로 사용자의 요청에 대한 완전하고 유용한 최종 답변을 제공해주세요."""
+
+        try:
+            from application.llm.models.conversation_message import ConversationMessage
+            context = [ConversationMessage(role="user", content=final_prompt)]
+            response = await self.llm_agent.llm_service.generate_response(context)
+            
+            await self.display_response({
+                "response": response.response,
+                "used_tools": list(step_results.keys()),
+                "step_results": step_results
+            })
+            
+        except Exception as e:
+            self.log_if_debug(f"최종 응답 생성 실패: {e}", "error")
+            # 폴백: 원시 결과 출력
+            if not self.quiet_mode:
+                print(f"{StyleColors.SUCCESS}✅ 작업 완료{StyleColors.RESET_ALL}")
+                print(f"{StyleColors.INFO}결과: {results_summary}{StyleColors.RESET_ALL}")
+
+    async def display_response(self, response_data: dict) -> None:
+        """응답 출력"""
+        response = response_data.get("response", "응답을 생성할 수 없습니다.")
+        
+        if self.quiet_mode:
+            # 조용한 모드에서는 응답만 출력
+            print(response)
+        else:
+            # 일반 모드에서는 스타일링 적용
+            print(f"{StyleColors.ASSISTANT}🤖 Assistant: {response}{StyleColors.RESET_ALL}")
+
+        # 사용된 도구 정보
+        used_tools = response_data.get("used_tools", [])
+        if used_tools and not self.quiet_mode:
+            tools = ", ".join(str(tool) for tool in used_tools)
+            print(f"{StyleColors.INFO}🔧 사용된 도구: {tools}{StyleColors.RESET_ALL}")
+
+        # Assistant 응답을 히스토리에 추가
+        self.add_to_history("assistant", response, {"used_tools": used_tools})
+
+        self.query_count += 1
+
+        # 응답에서 보류 중인 작업들 추출
+        self.extract_pending_actions(response_data)
+        
+        # 도구가 실제로 사용되었다면 보류 작업 클리어 (실행 완료로 간주)
+        if used_tools:
+            self.clear_pending_actions()
 
     async def cleanup(self) -> None:
         """리소스 정리"""
@@ -452,8 +697,10 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 사용 예시:
-  python dspilot_cli.py                          # 대화형 모드
+  python dspilot_cli.py                          # 대화형 모드 (도구 사용 시 사용자 확인)
+  python dspilot_cli.py --full-auto              # 대화형 모드 (도구 자동 실행)
   python dspilot_cli.py "현재 시간은?"             # 단일 질문 (간결 출력)
+  python dspilot_cli.py "현재 시간은?" --full-auto # 단일 질문 (자동 실행)
   python dspilot_cli.py "현재 시간은?" --debug     # 단일 질문 (상세 로그)
   python dspilot_cli.py --tools                  # 도구 목록
         """
@@ -489,6 +736,12 @@ def parse_arguments():
         help="상세 로그 출력 (--debug와 동일)"
     )
     
+    parser.add_argument(
+        "--full-auto",
+        action="store_true",
+        help="전체 자동 모드 (사용자 확인 없이 도구 자동 실행)"
+    )
+    
     return parser.parse_args()
 
 
@@ -501,6 +754,9 @@ async def main() -> None:
     
     # 조용한 모드 설정 (단일 질문 모드이고 디버그가 아닌 경우)
     quiet_mode = bool(args.query) and not debug_mode
+    
+    # 전체 자동 모드 설정
+    full_auto_mode = args.full_auto
     
     # 로깅 레벨 설정
     if debug_mode:
@@ -519,7 +775,7 @@ async def main() -> None:
             module_logger.setLevel(logging.CRITICAL + 1)
             module_logger.disabled = True
     
-    cli = DSPilotCLI(debug_mode=debug_mode, quiet_mode=quiet_mode)
+    cli = DSPilotCLI(debug_mode=debug_mode, quiet_mode=quiet_mode, full_auto_mode=full_auto_mode)
     
     try:
         # 특수 명령 처리
