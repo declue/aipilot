@@ -23,7 +23,10 @@ class ConversationManager:
         self.pending_actions: List[str] = []
         self.max_context_turns = max_context_turns
 
-    def add_to_history(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def add_to_history(self,
+                       role: str,
+                       content: str,
+                       metadata: Optional[Dict[str, Any]] = None) -> None:
         """
         대화 히스토리에 메시지 추가
 

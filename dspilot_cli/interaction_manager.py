@@ -43,7 +43,7 @@ class InteractionManager:
             message, tool_name, arguments)
 
         while True:
-            choice = input(f"선택 (y/s/m/n): ").strip().lower()
+            choice = input("선택 (y/s/m/n): ").strip().lower()
 
             if choice in ['y', 'yes']:
                 return UserChoiceType.PROCEED

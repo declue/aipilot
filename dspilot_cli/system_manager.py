@@ -41,7 +41,7 @@ class SystemManager:
         """MCP 관련 로깅 제어 설정"""
         # 루트 로거의 핸들러를 조작하여 MCP 관련 로그 필터링
         root_logger = logging.getLogger()
-        
+
         # MCP 관련 로그를 필터링하는 커스텀 필터 클래스
         class MCPLogFilter(logging.Filter):
             def filter(self, record):
@@ -52,7 +52,7 @@ class SystemManager:
                     return False
                 if "Processing request of type" in record.getMessage():
                     return False
-                # DuckDuckGo MCP 서버 관련 로그 차단  
+                # DuckDuckGo MCP 서버 관련 로그 차단
                 if "DuckDuckGo MCP 서버 프로세스 시작" in record.getMessage():
                     return False
                 if "Python Executable:" in record.getMessage():
@@ -63,26 +63,26 @@ class SystemManager:
                 if "stdioserverError" in record.getMessage():
                     return False
                 return True
-        
+
         # 모든 핸들러에 필터 추가
         mcp_filter = MCPLogFilter()
         for handler in root_logger.handlers:
             handler.addFilter(mcp_filter)
-            
+
         # 특정 MCP 로거들도 레벨 조정
         mcp_loggers = [
             "mcp.server.lowlevel.server",
-            "mcp.server.fastmcp", 
+            "mcp.server.fastmcp",
             "fastmcp",
             "__main__",
             "rich.logging"  # Rich 로깅도 포함
         ]
-        
+
         for logger_name in mcp_loggers:
             logger = logging.getLogger(logger_name)
             logger.setLevel(logging.ERROR)  # ERROR 이상만 출력
             logger.addFilter(mcp_filter)
-            
+
         # 환경 변수도 설정
         os.environ.setdefault("DUCKDUCKGO_LOG_LEVEL", "ERROR")
         os.environ.setdefault("CODER_MCP_VERBOSE", "false")

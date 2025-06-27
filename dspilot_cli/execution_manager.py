@@ -206,7 +206,9 @@ class ExecutionManager:
             steps=steps
         )
 
-    def _process_step_arguments(self, arguments: Dict[str, Any], step_results: Dict[int, Any]) -> Dict[str, Any]:
+    def _process_step_arguments(self,
+                                arguments: Dict[str, Any],
+                                step_results: Dict[int, Any]) -> Dict[str, Any]:
         """
         단계 매개변수 처리 (이전 단계 결과 참조)
 
@@ -235,7 +237,9 @@ class ExecutionManager:
 
         return processed
 
-    async def _generate_final_response(self, original_prompt: str, step_results: Dict[int, Any]) -> None:
+    async def _generate_final_response(self,
+                                       original_prompt: str,
+                                       step_results: Dict[int, Any]) -> None:
         """
         최종 응답 생성
 

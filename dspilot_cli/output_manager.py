@@ -5,7 +5,7 @@ DSPilot CLI 출력 관리 모듈
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from dspilot_cli.constants import Messages, StyleColors
 
@@ -120,8 +120,9 @@ class OutputManager:
         """실행 계획 출력"""
         steps = plan.get("steps", [])
         if not self.quiet_mode:
+            plan_text = plan.get("description", "도구 실행 계획")
             print(
-                f"{StyleColors.INFO}📋 실행 계획: {plan.get('description', '도구 실행 계획')}{StyleColors.RESET_ALL}")
+                f"{StyleColors.INFO}📋 실행 계획: {plan_text}{StyleColors.RESET_ALL}")
             print(
                 f"{StyleColors.INFO}총 {len(steps)}개 단계가 있습니다.{StyleColors.RESET_ALL}\n")
 
@@ -155,7 +156,10 @@ class OutputManager:
         """작업 중단 정보 출력"""
         print(f"{StyleColors.INFO}✅ 작업을 중단합니다.{StyleColors.RESET_ALL}")
 
-    def print_user_confirmation(self, message: str, tool_name: str, arguments: Dict[str, Any]) -> None:
+    def print_user_confirmation(self,
+                                message: str,
+                                tool_name: str,
+                                arguments: Optional[Dict[str, Any]]) -> None:
         """사용자 확인 메시지 출력"""
         print(f"\n{StyleColors.WARNING}🔍 {message}{StyleColors.RESET_ALL}")
         print(f"{StyleColors.INFO}도구: {tool_name}{StyleColors.RESET_ALL}")
