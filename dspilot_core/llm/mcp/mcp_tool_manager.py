@@ -4,7 +4,10 @@ MCP 도구 관리자 - langchain-mcp-adapters 0.1.0+ 사용 + 캐싱 시스템
 
 import asyncio
 import logging
+import os
+import sys
 import time
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -13,6 +16,51 @@ from dspilot_core.llm.mcp.mcp_manager import MCPManager
 from dspilot_core.util.logger import setup_logger
 
 logger = setup_logger("mcp_tool_manager") or logging.getLogger("mcp_tool_manager")
+
+
+@contextmanager
+def suppress_stdout():
+    """stdout을 임시로 숨기는 컨텍스트 매니저"""
+    # 원본 stdout 저장
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    
+    try:
+        # devnull로 리디렉션
+        with open(os.devnull, 'w') as devnull:
+            sys.stdout = devnull
+            sys.stderr = devnull
+            yield
+    finally:
+        # 원본 stdout 복원
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+
+
+@contextmanager
+def suppress_subprocess_output():
+    """subprocess 출력을 숨기는 컨텍스트 매니저 (더 강력한 방법)"""
+    # 파일 디스크립터 레벨에서 리디렉션
+    original_stdout_fd = os.dup(1)  # stdout 복사
+    original_stderr_fd = os.dup(2)  # stderr 복사
+    devnull_fd = None
+    
+    try:
+        # devnull로 리디렉션
+        devnull_fd = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull_fd, 1)  # stdout을 devnull로
+        os.dup2(devnull_fd, 2)  # stderr을 devnull로
+        
+        yield
+        
+    finally:
+        # 원본 파일 디스크립터 복원
+        os.dup2(original_stdout_fd, 1)
+        os.dup2(original_stderr_fd, 2)
+        os.close(original_stdout_fd)
+        os.close(original_stderr_fd)
+        if devnull_fd is not None:
+            os.close(devnull_fd)
 
 
 class MCPToolCache:
@@ -192,7 +240,9 @@ class MCPToolManager:
                 return
 
             # langchain-mcp-adapters 0.1.0+ 방식: 직접 get_tools() 호출
-            self.langchain_tools = await self.mcp_client.get_tools()
+            # subprocess 출력을 숨기기 위해 컨텍스트 매니저 사용
+            with suppress_subprocess_output():
+                self.langchain_tools = await self.mcp_client.get_tools()
 
             # 캐시에 저장
             self.cache.set_tools(self.langchain_tools)
