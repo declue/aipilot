@@ -41,11 +41,19 @@ class AgentWorkflow(BaseWorkflow):
         logger.info("=== AgentWorkflow: 대화형 협업 처리 시작 ===")
         
         try:
-            # 도구 사용 필요성 판단
-            should_use_tools = self._should_use_tools(user_message)
+            # 사용 가능한 도구 목록 확인
+            available_tools = []
+            if self.mcp_tool_manager and hasattr(self.mcp_tool_manager, 'get_langchain_tools'):
+                try:
+                    available_tools = await self.mcp_tool_manager.get_langchain_tools()
+                except Exception as e:
+                    logger.warning(f"도구 목록 가져오기 실패: {e}")
+            
+            # 도구 사용 필요성 판단 (LLM에게 물어보기)
+            should_use_tools = await self._should_use_tools(user_message, available_tools)
             logger.info(f"도구 사용 필요성 판단: {should_use_tools}")
             
-            if should_use_tools:
+            if should_use_tools and available_tools:
                 # MCP 도구 실행
                 logger.info("MCP 도구 실행 시작")
                 result = await self._handle_execution(agent, user_message, streaming_callback)
@@ -124,27 +132,34 @@ class AgentWorkflow(BaseWorkflow):
             response = await self.llm_service.generate_response(context)
             
             # MCP 도구가 사용 가능한 경우 도구 사용 가능성 확인
-            if self.mcp_tool_manager and hasattr(self.mcp_tool_manager, 'tools'):
+            if self.mcp_tool_manager and hasattr(self.mcp_tool_manager, 'get_langchain_tools'):
                 logger.info("=== AgentWorkflow: MCP 도구 사용 가능성 확인 ===")
                 
-                # 도구 사용이 필요한지 간단히 판단
-                user_message = context[-1].content if context else ""
-                if self._should_use_tools(user_message, response.response):
-                    logger.info("=== AgentWorkflow: 도구 사용 필요 판단, BaseAgent의 ReAct 기능 호출 ===")
+                try:
+                    available_tools = await self.mcp_tool_manager.get_langchain_tools()
+                    user_message = context[-1].content if context else ""
                     
-                    # BaseAgent의 ReAct 기능 사용
-                    if hasattr(self.llm_service, 'agent') and hasattr(self.llm_service.agent, 'run_react_agent'):
-                        tool_response = await self.llm_service.agent.run_react_agent(user_message)
-                        if tool_response and "response" in tool_response:
-                            # 도구 사용 결과를 반영
-                            return LLMResponse(
-                                response=tool_response["response"],
-                                metadata={
-                                    "workflow": self.workflow_name,
-                                    "used_tools": tool_response.get("used_tools", []),
-                                    "tool_execution": True
-                                }
-                            )
+                    # LLM에게 도구 사용 필요성 판단 요청
+                    should_use_tools = await self._should_use_tools(user_message, available_tools)
+                    
+                    if should_use_tools and available_tools:
+                        logger.info("=== AgentWorkflow: 도구 사용 필요 판단, BaseAgent의 ReAct 기능 호출 ===")
+                        
+                        # BaseAgent의 ReAct 기능 사용
+                        if hasattr(self.llm_service, 'agent') and hasattr(self.llm_service.agent, 'run_react_agent'):
+                            tool_response = await self.llm_service.agent.run_react_agent(user_message)
+                            if tool_response and "response" in tool_response:
+                                # 도구 사용 결과를 반영
+                                return LLMResponse(
+                                    response=tool_response["response"],
+                                    metadata={
+                                        "workflow": self.workflow_name,
+                                        "used_tools": tool_response.get("used_tools", []),
+                                        "tool_execution": True
+                                    }
+                                )
+                except Exception as e:
+                    logger.warning(f"도구 사용 가능성 확인 중 오류: {e}")
             
             return LLMResponse(
                 response=response.response,
@@ -161,39 +176,64 @@ class AgentWorkflow(BaseWorkflow):
                 metadata={"error": str(e), "workflow": self.workflow_name}
             )
 
-    def _should_use_tools(self, user_message: str) -> bool:
-        """도구 사용이 필요한지 판단 (범용적 접근)"""
+    async def _should_use_tools(self, user_message: str, available_tools: List[Any] = None) -> bool:
+        """LLM에게 도구 사용 필요성을 물어보는 범용적 접근"""
         
-        # 외부 정보나 실시간 데이터가 필요한 요청들
-        tool_indicators = [
-            # 시간/날짜 관련
-            "시간", "날짜", "언제", "time", "date", "when",
-            # 날씨 관련
-            "날씨", "기온", "온도", "weather", "temperature",
-            # 검색/조회 관련
-            "검색", "조회", "확인", "가져오", "알아보", "찾아",
-            "search", "fetch", "check", "get", "find", "lookup",
-            # 실시간/현재 정보
-            "현재", "지금", "최신", "current", "now", "latest",
-            # 웹 검색
-            "인터넷", "웹", "사이트", "web", "internet", "website"
-        ]
+        # 사용 가능한 도구가 없으면 도구 사용 불가
+        if not available_tools:
+            return False
         
-        message_lower = user_message.lower()
+        # 도구 목록 생성
+        tools_desc = "\n".join([
+            f"- {tool.name}: {tool.description}" 
+            for tool in available_tools
+        ])
         
-        # 키워드 기반 판단
-        keyword_match = any(indicator in message_lower for indicator in tool_indicators)
+        # LLM에게 도구 사용 필요성 판단 요청
+        analysis_prompt = f"""다음 사용자 요청을 분석하여 외부 도구 사용이 필요한지 판단해주세요.
+
+사용자 요청: {user_message}
+
+사용 가능한 도구들:
+{tools_desc}
+
+다음 기준으로 판단하세요:
+1. 현재 시간/날짜, 날씨, 검색 등 실시간 정보가 필요한지
+2. 파일 읽기/쓰기, 계산, 외부 API 호출이 필요한지
+3. 단순한 대화나 일반적인 지식으로 답변 가능한지
+
+**응답 형식 (JSON만):**
+{{
+    "need_tools": true/false,
+    "reason": "판단 이유"
+}}
+
+반드시 JSON 형식으로만 응답하세요."""
+
+        try:
+            if self.llm_service:
+                from application.llm.models.conversation_message import ConversationMessage
+                context = [ConversationMessage(role="user", content=analysis_prompt)]
+                response = await self.llm_service.generate_response(context)
+                
+                # JSON 파싱
+                import json
+                response_text = response.response
+                start_idx = response_text.find("{")
+                end_idx = response_text.rfind("}") + 1
+                if start_idx != -1 and end_idx != 0:
+                    json_str = response_text[start_idx:end_idx]
+                    result = json.loads(json_str)
+                    need_tools = result.get("need_tools", False)
+                    reason = result.get("reason", "판단 실패")
+                    logger.info(f"LLM 도구 사용 판단: {need_tools} - {reason}")
+                    return need_tools
+                    
+        except Exception as e:
+            logger.warning(f"LLM 도구 사용 판단 실패: {e}")
         
-        # 질문 형태 판단
-        is_question = any(char in user_message for char in ["?", "？", "는", "뭐", "어떻게", "얼마"])
-        
-        # 실시간/현재 정보 요청 판단
-        needs_realtime = any(word in message_lower for word in ["현재", "지금", "최신", "실시간"])
-        
-        should_use = keyword_match or (is_question and needs_realtime)
-        
-        logger.info(f"도구 사용 판단: {should_use} (키워드: {keyword_match}, 질문: {is_question}, 실시간: {needs_realtime})")
-        return should_use
+        # 폴백: 보수적 접근 (도구 사용 안함)
+        return False
 
     async def _handle_execution(
         self,
