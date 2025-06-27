@@ -4,11 +4,14 @@
 현재 시간, GMT 시간, 로컬 시간을 반환하는 도구들을 제공합니다.
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
 from mcp.server.fastmcp import FastMCP
+
+logging.basicConfig(level=logging.CRITICAL + 1)
 
 # Create MCP Server
 app = FastMCP(

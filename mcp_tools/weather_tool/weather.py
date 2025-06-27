@@ -4,6 +4,7 @@
 현재 날씨, 일기예보, 특정 도시 날씨 정보를 제공하는 도구들을 제공합니다.
 """
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -11,6 +12,8 @@ from typing import Any, Dict, Optional
 
 import requests
 from mcp.server.fastmcp import FastMCP
+
+logging.basicConfig(level=logging.CRITICAL + 1)
 
 # Create MCP Server
 app = FastMCP(

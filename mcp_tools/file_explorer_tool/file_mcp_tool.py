@@ -6,6 +6,7 @@
 """
 
 import base64
+import logging
 import os
 import re
 import shutil
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 from mcp.server.fastmcp import FastMCP
+
+logging.basicConfig(level=logging.CRITICAL + 1)
 
 # MCP 서버 초기화
 app = FastMCP(

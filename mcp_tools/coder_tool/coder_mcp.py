@@ -7,6 +7,7 @@ SWE-Agent처럼 다양한 코드 편집 및 수정 기능을 구현합니다.
 
 import ast
 import difflib
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from mcp.server.fastmcp import FastMCP
+
+logging.basicConfig(level=logging.CRITICAL + 1)
 
 # MCP 서버 초기화
 app = FastMCP(
