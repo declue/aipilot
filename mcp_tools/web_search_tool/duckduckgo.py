@@ -5,10 +5,19 @@ DuckDuckGo Search MCP Server
 DuckDuckGo 검색 엔진을 사용하여 프라이버시를 보호하면서 검색 결과를 얻을 수 있습니다.
 """
 
+import json
 import logging
 import os
+import re
 import sys
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
+from typing import List
+
+import requests
+from bs4 import BeautifulSoup
+from mcp.server.fastmcp import FastMCP
 
 # --- 디버깅 로깅 설정 ---
 # 이 스크립트가 별도 프로세스로 실행될 때의 오류를 추적하기 위함
@@ -24,26 +33,18 @@ log_level_int = getattr(logging, log_level, logging.WARNING)
 logging.basicConfig(
     level=log_level_int,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.FileHandler(log_file_path), logging.StreamHandler(sys.stderr)],
+    handlers=[logging.FileHandler(log_file_path),
+              logging.StreamHandler(sys.stderr)],
 )
 logger = logging.getLogger(__name__)
 
 # INFO 레벨 로그는 환경 변수가 DEBUG나 INFO로 설정된 경우에만 출력
 if log_level_int <= logging.INFO:
-    logger.info(f"DuckDuckGo MCP 서버 프로세스 시작 (PID: {os.getpid()})")
-    logger.info(f"Python Executable: {sys.executable}")
-    logger.info(f"sys.path: {sys.path}")
+    logger.info("DuckDuckGo MCP 서버 프로세스 시작 (PID: %s)", os.getpid())
+    logger.info("Python Executable: %s", sys.executable)
+    logger.info("sys.path: %s", sys.path)
 # --- 로깅 설정 끝 ---
 
-import json
-import re
-from dataclasses import dataclass
-from datetime import datetime
-from typing import List
-
-import requests
-from bs4 import BeautifulSoup
-from mcp.server.fastmcp import FastMCP
 
 error_msg = ""
 
@@ -54,12 +55,12 @@ try:
 except ImportError as e:  # pragma: no cover – 라이브러리가 없으면 스크래핑 방식으로 대체
     DDGS = None  # type: ignore
     error_msg += f"duckduckgo_search 라이브러리가 없습니다: {e}\n"
-    logger.error(f"duckduckgo_search 라이브러리 임포트 실패: {e}")
+    logger.error("duckduckgo_search 라이브러리 임포트 실패: %s", e)
     DUCKDUCKGO_SEARCH_AVAILABLE = False
 except Exception as e:
     DDGS = None  # type: ignore
     error_msg += f"duckduckgo_search 라이브러리 임포트 중 오류: {e}\n"
-    logger.error(f"duckduckgo_search 라이브러리 임포트 중 예상치 못한 오류: {e}")
+    logger.error("duckduckgo_search 라이브러리 임포트 중 예상치 못한 오류: %s", e)
     DUCKDUCKGO_SEARCH_AVAILABLE = False
 
 # Create MCP Server
@@ -127,7 +128,8 @@ class DuckDuckGoService:
         if DUCKDUCKGO_SEARCH_AVAILABLE and DDGS is not None:
             try:
                 # 라이브러리 파라미터 매핑
-                timelimit = self._get_time_period_param(time_period) if time_period else None
+                timelimit = self._get_time_period_param(
+                    time_period) if time_period else None
 
                 # DDGS 인스턴스 생성 및 검색 수행 (더 많은 결과 요청)
                 with DDGS() as ddgs:
@@ -144,22 +146,25 @@ class DuckDuckGoService:
                     # 라이브러리 결과 필드 매핑
                     title = item.get("title") or item.get("heading", "")
                     url = item.get("href") or item.get("url", "")
-                    description = item.get("body", "") or item.get("snippet", "")
+                    description = item.get(
+                        "body", "") or item.get("snippet", "")
                     if url and not url.startswith(("http://", "https://")):
                         url = "https://" + url
 
                     source = url.split("//")[-1].split("/")[0] if url else ""
-                    
+
                     # 본문 크롤링 (상위 20개 결과만, 성능 고려)
                     full_content = ""
                     published_date = ""
                     if i < 20 and url:  # 상위 20개만 크롤링
                         try:
-                            full_content, published_date = self._extract_article_content(url)
-                            logger.info(f"본문 크롤링 성공: {url[:50]}... ({len(full_content)}자)")
+                            full_content, published_date = self._extract_article_content(
+                                url)
+                            logger.info(
+                                "본문 크롤링 성공: %s... (%s자)", url[:50], len(full_content))
                         except Exception as e:
-                            logger.debug(f"본문 크롤링 실패: {url} - {e}")
-                    
+                            logger.debug("본문 크롤링 실패: %s - %s", url, e)
+
                     # 콘텐츠 타입 추정
                     content_type = "article"
                     if any(keyword in source.lower() for keyword in ["news", "뉴스"]):
@@ -196,26 +201,30 @@ class DuckDuckGoService:
                                 max_results=250,
                             )
                         for i, item in enumerate(raw_results or []):
-                            title = item.get("title") or item.get("heading", "")
+                            title = item.get("title") or item.get(
+                                "heading", "")
                             url = item.get("href") or item.get("url", "")
-                            description = item.get("body", "") or item.get("snippet", "")
+                            description = item.get(
+                                "body", "") or item.get("snippet", "")
                             if url and not url.startswith(("http://", "https://")):
                                 url = "https://" + url
-                            source = url.split("//")[-1].split("/")[0] if url else ""
-                            
+                            source = url.split(
+                                "//")[-1].split("/")[0] if url else ""
+
                             # 본문 크롤링 (상위 10개만)
                             full_content = ""
                             published_date = ""
                             if i < 10 and url:
                                 try:
-                                    full_content, published_date = self._extract_article_content(url)
+                                    full_content, published_date = self._extract_article_content(
+                                        url)
                                 except Exception:
                                     pass
-                            
+
                             content_type = "article"
                             if any(keyword in source.lower() for keyword in ["news", "뉴스"]):
                                 content_type = "news"
-                            
+
                             parsed.append(
                                 SearchResult(
                                     title=title,
@@ -259,7 +268,6 @@ class DuckDuckGoService:
             # HTML 파싱
             soup = BeautifulSoup(response.text, "html.parser")
             results: List[SearchResult] = []
-            
 
             # 검색 결과 추출
             for i, result in enumerate(soup.select(".result")):
@@ -280,18 +288,20 @@ class DuckDuckGoService:
                         if not url.startswith(("http://", "https://")):
                             url = "https://" + url
 
-                        description = desc_elem.get_text(strip=True) if desc_elem else ""
+                        description = desc_elem.get_text(
+                            strip=True) if desc_elem else ""
                         source = url.split("//")[-1].split("/")[0]
-                        
+
                         # 본문 크롤링 (상위 15개만)
                         full_content = ""
                         published_date = ""
                         if i < 15 and url:
                             try:
-                                full_content, published_date = self._extract_article_content(url)
+                                full_content, published_date = self._extract_article_content(
+                                    url)
                             except Exception:
                                 pass
-                        
+
                         content_type = "article"
                         if any(keyword in source.lower() for keyword in ["news", "뉴스"]):
                             content_type = "news"
@@ -332,27 +342,27 @@ class DuckDuckGoService:
 
     def _extract_article_content(self, url: str, max_chars: int = 2000) -> tuple[str, str]:
         """웹페이지에서 본문 내용을 추출합니다.
-        
+
         Returns:
             tuple: (full_content, published_date)
         """
         try:
             if not url or not url.startswith(("http://", "https://")):
                 return "", ""
-            
+
             # 타임아웃을 짧게 설정하여 빠른 응답 보장
             response = self.session.get(url, timeout=5)
             response.raise_for_status()
-            
+
             soup = BeautifulSoup(response.text, "html.parser")
-            
+
             # 불필요한 태그 제거
             for tag in soup(["script", "style", "nav", "header", "footer", "aside", "advertisement"]):
                 tag.decompose()
-            
+
             # 본문 내용 추출 시도 (여러 패턴)
             content = ""
-            
+
             # 1. 주요 뉴스 사이트의 본문 선택자들
             content_selectors = [
                 "article", ".article-content", ".news-content", ".post-content",
@@ -360,16 +370,18 @@ class DuckDuckGoService:
                 ".content", ".post", ".news-article", "main", "[role='main']",
                 ".article", ".news", ".story", ".text-content"
             ]
-            
+
             for selector in content_selectors:
                 elements = soup.select(selector)
                 if elements:
                     # 가장 긴 텍스트를 가진 요소 선택
-                    longest_element = max(elements, key=lambda x: len(x.get_text()))
-                    content = longest_element.get_text(separator=' ', strip=True)
+                    longest_element = max(
+                        elements, key=lambda x: len(x.get_text()))
+                    content = longest_element.get_text(
+                        separator=' ', strip=True)
                     if len(content) > 200:  # 충분한 내용이 있으면 사용
                         break
-            
+
             # 2. 메타태그에서 description 추출 (본문이 없을 경우)
             if len(content) < 200:
                 meta_desc = soup.find("meta", attrs={"name": "description"})
@@ -380,14 +392,14 @@ class DuckDuckGoService:
                     body = soup.find("body")
                     if body:
                         content = body.get_text(separator=' ', strip=True)
-            
+
             # 발행일 추출
             published_date = ""
             date_selectors = [
                 'time[datetime]', '.date', '.published', '.publish-date',
                 '.article-date', '.news-date', '[datetime]', '.timestamp'
             ]
-            
+
             for selector in date_selectors:
                 date_elem = soup.select_one(selector)
                 if date_elem:
@@ -396,7 +408,7 @@ class DuckDuckGoService:
                     else:
                         published_date = date_elem.get_text(strip=True)
                     break
-            
+
             # 내용 정리 및 길이 제한
             if content:
                 # 연속된 공백/줄바꿈 정리
@@ -404,11 +416,11 @@ class DuckDuckGoService:
                 # 길이 제한
                 if len(content) > max_chars:
                     content = content[:max_chars] + "..."
-            
+
             return content, published_date
-            
+
         except Exception as e:
-            logger.debug(f"본문 추출 실패 ({url}): {e}")
+            logger.debug("본문 추출 실패 (%s): %s", url, e)
             return "", ""
 
 
@@ -602,7 +614,8 @@ def search_images(query: str, max_results: int = 10) -> dict:
         params = {"q": query, "iax": "images", "ia": "images"}
 
         # 검색 요청
-        response = ddg_service.session.get(f"{BASE_URL}/", params=params, timeout=10)
+        response = ddg_service.session.get(
+            f"{BASE_URL}/", params=params, timeout=10)
         response.raise_for_status()
 
         # 이미지 데이터 추출 시도
@@ -616,7 +629,8 @@ def search_images(query: str, max_results: int = 10) -> dict:
         image_api_url = f"{BASE_URL}/i.js"
         image_params = {"q": query, "o": "json", "vqd": vqd, "p": 1}
 
-        image_response = ddg_service.session.get(image_api_url, params=image_params, timeout=10)
+        image_response = ddg_service.session.get(
+            image_api_url, params=image_params, timeout=10)
         image_response.raise_for_status()
 
         try:
@@ -700,8 +714,10 @@ def get_search_info() -> dict:
                 "time_filters": time_filters,
                 "tools": [
                     {"name": "search_web", "description": "기본 웹 검색"},
-                    {"name": "search_with_time_filter", "description": "시간 필터를 적용한 검색"},
-                    {"name": "get_search_suggestions", "description": "검색어 자동 완성 제안"},
+                    {"name": "search_with_time_filter",
+                        "description": "시간 필터를 적용한 검색"},
+                    {"name": "get_search_suggestions",
+                        "description": "검색어 자동 완성 제안"},
                     {"name": "search_images", "description": "이미지 검색"},
                 ],
             }

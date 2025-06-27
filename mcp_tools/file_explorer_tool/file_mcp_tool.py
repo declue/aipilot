@@ -913,7 +913,7 @@ if __name__ == "__main__":
 
     # 환경 변수로 출력 제어 (기본값: False)
     show_startup_msg = os.getenv("FILE_MCP_VERBOSE", "false").lower() == "true"
-    
+
     if show_startup_msg:
         print("📁 File Operations MCP Server")
         print("🔧 파일 조작 도구 서버를 시작합니다...")

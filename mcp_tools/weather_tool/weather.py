@@ -45,16 +45,16 @@ class WeatherInfo:
 
 class WeatherService:
     """날씨 서비스 클래스 - SOLID 원칙에 따른 단일 책임"""
-    
+
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.session = requests.Session()
-    
+
     def get_coordinates(self, city: str) -> Optional[tuple[float, float]]:
         """도시명으로 좌표를 가져옵니다."""
         if not self.api_key:
             return None
-            
+
         try:
             url = f"{GEO_URL}/direct"
             params = {
@@ -64,19 +64,19 @@ class WeatherService:
             }
             response = self.session.get(url, params=params, timeout=10)
             response.raise_for_status()
-            
+
             data = response.json()
             if data:
                 return data[0]["lat"], data[0]["lon"]
             return None
         except Exception:
             return None
-    
+
     def get_weather_data(self, lat: float, lon: float) -> Optional[Dict[str, Any]]:
         """좌표로 날씨 데이터를 가져옵니다."""
         if not self.api_key:
             return None
-            
+
         try:
             url = f"{BASE_URL}/weather"
             params = {
@@ -91,7 +91,7 @@ class WeatherService:
             return response.json()
         except Exception:
             return None
-    
+
     def parse_weather_info(self, data: Dict[str, Any]) -> WeatherInfo:
         """날씨 데이터를 WeatherInfo 객체로 변환합니다."""
         return WeatherInfo(
@@ -131,22 +131,22 @@ def get_current_weather(city: str = "Seoul") -> dict:
     try:
         if not API_KEY:
             return {"error": "OpenWeatherMap API 키가 설정되지 않았습니다. OPENWEATHER_API_KEY 환경변수를 설정해주세요."}
-        
+
         # 좌표 가져오기
         coords = weather_service.get_coordinates(city)
         if not coords:
             return {"error": f"도시 '{city}'를 찾을 수 없습니다."}
-        
+
         lat, lon = coords
-        
+
         # 날씨 데이터 가져오기
         weather_data = weather_service.get_weather_data(lat, lon)
         if not weather_data:
             return {"error": "날씨 정보를 가져올 수 없습니다."}
-        
+
         # 날씨 정보 파싱
         weather_info = weather_service.parse_weather_info(weather_data)
-        
+
         result = (
             f"{weather_info.city} 날씨: {weather_info.description}, "
             f"기온: {weather_info.temperature:.1f}°C, "
@@ -154,9 +154,9 @@ def get_current_weather(city: str = "Seoul") -> dict:
             f"습도: {weather_info.humidity}%, "
             f"풍속: {weather_info.wind_speed:.1f}m/s"
         )
-        
+
         return {"result": result}
-        
+
     except Exception as e:
         return {"error": f"날씨 정보 조회 중 오류 발생: {str(e)}"}
 
@@ -175,18 +175,18 @@ def get_detailed_weather(city: str = "Seoul") -> dict:
     try:
         if not API_KEY:
             return {"error": "OpenWeatherMap API 키가 설정되지 않았습니다."}
-        
+
         coords = weather_service.get_coordinates(city)
         if not coords:
             return {"error": f"도시 '{city}'를 찾을 수 없습니다."}
-        
+
         lat, lon = coords
         weather_data = weather_service.get_weather_data(lat, lon)
         if not weather_data:
             return {"error": "날씨 정보를 가져올 수 없습니다."}
-        
+
         weather_info = weather_service.parse_weather_info(weather_data)
-        
+
         result = {
             "도시": f"{weather_info.city}, {weather_info.country}",
             "날씨": weather_info.description,
@@ -199,9 +199,9 @@ def get_detailed_weather(city: str = "Seoul") -> dict:
             "가시거리": f"{weather_info.visibility:.1f}km",
             "조회시간": weather_info.timestamp
         }
-        
+
         return {"result": result}
-        
+
     except Exception as e:
         return {"error": f"상세 날씨 정보 조회 중 오류 발생: {str(e)}"}
 
@@ -221,16 +221,16 @@ def get_weather_forecast(city: str = "Seoul", days: int = 3) -> dict:
     try:
         if not API_KEY:
             return {"error": "OpenWeatherMap API 키가 설정되지 않았습니다."}
-        
+
         if days < 1 or days > 5:
             return {"error": "예보 일수는 1-5일 사이여야 합니다."}
-        
+
         coords = weather_service.get_coordinates(city)
         if not coords:
             return {"error": f"도시 '{city}'를 찾을 수 없습니다."}
-        
+
         lat, lon = coords
-        
+
         # 5일 예보 API 호출
         url = f"{BASE_URL}/forecast"
         params = {
@@ -240,17 +240,18 @@ def get_weather_forecast(city: str = "Seoul", days: int = 3) -> dict:
             "units": "metric",
             "lang": "kr"
         }
-        
+
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        
+
         # 일별 예보 정리 (하루에 8개 데이터 중 낮 12시 데이터만 선택)
         forecasts = []
         for i in range(0, min(days * 8, len(data["list"])), 8):
             if i < len(data["list"]):
                 forecast = data["list"][i]
-                date = datetime.fromisoformat(forecast["dt_txt"]).strftime("%m월 %d일")
+                date = datetime.fromisoformat(
+                    forecast["dt_txt"]).strftime("%m월 %d일")
                 forecasts.append({
                     "날짜": date,
                     "날씨": forecast["weather"][0]["description"],
@@ -258,14 +259,14 @@ def get_weather_forecast(city: str = "Seoul", days: int = 3) -> dict:
                     "최저기온": f"{forecast['main']['temp_min']:.1f}°C",
                     "습도": f"{forecast['main']['humidity']}%"
                 })
-        
+
         return {
             "result": {
                 "도시": f"{data['city']['name']}, {data['city']['country']}",
                 "예보": forecasts
             }
         }
-        
+
     except Exception as e:
         return {"error": f"일기예보 조회 중 오류 발생: {str(e)}"}
 
