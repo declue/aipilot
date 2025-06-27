@@ -31,7 +31,8 @@ from dspilot_core.config.libs.utils import (
 try:
     from dspilot_core.util.logger import setup_logger
 
-    logger: logging.Logger = setup_logger("config") or logging.getLogger("config")
+    logger: logging.Logger = setup_logger(
+        "config") or logging.getLogger("config")
 except ImportError:
     logger = logging.getLogger("config")
 
@@ -156,7 +157,8 @@ class BaseConfigManager(IConfigManager, ABC):
                     self._config_data = self._serializer.deserialize(content)
                 else:
                     # 직렬화기가 없으면 파일 타입에 따라 자동 생성
-                    serializer = SerializerFactory.create_serializer(self._config_type)
+                    serializer = SerializerFactory.create_serializer(
+                        self._config_type)
                     self._config_data = serializer.deserialize(content)
 
                 logger.debug("설정 파일 로드 완료: %s", self._config_file)
@@ -167,7 +169,8 @@ class BaseConfigManager(IConfigManager, ABC):
             # 파일이 있지만 파싱에 실패한 경우, 원본 파일을 보존하고 예외를 다시 던집니다
             logger.error("설정 파일 파싱 실패 (원본 파일 보존): %s", exception)
             logger.error("설정 파일 경로: %s", self._config_file)
-            raise RuntimeError(f"설정 파일 '{self._config_file}' 파싱에 실패했습니다. 원본 파일을 확인하고 수정해주세요.") from exception
+            raise RuntimeError(
+                f"설정 파일 '{self._config_file}' 파싱에 실패했습니다. 원본 파일을 확인하고 수정해주세요.") from exception
 
     def save_config(self) -> None:
         """설정 파일 저장 (기본 구현)"""
@@ -184,7 +187,8 @@ class BaseConfigManager(IConfigManager, ABC):
             if self._serializer:
                 content = self._serializer.serialize(self._config_data)
             else:
-                serializer = SerializerFactory.create_serializer(self._config_type)
+                serializer = SerializerFactory.create_serializer(
+                    self._config_type)
                 content = serializer.serialize(self._config_data)
 
             with open(self._config_file, "w", encoding="utf-8") as f:
@@ -201,7 +205,8 @@ class BaseConfigManager(IConfigManager, ABC):
         """파일 변경 감지 설정"""
         try:
             self._change_callback = self._on_config_changed
-            self._change_notifier.register_callback(self._config_file, self._change_callback)
+            self._change_notifier.register_callback(
+                self._config_file, self._change_callback)
             logger.debug("파일 변경 감지 설정 완료: %s", self._config_file)
         except Exception as exception:
             logger.error("파일 변경 감지 설정 실패: %s", exception)
@@ -220,7 +225,8 @@ class BaseConfigManager(IConfigManager, ABC):
                 try:
                     self.load_config()
                 except Exception as load_exception:
-                    logger.error("변경된 설정 파일 로드 실패 (기존 설정 유지): %s", load_exception)
+                    logger.error("변경된 설정 파일 로드 실패 (기존 설정 유지): %s",
+                                 load_exception)
                     # 기존 설정을 유지하고 사용자에게 알림
                     return
 
@@ -234,7 +240,8 @@ class BaseConfigManager(IConfigManager, ABC):
         """리소스 정리"""
         try:
             if self._change_callback and self._enable_file_watching:
-                self._change_notifier.unregister_callback(self._config_file, self._change_callback)
+                self._change_notifier.unregister_callback(
+                    self._config_file, self._change_callback)
                 self._change_callback = None
                 logger.debug("파일 변경 감지 해제: %s", self._config_file)
         except Exception as exception:
@@ -253,27 +260,33 @@ class BaseConfigManager(IConfigManager, ABC):
     @abstractmethod
     def create_default_config(self) -> None:
         """기본 설정 생성 (하위 클래스에서 구현)"""
+        pass  # pylint: disable=unnecessary-pass
 
     @abstractmethod
     def get_default_config_data(self) -> ConfigDict:
         """기본 설정 데이터 반환 (하위 클래스에서 구현)"""
-
+        pass  # pylint: disable=unnecessary-pass
     # ========== 후크 메서드들 ==========
 
     def on_config_changed(self, file_path: str, change_type: str) -> None:
         """설정 변경 후 추가 처리 (하위 클래스에서 오버라이드 가능)"""
+        pass  # pylint: disable=unnecessary-pass
 
     def on_before_save(self) -> None:
         """저장 전 처리 (하위 클래스에서 오버라이드 가능)"""
+        pass  # pylint: disable=unnecessary-pass
 
     def on_after_save(self) -> None:
         """저장 후 처리 (하위 클래스에서 오버라이드 가능)"""
+        pass  # pylint: disable=unnecessary-pass
 
     def on_before_load(self) -> None:
         """로드 전 처리 (하위 클래스에서 오버라이드 가능)"""
+        pass  # pylint: disable=unnecessary-pass
 
     def on_after_load(self) -> None:
         """로드 후 처리 (하위 클래스에서 오버라이드 가능)"""
+        pass  # pylint: disable=unnecessary-pass
 
     def __del__(self) -> None:
         """소멸자"""
