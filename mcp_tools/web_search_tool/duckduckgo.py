@@ -17,16 +17,22 @@ log_file_path = Path(__file__).resolve().parents[2] / "duckduckgo_mcp.log"
 if os.path.exists(log_file_path):
     os.remove(log_file_path)
 
+# 환경 변수로 로그 레벨 제어 (기본값: WARNING)
+log_level = os.getenv("DUCKDUCKGO_LOG_LEVEL", "WARNING").upper()
+log_level_int = getattr(logging, log_level, logging.WARNING)
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level_int,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[logging.FileHandler(log_file_path), logging.StreamHandler(sys.stderr)],
 )
 logger = logging.getLogger(__name__)
 
-logger.info(f"DuckDuckGo MCP 서버 프로세스 시작 (PID: {os.getpid()})")
-logger.info(f"Python Executable: {sys.executable}")
-logger.info(f"sys.path: {sys.path}")
+# INFO 레벨 로그는 환경 변수가 DEBUG나 INFO로 설정된 경우에만 출력
+if log_level_int <= logging.INFO:
+    logger.info(f"DuckDuckGo MCP 서버 프로세스 시작 (PID: {os.getpid()})")
+    logger.info(f"Python Executable: {sys.executable}")
+    logger.info(f"sys.path: {sys.path}")
 # --- 로깅 설정 끝 ---
 
 import json

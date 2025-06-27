@@ -33,7 +33,7 @@ class ExecutionManager:
     ) -> None:
         """
         실행 관리자 초기화
-        
+
         Args:
             output_manager: 출력 관리자
             interaction_manager: 상호작용 관리자
@@ -48,10 +48,10 @@ class ExecutionManager:
     async def analyze_request_and_plan(self, user_message: str) -> Optional[ExecutionPlan]:
         """
         요청 분석 및 실행 계획 수립
-        
+
         Args:
             user_message: 사용자 메시지
-            
+
         Returns:
             실행 계획 (도구가 필요하지 않으면 None)
         """
@@ -73,7 +73,8 @@ class ExecutionManager:
                 tools_desc=tools_desc
             )
 
-            context = [ConversationMessage(role="user", content=analysis_prompt)]
+            context = [ConversationMessage(
+                role="user", content=analysis_prompt)]
             response = await self.llm_agent.llm_service.generate_response(context)
 
             # JSON 파싱
@@ -89,7 +90,7 @@ class ExecutionManager:
     async def execute_interactive_plan(self, plan: ExecutionPlan, original_prompt: str) -> None:
         """
         대화형 계획 실행
-        
+
         Args:
             plan: 실행 계획
             original_prompt: 원본 프롬프트
@@ -110,11 +111,11 @@ class ExecutionManager:
     async def _execute_step(self, step: ExecutionStep, step_results: Dict[int, Any]) -> bool:
         """
         단일 단계 실행
-        
+
         Args:
             step: 실행 단계
             step_results: 이전 단계 결과들
-            
+
         Returns:
             계속 진행 여부
         """
@@ -144,7 +145,8 @@ class ExecutionManager:
             self.output_manager.print_step_execution(step.tool_name)
 
             # 이전 단계 결과 참조 처리
-            processed_args = self._process_step_arguments(step.arguments, step_results)
+            processed_args = self._process_step_arguments(
+                step.arguments, step_results)
 
             # 도구 실행
             result = await self.mcp_tool_manager.call_mcp_tool(step.tool_name, processed_args)
@@ -170,7 +172,8 @@ class ExecutionManager:
             try:
                 available_tools = await self.mcp_tool_manager.get_langchain_tools()
             except Exception as e:
-                self.output_manager.log_if_debug(f"도구 목록 가져오기 실패: {e}", "warning")
+                self.output_manager.log_if_debug(
+                    f"도구 목록 가져오기 실패: {e}", "warning")
         return available_tools
 
     def _parse_plan_response(self, response_text: str) -> Optional[Dict[str, Any]]:
@@ -206,11 +209,11 @@ class ExecutionManager:
     def _process_step_arguments(self, arguments: Dict[str, Any], step_results: Dict[int, Any]) -> Dict[str, Any]:
         """
         단계 매개변수 처리 (이전 단계 결과 참조)
-        
+
         Args:
             arguments: 원본 매개변수
             step_results: 이전 단계 결과들
-            
+
         Returns:
             처리된 매개변수
         """
@@ -235,7 +238,7 @@ class ExecutionManager:
     async def _generate_final_response(self, original_prompt: str, step_results: Dict[int, Any]) -> None:
         """
         최종 응답 생성
-        
+
         Args:
             original_prompt: 원본 프롬프트
             step_results: 단계 실행 결과들
@@ -245,8 +248,8 @@ class ExecutionManager:
 
         # 결과 요약
         results_summary = "\n".join([
-            f"단계 {step}: {str(result)[:Defaults.RESULT_SUMMARY_MAX_LENGTH]}..." 
-            if len(str(result)) > Defaults.RESULT_SUMMARY_MAX_LENGTH 
+            f"단계 {step}: {str(result)[:Defaults.RESULT_SUMMARY_MAX_LENGTH]}..."
+            if len(str(result)) > Defaults.RESULT_SUMMARY_MAX_LENGTH
             else f"단계 {step}: {result}"
             for step, result in step_results.items()
         ])
@@ -267,7 +270,7 @@ class ExecutionManager:
                 "step_results": step_results
             }
             self.output_manager.print_response(
-                response.response, 
+                response.response,
                 response_data.get("used_tools", [])
             )
 
@@ -275,4 +278,4 @@ class ExecutionManager:
             self.output_manager.log_if_debug(f"최종 응답 생성 실패: {e}", "error")
             # 폴백: 원시 결과 출력
             self.output_manager.print_success("작업 완료")
-            self.output_manager.print_info(f"결과: {results_summary}") 
+            self.output_manager.print_info(f"결과: {results_summary}")

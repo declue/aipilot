@@ -164,9 +164,18 @@ class MCPToolManager:
                     logger.warning(f"서버 {server_name}: command 또는 url이 필요합니다")
                     continue
 
-                # 환경 변수 설정
-                if "env" in server_data:
-                    config["env"] = server_data["env"]
+                # 환경 변수 설정 (기존 + 로그 제어)
+                env = server_data.get("env", {}).copy()
+                
+                # MCP 도구들의 로그를 숨기기 위한 환경 변수 추가
+                if server_name == "web_search":
+                    env["DUCKDUCKGO_LOG_LEVEL"] = "WARNING"
+                elif server_name == "coder":
+                    env["CODER_MCP_VERBOSE"] = "false"
+                elif server_name == "file_explorer":
+                    env["FILE_MCP_VERBOSE"] = "false"
+                
+                config["env"] = env
 
                 server_configs[server_name] = config
 

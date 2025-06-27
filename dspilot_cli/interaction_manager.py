@@ -15,7 +15,7 @@ class InteractionManager:
     def __init__(self, output_manager: OutputManager, full_auto_mode: bool = False) -> None:
         """
         상호작용 관리자 초기화
-        
+
         Args:
             output_manager: 출력 관리자
             full_auto_mode: 전체 자동 모드 여부
@@ -26,12 +26,12 @@ class InteractionManager:
     def get_user_confirmation(self, message: str, tool_name: str, arguments: Dict[str, Any]) -> UserChoiceType:
         """
         사용자 확인 받기
-        
+
         Args:
             message: 확인 메시지
             tool_name: 도구명
             arguments: 도구 매개변수
-            
+
         Returns:
             사용자 선택
         """
@@ -39,7 +39,8 @@ class InteractionManager:
         if self.full_auto_mode:
             return UserChoiceType.PROCEED
 
-        self.output_manager.print_user_confirmation(message, tool_name, arguments)
+        self.output_manager.print_user_confirmation(
+            message, tool_name, arguments)
 
         while True:
             choice = input(f"선택 (y/s/m/n): ").strip().lower()
@@ -58,10 +59,10 @@ class InteractionManager:
     def get_user_input(self, prompt: str = "👤 You: ") -> str:
         """
         사용자 입력 받기
-        
+
         Args:
             prompt: 입력 프롬프트
-            
+
         Returns:
             사용자 입력
         """
@@ -70,7 +71,7 @@ class InteractionManager:
     def get_continue_confirmation(self) -> bool:
         """
         계속 진행할지 확인
-        
+
         Returns:
             계속 진행 여부
         """
@@ -84,7 +85,7 @@ class InteractionManager:
     def get_new_request(self) -> str:
         """
         새로운 요청 입력 받기
-        
+
         Returns:
             새로운 요청
         """
@@ -93,8 +94,8 @@ class InteractionManager:
     def set_full_auto_mode(self, enabled: bool) -> None:
         """
         전체 자동 모드 설정
-        
+
         Args:
             enabled: 자동 모드 활성화 여부
         """
-        self.full_auto_mode = enabled 
+        self.full_auto_mode = enabled

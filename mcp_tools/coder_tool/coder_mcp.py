@@ -1845,12 +1845,23 @@ def write_file_with_content(file_path: str, content: str, create_backup: bool = 
 
 
 if __name__ == "__main__":
-    print("🤖 Coding Agent MCP Server")
-    print("🔧 코드 분석, 수정, 리팩토링 도구 서버를 시작합니다...")
+    import os
+
+    # 환경 변수로 출력 제어 (기본값: False)
+    show_startup_msg = os.getenv("CODER_MCP_VERBOSE", "false").lower() == "true"
+    
+    if show_startup_msg:
+        print("🤖 Coding Agent MCP Server")
+        print("🔧 코드 분석, 수정, 리팩토링 도구 서버를 시작합니다...")
 
     try:
         app.run(transport="stdio")
     except KeyboardInterrupt:
-        print("\n⏹️ 서버를 종료합니다.")
+        if show_startup_msg:
+            print("\n⏹️ 서버를 종료합니다.")
     except Exception as e:
-        print(f"❌ 서버 실행 중 오류 발생: {e}")
+        if show_startup_msg:
+            print(f"❌ 서버 실행 중 오류 발생: {e}")
+        else:
+            # 에러는 항상 출력
+            print(f"❌ 서버 실행 중 오류 발생: {e}")

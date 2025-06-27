@@ -15,7 +15,7 @@ class ConversationManager:
     def __init__(self, max_context_turns: int = Defaults.MAX_CONTEXT_TURNS) -> None:
         """
         대화 관리자 초기화
-        
+
         Args:
             max_context_turns: 컨텍스트로 사용할 최대 대화 턴 수
         """
@@ -26,7 +26,7 @@ class ConversationManager:
     def add_to_history(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """
         대화 히스토리에 메시지 추가
-        
+
         Args:
             role: 역할 (user, assistant)
             content: 메시지 내용
@@ -43,10 +43,10 @@ class ConversationManager:
     def get_recent_context(self, max_turns: Optional[int] = None) -> str:
         """
         최근 대화 컨텍스트를 문자열로 반환
-        
+
         Args:
             max_turns: 최대 턴 수 (지정하지 않으면 기본값 사용)
-            
+
         Returns:
             컨텍스트 문자열
         """
@@ -56,8 +56,8 @@ class ConversationManager:
         turns = max_turns or self.max_context_turns
         # 최근 N턴의 대화만 가져오기
         recent_messages = (
-            self.conversation_history[-turns*2:] 
-            if len(self.conversation_history) > turns*2 
+            self.conversation_history[-turns*2:]
+            if len(self.conversation_history) > turns*2
             else self.conversation_history
         )
 
@@ -68,7 +68,8 @@ class ConversationManager:
 
             # 도구 사용 정보가 있으면 추가
             if entry.metadata.get("used_tools"):
-                tools = ", ".join(str(tool) for tool in entry.metadata["used_tools"])
+                tools = ", ".join(str(tool)
+                                  for tool in entry.metadata["used_tools"])
                 context_parts.append(f"   [사용된 도구: {tools}]")
 
         return "\n".join(context_parts)
@@ -76,10 +77,10 @@ class ConversationManager:
     def build_enhanced_prompt(self, user_input: str) -> str:
         """
         이전 대화 맥락을 포함한 향상된 프롬프트 생성
-        
+
         Args:
             user_input: 사용자 입력
-            
+
         Returns:
             향상된 프롬프트
         """
@@ -103,7 +104,7 @@ class ConversationManager:
     def extract_pending_actions(self, response_data: Dict[str, Any]) -> None:
         """
         응답에서 보류 중인 작업들을 추출하여 저장
-        
+
         Args:
             response_data: 응답 데이터
         """
@@ -140,4 +141,4 @@ class ConversationManager:
 
     def has_pending_actions(self) -> bool:
         """보류 중인 작업이 있는지 확인"""
-        return bool(self.pending_actions) 
+        return bool(self.pending_actions)

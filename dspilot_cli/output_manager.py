@@ -16,7 +16,7 @@ class OutputManager:
     def __init__(self, quiet_mode: bool = False, debug_mode: bool = False) -> None:
         """
         출력 관리자 초기화
-        
+
         Args:
             quiet_mode: 조용한 모드 여부
             debug_mode: 디버그 모드 여부
@@ -73,9 +73,9 @@ class OutputManager:
         """
         print(help_text)
 
-    def print_status(self, components: List[tuple], session_start: datetime, 
-                    query_count: int, conversation_history: List[Any], 
-                    pending_actions: List[str]) -> None:
+    def print_status(self, components: List[tuple], session_start: datetime,
+                     query_count: int, conversation_history: List[Any],
+                     pending_actions: List[str]) -> None:
         """현재 상태 출력"""
         print(f"\n{StyleColors.INFO}📊 시스템 상태:{StyleColors.RESET_ALL}")
 
@@ -97,7 +97,8 @@ class OutputManager:
             for i, action in enumerate(pending_actions, 1):
                 print(f"  {i}. {action}")
         else:
-            print(f"\n{StyleColors.SUCCESS}{Messages.NO_PENDING_ACTIONS}{StyleColors.RESET_ALL}")
+            print(
+                f"\n{StyleColors.SUCCESS}{Messages.NO_PENDING_ACTIONS}{StyleColors.RESET_ALL}")
 
     def print_tools_list(self, tools: List[Any]) -> None:
         """사용 가능한 MCP 도구 목록 출력"""
@@ -107,9 +108,11 @@ class OutputManager:
             for i, tool in enumerate(tools, 1):
                 tool_name = getattr(tool, 'name', 'Unknown')
                 tool_desc = getattr(tool, 'description', 'No description')
-                print(f"  {i:2d}. {StyleColors.SUCCESS}{tool_name}{StyleColors.RESET_ALL}")
+                print(
+                    f"  {i:2d}. {StyleColors.SUCCESS}{tool_name}{StyleColors.RESET_ALL}")
                 print(f"      {tool_desc}")
-            print(f"\n{StyleColors.INFO}총 {len(tools)}개의 도구가 사용 가능합니다.{StyleColors.RESET_ALL}")
+            print(
+                f"\n{StyleColors.INFO}총 {len(tools)}개의 도구가 사용 가능합니다.{StyleColors.RESET_ALL}")
         else:
             print(f"  {StyleColors.WARNING}사용 가능한 도구가 없습니다.{StyleColors.RESET_ALL}")
 
@@ -117,13 +120,16 @@ class OutputManager:
         """실행 계획 출력"""
         steps = plan.get("steps", [])
         if not self.quiet_mode:
-            print(f"{StyleColors.INFO}📋 실행 계획: {plan.get('description', '도구 실행 계획')}{StyleColors.RESET_ALL}")
-            print(f"{StyleColors.INFO}총 {len(steps)}개 단계가 있습니다.{StyleColors.RESET_ALL}\n")
+            print(
+                f"{StyleColors.INFO}📋 실행 계획: {plan.get('description', '도구 실행 계획')}{StyleColors.RESET_ALL}")
+            print(
+                f"{StyleColors.INFO}총 {len(steps)}개 단계가 있습니다.{StyleColors.RESET_ALL}\n")
 
     def print_step_info(self, step_num: int, description: str) -> None:
         """단계 정보 출력"""
         if not self.quiet_mode:
-            print(f"{StyleColors.SYSTEM}🔄 단계 {step_num}: {description}{StyleColors.RESET_ALL}")
+            print(
+                f"{StyleColors.SYSTEM}🔄 단계 {step_num}: {description}{StyleColors.RESET_ALL}")
 
     def print_step_execution(self, tool_name: str) -> None:
         """단계 실행 정보 출력"""
@@ -142,7 +148,8 @@ class OutputManager:
     def print_step_error(self, step_num: int, error: str) -> None:
         """단계 오류 정보 출력"""
         if not self.quiet_mode:
-            print(f"{StyleColors.ERROR}❌ 단계 {step_num} 실행 실패: {error}{StyleColors.RESET_ALL}")
+            print(
+                f"{StyleColors.ERROR}❌ 단계 {step_num} 실행 실패: {error}{StyleColors.RESET_ALL}")
 
     def print_task_cancelled(self) -> None:
         """작업 중단 정보 출력"""
@@ -163,11 +170,13 @@ class OutputManager:
 
     def print_invalid_choice(self) -> None:
         """잘못된 선택 메시지 출력"""
-        print(f"{StyleColors.ERROR}잘못된 선택입니다. y/s/m/n 중 하나를 입력하세요.{StyleColors.RESET_ALL}")
+        print(
+            f"{StyleColors.ERROR}잘못된 선택입니다. y/s/m/n 중 하나를 입력하세요.{StyleColors.RESET_ALL}")
 
     def print_continue_prompt(self) -> None:
         """계속 진행 확인 메시지 출력"""
-        print(f"{StyleColors.WARNING}계속 진행하시겠습니까? (y/n): {StyleColors.RESET_ALL}", end="")
+        print(
+            f"{StyleColors.WARNING}계속 진행하시겠습니까? (y/n): {StyleColors.RESET_ALL}", end="")
 
     def print_response(self, response: str, used_tools: List[Any] = None) -> None:
         """AI 응답 출력"""
@@ -176,7 +185,8 @@ class OutputManager:
             print(response)
         else:
             # 일반 모드에서는 스타일링 적용
-            print(f"{StyleColors.ASSISTANT}🤖 Assistant: {response}{StyleColors.RESET_ALL}")
+            print(
+                f"{StyleColors.ASSISTANT}🤖 Assistant: {response}{StyleColors.RESET_ALL}")
 
         # 사용된 도구 정보
         if used_tools and not self.quiet_mode:
@@ -208,4 +218,4 @@ class OutputManager:
     def print_system(self, message: str) -> None:
         """시스템 메시지 출력"""
         if not self.quiet_mode:
-            print(f"{StyleColors.SYSTEM}{message}{StyleColors.RESET_ALL}") 
+            print(f"{StyleColors.SYSTEM}{message}{StyleColors.RESET_ALL}")
