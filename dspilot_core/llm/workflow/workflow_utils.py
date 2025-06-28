@@ -22,6 +22,7 @@ _WORKFLOW_REGISTRY: Dict[str, Type[BaseWorkflow]] = {
     "basic": BasicChatWorkflow,
     "research": ResearchWorkflow,
     "agent": AgentWorkflow,
+    "basic_chat": BasicChatWorkflow,  # legacy alias
 }
 
 

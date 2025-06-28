@@ -68,7 +68,7 @@ def log_structured(
     if session_id:
         log_data["session_id"] = session_id
     
-    structured_msg = json.dumps(log_data, ensure_ascii=False)
+    structured_msg = json.dumps(log_data, ensure_ascii=False, default=str)
     log_method = getattr(logger, level.value.lower())
     log_method(structured_msg)
 
@@ -104,7 +104,7 @@ class LLMLogger:
         if operation:
             log_data["operation"] = operation
             
-        return json.dumps(log_data, ensure_ascii=False)
+        return json.dumps(log_data, ensure_ascii=False, default=str)
     
     def debug(
         self,

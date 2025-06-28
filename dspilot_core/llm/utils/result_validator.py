@@ -40,12 +40,20 @@ class GenericResultValidator:
             " 예시 형식: {\"plausible\":0.8,\"complete\":0.6,\"error_like\":0.1,\"note\":\"코멘트\"}."
             " 불필요한 텍스트는 절대 포함하지 마십시오." )
 
+        def _safe_dumps(obj: Any) -> str:
+            """JSON 직렬화 실패 시 문자열 변환으로 대체"""
+            try:
+                return json.dumps(obj, ensure_ascii=False)
+            except TypeError:
+                # dataclass 등 기본 직렬화 불가 객체는 str()로 변환
+                return json.dumps(obj, default=str, ensure_ascii=False)
+
         analysis_prompt = f"""
 사용자 요청:
 {user_prompt}
 
 사용된 도구: {tool_name}
-입력 파라미터: {json.dumps(tool_args, ensure_ascii=False)}
+입력 파라미터: {_safe_dumps(tool_args)}
 
 도구 원시 결과:
 {raw_result}

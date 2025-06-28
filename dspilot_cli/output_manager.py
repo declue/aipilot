@@ -28,7 +28,7 @@ class OutputManager:
         self.stream_mode = stream_mode
         self.verbose_mode = verbose_mode
         self.logger = logging.getLogger("dspilot_cli")
-        
+
         # 스트리밍 관련 상태
         self._streaming_active = False
         self._streaming_buffer = ""
@@ -52,6 +52,13 @@ class OutputManager:
         """CLI 시작 배너 출력"""
         if self.quiet_mode:
             return
+
+        banner = (
+            f"{StyleColors.HEADER}==============================\n"
+            f"   🐬  DSPilot CLI   \n"
+            f"=============================={StyleColors.RESET_ALL}"
+        )
+        print(banner)
 
     def print_help(self) -> None:
         """도움말 출력"""

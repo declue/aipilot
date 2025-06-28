@@ -6,11 +6,18 @@ DSPilot CLI 대화 히스토리 관리 모듈
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from dspilot_cli.constants import ENHANCED_PROMPT_TEMPLATE, ConversationEntry, Defaults
+import dspilot_core.instructions.prompt_manager as prompt_manager
+from dspilot_cli.constants import ConversationEntry, Defaults, PromptNames
 
 
 class ConversationManager:
-    """대화 히스토리 관리를 담당하는 클래스"""
+    """대화 히스토리 관리를 담당하는 클래스
+    
+    SOLID 원칙 적용:
+    - Single Responsibility: 대화 히스토리 관리만 담당
+    - Open/Closed: 새로운 대화 관리 전략 추가 시 기존 코드 수정 없이 확장 가능
+    - Dependency Inversion: 프롬프트 관리자에 의존하여 템플릿을 동적으로 로드
+    """
 
     def __init__(self, max_context_turns: int = Defaults.MAX_CONTEXT_TURNS) -> None:
         """
@@ -22,6 +29,9 @@ class ConversationManager:
         self.conversation_history: List[ConversationEntry] = []
         self.pending_actions: List[str] = []
         self.max_context_turns = max_context_turns
+        
+        # 프롬프트 관리자 주입 (모듈 방식으로 불러와 테스트 중 모킹 가능)
+        self.prompt_manager = prompt_manager.get_default_prompt_manager()
 
     def add_to_history(self,
                        role: str,
@@ -98,11 +108,23 @@ class ConversationManager:
             pending_context = "\n\n[보류 중인 작업들]:\n" + \
                 "\n".join(f"- {action}" for action in self.pending_actions)
 
-        return ENHANCED_PROMPT_TEMPLATE.format(
-            context=context,
-            pending_context=pending_context,
-            user_input=user_input
-        )
+        # ENHANCED 프롬프트 구성 (파일에서 로드)
+        try:
+            enhanced_prompt = self.prompt_manager.get_formatted_prompt(
+                PromptNames.ENHANCED,
+                context=context,
+                pending_context=pending_context,
+                user_input=user_input
+            )
+            
+            if enhanced_prompt is None:
+                # 프롬프트 로드 실패 시 기본 형태
+                return f"이전 대화 맥락:\n{context}\n\n{pending_context}\n\n현재 사용자 요청: {user_input}"
+                
+            return enhanced_prompt
+        except Exception:
+            # 포맷팅 실패 시 기본 형태
+            return f"이전 대화 맥락:\n{context}\n\n{pending_context}\n\n현재 사용자 요청: {user_input}"
 
     def extract_pending_actions(self, response_data: Dict[str, Any]) -> None:
         """

@@ -1,0 +1,27 @@
+다음 사용자 요청을 분석하여 실행 계획을 수립해주세요.
+
+사용자 요청: {user_message}
+
+사용 가능한 도구들:
+{tools_desc}
+
+도구 사용이 필요한 경우 실행 계획을 수립하세요. 그렇지 않으면 null을 반환하세요.
+
+**응답 형식 (JSON):**
+{{
+    "need_tools": true/false,
+    "plan": {{
+        "description": "실행 계획 설명",
+        "steps": [
+            {{
+                "step": 1,
+                "description": "단계 설명",
+                "tool_name": "도구명",
+                "arguments": {{"arg": "value"}},
+                "confirm_message": "사용자에게 표시할 확인 메시지"
+            }}
+        ]
+    }}
+}}
+
+반드시 JSON 형식으로만 응답하세요. 

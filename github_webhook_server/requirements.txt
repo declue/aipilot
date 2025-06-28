@@ -3,3 +3,6 @@ uvicorn
 sqlalchemy
 loguru
 werkzeug==3.1.3
+slowapi
+python-dotenv
+pydantic

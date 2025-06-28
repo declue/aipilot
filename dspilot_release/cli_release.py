@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import ast
+import re as _re
 import shutil
 import subprocess
 import sys
@@ -60,6 +61,9 @@ class CodeProcessor:
 
             cleaned_content = self.remove_comments_and_docstrings(
                 original_content)
+
+            # 간단한 포스트 프로세싱: print 구문의 인용부호를 더블쿼트로 유지
+            cleaned_content = _re.sub(r"print\('([^']*)'\)", r'print("\1")', cleaned_content)
 
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(cleaned_content)
@@ -229,6 +233,8 @@ from dspilot_cli.cli_main import main
 __all__ = ["main"]
 '''
 
+        # 대상 디렉터리 보장
+        self.release_root.mkdir(parents=True, exist_ok=True)
         init_file = self.release_root / '__init__.py'
         with open(init_file, 'w', encoding='utf-8') as f:
             f.write(init_content)
@@ -261,6 +267,8 @@ setup(
 )
 '''
 
+        # 대상 디렉터리 보장
+        self.release_root.mkdir(parents=True, exist_ok=True)
         setup_file = self.release_root / 'setup.py'
         with open(setup_file, 'w', encoding='utf-8') as f:
             f.write(setup_content)
@@ -275,7 +283,7 @@ Clean version of DSPilot without comments and documentation.
             f.write(readme_content)
 
     def _print_summary(self):
-        print("\n=== 릴리스 빌드 완료 ===")
+        print("=== 릴리스 빌드 완료 ===")
         print(f"처리된 Python 파일: {self.code_processor.processed_files}")
         print(f"건너뛴 파일: {self.code_processor.skipped_files}")
         print(f"릴리스 위치: {self.release_root}")

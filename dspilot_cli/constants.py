@@ -103,52 +103,9 @@ class Defaults:
     VALIDATE_MODE = "auto"  # auto|off|strict
 
 
-# 분석 프롬프트 템플릿
-ANALYSIS_PROMPT_TEMPLATE = """다음 사용자 요청을 분석하여 실행 계획을 수립해주세요.
-
-사용자 요청: {user_message}
-
-사용 가능한 도구들:
-{tools_desc}
-
-도구 사용이 필요한 경우 실행 계획을 수립하세요. 그렇지 않으면 null을 반환하세요.
-
-**응답 형식 (JSON):**
-{{
-    "need_tools": true/false,
-    "plan": {{
-        "description": "실행 계획 설명",
-        "steps": [
-            {{
-                "step": 1,
-                "description": "단계 설명",
-                "tool_name": "도구명",
-                "arguments": {{"arg": "value"}},
-                "confirm_message": "사용자에게 표시할 확인 메시지"
-            }}
-        ]
-    }}
-}}
-
-반드시 JSON 형식으로만 응답하세요."""
-
-FINAL_ANALYSIS_PROMPT_TEMPLATE = """다음은 사용자 요청에 대한 도구 실행 결과입니다.
-
-원래 요청: {original_prompt}
-
-실행 결과:
-{results_summary}
-
-위 결과를 바탕으로 사용자의 요청에 대한 완전하고 유용한 최종 답변을 제공해주세요."""
-
-ENHANCED_PROMPT_TEMPLATE = """이전 대화 맥락:
-{context}
-
-{pending_context}
-
-현재 사용자 요청: {user_input}
-
-위의 대화 맥락을 고려하여 응답해주세요. 특히:
-1. 이전에 제안한 작업이나 변경사항을 사용자가 확인/적용을 요청하는 경우, 해당 내용을 바탕으로 즉시 실행해주세요.
-2. 복합적인 요청의 경우 단계별로 계획을 수립하고 순차적으로 실행해주세요.
-3. 데이터 수집, 처리, 저장이 모두 필요한 경우 각 단계를 완료한 후 다음 단계로 진행해주세요."""
+# 프롬프트 이름 상수 (파일 기반으로 변경)
+class PromptNames:
+    """프롬프트 파일 이름 상수"""
+    ANALYSIS = "analysis_prompts"
+    FINAL_ANALYSIS = "final_analysis_prompts"
+    ENHANCED = "enhanced_prompts"

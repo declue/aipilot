@@ -16,6 +16,13 @@ class GenericArgumentFixer:
 
     async def suggest(self, user_prompt: str, tool_name: str, original_args: Dict[str, Any], error_msg: str) -> Optional[Dict[str, Any]]:
         """오류 메시지를 바탕으로 수정된 arguments 제안"""
+
+        def _safe_dumps(obj: Any) -> str:  # pylint: disable=missing-function-docstring
+            try:
+                return json.dumps(obj, ensure_ascii=False)
+            except TypeError:
+                return json.dumps(obj, default=str, ensure_ascii=False)
+
         system_prompt = (
             "당신은 외부 도구 호출 파라미터를 수정해주는 AI 어시스턴트입니다."
             " 사용자가 시도한 파라미터로 오류가 발생했습니다."
@@ -28,7 +35,7 @@ class GenericArgumentFixer:
 {user_prompt}
 
 도구 이름: {tool_name}
-원본 파라미터: {json.dumps(original_args, ensure_ascii=False)}
+원본 파라미터: {_safe_dumps(original_args)}
 
 오류 메시지:
 {error_msg}

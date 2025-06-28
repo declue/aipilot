@@ -6,12 +6,13 @@ from __future__ import annotations
 TODO: 향후 이벤트별 Builder 클래스로 세분화하고 직접 구현을 옮길 예정.
 """
 
-from typing import Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Tuple
 
 from dspilot_core.util.message_builders import get_builder
-from dspilot_core.util.webhook_client import (
-    WebhookClient as _WC,  # pylint: disable=import-error, cyclic-import
-)
+
+if TYPE_CHECKING:  # pragma: no cover
+    # 순환 참조를 피하기 위해 타입 체크 시에만 가져옴
+    from dspilot_core.util.webhook_client import WebhookClient  # noqa: F401
 
 
 def build_friendly_message(message: Dict[str, Any]) -> Tuple[str, str]:
@@ -28,5 +29,8 @@ def build_friendly_message(message: Dict[str, Any]) -> Tuple[str, str]:
     # 2) 아직 분리되지 않은 이벤트는 기존 WebhookClient 메서드 재활용
     
 
-    dummy = object.__new__(_WC)  # type: ignore[arg-type]
-    return _WC._create_friendly_message(dummy, message)  # type: ignore[attr-defined]
+    # 순환 import을 피하기 위해 함수 내부에서 지연 로딩
+    from dspilot_core.util.webhook_client import WebhookClient  # type: ignore
+
+    dummy_client = object.__new__(WebhookClient)  # type: ignore[arg-type]
+    return WebhookClient._create_friendly_message(dummy_client, message)  # type: ignore[attr-defined]

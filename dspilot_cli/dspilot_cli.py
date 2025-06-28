@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 DSPilot CLI - 메인 진입점
-SOLID 원칙과 단일 책임 원칙을 적용한 모듈화된 CLI 시스템
 
 사용법:
   python -m dspilot_cli                    # 대화형 모드
