@@ -56,7 +56,7 @@ class ModeHandler:
 
                 # 명령어 처리
                 command_result = await self.command_handler.handle_command(user_input)
-                
+
                 if command_result is False:
                     # 종료 명령
                     break
@@ -73,4 +73,4 @@ class ModeHandler:
                 break
             except Exception as e:
                 self.output_manager.log_if_debug(f"대화형 모드 오류: {e}", "error")
-                self.output_manager.print_error(f"오류: {e}") 
+                self.output_manager.print_error(f"오류: {e}")

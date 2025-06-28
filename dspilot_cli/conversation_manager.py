@@ -29,7 +29,7 @@ class ConversationManager:
         self.conversation_history: List[ConversationEntry] = []
         self.pending_actions: List[str] = []
         self.max_context_turns = max_context_turns
-        
+
         # 프롬프트 관리자 주입 (모듈 방식으로 불러와 테스트 중 모킹 가능)
         self.prompt_manager = prompt_manager.get_default_prompt_manager()
 
@@ -69,8 +69,8 @@ class ConversationManager:
         turns = max_turns or self.max_context_turns
         # 최근 N턴의 대화만 가져오기
         recent_messages = (
-            self.conversation_history[-turns*2:]
-            if len(self.conversation_history) > turns*2
+            self.conversation_history[-turns * 2:]
+            if len(self.conversation_history) > turns * 2
             else self.conversation_history
         )
 
@@ -106,7 +106,7 @@ class ConversationManager:
         pending_context = ""
         if self.pending_actions:
             pending_context = "\n\n[보류 중인 작업들]:\n" + \
-                "\n".join(f"- {action}" for action in self.pending_actions)
+                              "\n".join(f"- {action}" for action in self.pending_actions)
 
         # ENHANCED 프롬프트 구성 (파일에서 로드)
         try:
@@ -116,11 +116,11 @@ class ConversationManager:
                 pending_context=pending_context,
                 user_input=user_input
             )
-            
+
             if enhanced_prompt is None:
                 # 프롬프트 로드 실패 시 기본 형태
                 return f"이전 대화 맥락:\n{context}\n\n{pending_context}\n\n현재 사용자 요청: {user_input}"
-                
+
             return enhanced_prompt
         except Exception:
             # 포맷팅 실패 시 기본 형태

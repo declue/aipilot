@@ -29,13 +29,13 @@ class ExecutionManager:
     """
 
     def __init__(
-        self,
-        output_manager: OutputManager,
-        interaction_manager: InteractionManager,
-        llm_agent: BaseAgent,
-        mcp_tool_manager: MCPToolManager,
-        validate_mode: str = Defaults.VALIDATE_MODE,
-        max_step_retries: int = Defaults.MAX_STEP_RETRIES
+            self,
+            output_manager: OutputManager,
+            interaction_manager: InteractionManager,
+            llm_agent: BaseAgent,
+            mcp_tool_manager: MCPToolManager,
+            validate_mode: str = Defaults.VALIDATE_MODE,
+            max_step_retries: int = Defaults.MAX_STEP_RETRIES
     ) -> None:
         """
         실행 관리자 초기화

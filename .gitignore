@@ -20,3 +20,4 @@ build
 task.json
 .pytest_cache
 *.log
+llm_profiles.json.bak

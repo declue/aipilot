@@ -109,8 +109,8 @@ def setup_logging(debug_mode: bool, quiet_mode: bool) -> None:
         # 특정 모듈들의 로그도 명시적으로 차단
         for module_name in [
             "mcp_manager", "mcp_tool_manager", "llm_service",
-            "application.llm.validators.config_validator",
-            "application.llm.agents.base_agent", "dspilot_cli"
+            "dspilot_core.llm.validators.config_validator",
+            "dspilot_core.llm.agents.base_agent", "dspilot_cli"
         ]:
             module_logger = logging.getLogger(module_name)
             module_logger.setLevel(logging.CRITICAL + 1)
@@ -133,14 +133,14 @@ async def handle_special_commands(cli: DSPilotCLI, args) -> bool:
     """특수 명령 처리. 처리된 경우 True 반환"""
     if args.tools:
         await cli.initialize()
-        await cli.command_handler._show_tools() # pylint: disable=protected-access
+        await cli.command_handler._show_tools()  # pylint: disable=protected-access
         return True
 
     if args.diagnose:
         await cli.initialize()
         await cli.command_handler._show_status_with_session()
         return True
-    
+
     return False
 
 

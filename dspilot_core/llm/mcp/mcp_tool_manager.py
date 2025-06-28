@@ -37,7 +37,7 @@ def _silent_popen(*args, **kwargs):
         mcp_indicators = [
             "mcp", "duckduckgo.py", "coder_mcp.py", "file_mcp_tool.py",
             "time.py", "weather.py", "github-mcp-server", "process_mcp.py",
-            "chrome_mcp_tool.py", "remote_desktop.py", "bitbucket_mcp_tool.py"
+            "chrome_tool.py", "remote_desktop.py", "bitbucket_tool.py"
         ]
 
         is_mcp_process = any(indicator in cmd_str.lower()
@@ -750,7 +750,8 @@ class MCPToolManager:
         target_tool = self.get_tool_by_name(tool_name)
         if not target_tool:
             return f"오류: 도구 '{tool_name}'을 찾을 수 없습니다."
-        with suppress_all_output():
+        # 로깅만 억제하고 stdio 통신은 유지
+        with suppress_stdout():
             return await target_tool.ainvoke(arguments)
 
     # 테스트에서 직접 호출 --------------------------------------------------

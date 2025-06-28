@@ -119,4 +119,4 @@ class PlanningService:
         return ExecutionPlan(
             description=plan_data.get("description", "도구 실행 계획"),
             steps=steps
-        ) 
+        )

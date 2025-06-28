@@ -7,6 +7,7 @@ from typing import Dict
 from PySide6.QtCore import QTimer, Signal, Slot, Qt
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
+    QDialog,
     QDockWidget,
     QMainWindow,
     QMenu,
@@ -22,7 +23,8 @@ from PySide6.QtWidgets import (
 from dspilot_core.config.config_manager import ConfigManager
 from dspilot_shell.widgets.connection_manager import ConnectionManagerWidget
 from dspilot_shell.widgets.terminal_widget import TerminalWidget
-from dspilot_shell.models.ssh_connection import SSHConnection
+from dspilot_shell.widgets.password_dialog import PasswordDialog
+from dspilot_shell.models.ssh_connection import SSHConnection, AuthMethod
 
 
 class MainWindow(QMainWindow):
@@ -225,6 +227,16 @@ class MainWindow(QMainWindow):
     def _create_terminal_connection(self, connection: SSHConnection):
         """터미널 연결 생성"""
         try:
+            # 비밀번호 인증이지만 비밀번호가 없는 경우 입력 요청
+            if (connection.auth_method == AuthMethod.PASSWORD and 
+                not connection.password):
+                
+                password_dialog = PasswordDialog(connection.name, self)
+                if password_dialog.exec() == QDialog.DialogCode.Accepted:
+                    connection.password = password_dialog.get_password()
+                else:
+                    return  # 사용자가 취소한 경우
+            
             # 새 터미널 위젯 생성
             terminal_widget = TerminalWidget(connection)
             

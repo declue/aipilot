@@ -13,7 +13,8 @@ from dspilot_cli.constants import Messages, StyleColors
 class OutputManager:
     """출력 관리를 담당하는 클래스"""
 
-    def __init__(self, quiet_mode: bool = False, debug_mode: bool = False, stream_mode: bool = False, verbose_mode: bool = False) -> None:
+    def __init__(self, quiet_mode: bool = False, debug_mode: bool = False, stream_mode: bool = False,
+                 verbose_mode: bool = False) -> None:
         """
         출력 관리자 초기화
 
@@ -40,7 +41,7 @@ class OutputManager:
 
     def log_if_debug(self, message: str, level: str = "info") -> None:
         """디버그 모드일 때만 로그 출력"""
-        if self.debug_mode:
+        if self.debug_mode or self.verbose_mode:
             if level == "error":
                 self.logger.error(message)
             elif level == "warning":

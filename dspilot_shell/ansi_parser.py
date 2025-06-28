@@ -65,8 +65,22 @@ class AnsiParser:
     }
     
     def __init__(self):
-        # ANSI 이스케이프 시퀀스 패턴
-        self.escape_pattern = re.compile(r'\x1b\[[0-9;]*[mKHfABCDsuhl]|\x1b\][0-9];.*?\x07|\x1b\]0;.*?\x07|\x1b\[.*?[hl]|\x1b\[.*?[LM]|\x1b\[\?.*?[hl]')
+        # 개선된 ANSI 이스케이프 시퀀스 패턴 (터미널 제어 시퀀스 포함)
+        self.escape_pattern = re.compile(
+            r'\x1b\[[0-9;]*[mKHfABCDsuhl]|'      # 기본 CSI 시퀀스
+            r'\x1b\][0-9];.*?\x07|'              # OSC 시퀀스 (BEL 종료)
+            r'\x1b\]0;.*?\x07|'                  # 제목 설정
+            r'\x1b\[.*?[hl]|'                    # 모드 설정
+            r'\x1b\[.*?[LM]|'                    # 라인 삽입/삭제
+            r'\x1b\[\?.*?[hl]|'                  # DEC 모드
+            r'\x1b\[[0-9;]*t|'                   # 윈도우 크기 제어 시퀀스 (필터링)
+            r'\x1b\[[0-9;]*[st]|'                # 기타 터미널 제어
+            r'\x1b[()][AB0-9]|'                  # 문자셋 변경
+            r'\x1b[=>]|'                         # 키패드 모드
+            r'\x1b[78]|'                         # 화면 저장/복원
+            r'\x1b[HMD]|'                        # 기타 단일 문자 시퀀스
+            r'\x1bc'                             # 터미널 리셋
+        )
         
         # 현재 스타일 상태
         self.current_style = TerminalStyle()
@@ -112,14 +126,24 @@ class AnsiParser:
         return chunks
     
     def _process_control_chars(self, text: str) -> str:
-        """제어 문자 처리"""
-        # 백스페이스, 캐리지 리턴 등 처리
-        text = text.replace('\x08', '')  # 백스페이스 제거
-        text = text.replace('\x0D', '')  # 캐리지 리턴 제거 (줄바꿈은 \n만 사용)
+        """제어 문자 처리 (VI/터미널 앱 호환성 개선)"""
+        # 줄바꿈 정규화
+        text = text.replace('\r\n', '\n')  # Windows 스타일 줄바꿈
+        text = text.replace('\r', '\n')    # 단독 캐리지 리턴을 줄바꿈으로
+        
+        # Bell 문자는 유지 (시스템 알림용)
+        # text = text.replace('\x07', '')  # Bell 문자 제거하지 않음
+        
+        # 백스페이스는 유지 (VI에서 사용)
+        # text = text.replace('\x08', '')  # 백스페이스 제거하지 않음
+        
+        # NULL 문자만 제거
         text = text.replace('\x00', '')  # NULL 문자 제거
         
-        # 기타 출력할 수 없는 제어 문자 제거
-        text = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', text)
+        # 매우 제한적인 제어 문자만 제거 (터미널 앱이 필요한 문자는 유지)
+        import re
+        # 오직 NULL, DEL, 그리고 몇 개의 안전하지 않은 제어 문자만 제거
+        text = re.sub(r'[\x00\x7F]', '', text)
         
         return text
     

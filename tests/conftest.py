@@ -27,7 +27,7 @@ except ModuleNotFoundError:  # pragma: no cover – GUI 미지원 환경
 # 백그라운드 리소스 정리를 위한 자동 실행 픽스처
 # 전체 테스트 세션 동안 활성화되어, 종료 시 남은 스레드나 QApplication 인스턴스를 종료합니다.
 
-from application.config.libs.config_change_notifier import (
+from dspilot_core.config.libs.config_change_notifier import (
     cleanup_global_notifier,
     get_config_change_notifier,
     reset_global_notifier,

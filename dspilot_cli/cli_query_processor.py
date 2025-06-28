@@ -3,7 +3,6 @@
 DSPilot CLI 쿼리 처리 프로세서
 """
 
-import dataclasses  # 로컬 임포트 (순환 의존성 회피)
 import hashlib
 import json
 from typing import Callable, Optional
@@ -12,6 +11,7 @@ from dspilot_cli.conversation_manager import ConversationManager
 from dspilot_cli.execution_manager import ExecutionManager
 from dspilot_cli.interaction_manager import InteractionManager
 from dspilot_cli.output_manager import OutputManager
+
 
 # pylint: disable=not-callable
 
@@ -59,7 +59,7 @@ class QueryProcessor:
         iterations = 0
         current_input = user_input
         continue_prompt = "계속 진행해줘"
-        seen_plan_sigs = set()
+        executed_plans = set()
 
         while iterations < self.max_iterations:
             try:
@@ -69,41 +69,40 @@ class QueryProcessor:
                         "user", current_input)
 
                 self.output_manager.log_if_debug(
-                    f"=== CLI: 대화형 Agent 처리 시작 (iteration {iterations+1}/{self.max_iterations}): '{current_input}' ===")
+                    f"=== CLI: 대화형 Agent 처리 시작 (iteration {iterations + 1}/{self.max_iterations}): '{current_input}' ===")
 
                 # 에이전트 실행 (계획 수립 및 실행 포함)
                 result_flags = await self._run_interactive_agent(current_input)
                 has_errors = result_flags.get("has_errors", False)
                 plan_executed = result_flags.get("has_plan", False)
 
-                # --------------------------------------------------------------
-                # 모든 단계가 성공적으로 실행된 경우 즉시 루프 종료 ------------
-                # --------------------------------------------------------------
-                # LLM이 판단하여 추가 계획을 제안할 수도 있지만, 방금 실행한
-                # 계획이 문제 없이 완료되었다면 불필요한 반복 실행을 피하기
-                # 위해 여기서 종료한다. (범용 Agent 원칙: "문제 없음"을 판단한
-                # 상황 자체가 LLM의 의사결정 결과이므로, 추가 확인 없이 종료)
+                # ------------------------------------------------------------------
+                # 엄격한 오류 판단 - 실제 실행 실패만 오류로 간주 -------------------
+                # ------------------------------------------------------------------
+                # LLM이 "콘텐츠 부족" 등으로 판단하더라도, 실제 도구 실행이 성공했다면
+                # 오류가 아닌 것으로 간주하여 불필요한 재시도를 방지합니다.
+                actual_execution_errors = []
+                if isinstance(result_flags, dict) and "steps" in result_flags:
+                    for step_result in result_flags["steps"]:
+                        if isinstance(step_result, dict):
+                            exec_error = step_result.get("exec_error", "")
+                            if exec_error and exec_error.strip():
+                                actual_execution_errors.append(exec_error)
 
-                if plan_executed and not has_errors:
+                # 실제 실행 오류가 없다면 has_errors를 False로 강제 설정
+                if not actual_execution_errors:
+                    has_errors = False
+                    self.output_manager.print_success("✅ 모든 단계 실행 완료 - 작업 성공")
+
+                # --------------------------------------------------------------
+                # 오류가 없으면 즉시 루프 종료 ---------------------------------
+                # --------------------------------------------------------------
+                if not has_errors:
                     break
 
-                # 실행 후 추가 계획이 필요한지 확인
+                # 오류가 있을 때만 추가 계획 분석
                 enhanced_prompt = self.conversation_manager.build_enhanced_prompt("")
                 next_plan = await self.execution_manager.analyze_request_and_plan(enhanced_prompt)
-
-                # 중복 플랜 감지
-                if next_plan:
-                    # dataclasses(asdict) 로 변환하여 JSON 직렬화 오류 방지
-                    plan_dict = dataclasses.asdict(next_plan)
-                    plan_sig = hashlib.sha256(
-                        json.dumps(plan_dict, sort_keys=True).encode()
-                    ).hexdigest()
-                    if plan_sig in seen_plan_sigs:
-                        # 동일한 계획을 반복 실행하려고 하면 루프 종료
-                        self.output_manager.print_warning(
-                            "동일한 실행 계획이 반복되어 종료합니다.")
-                        break
-                    seen_plan_sigs.add(plan_sig)
 
                 # ------------------------------------------------------------------
                 # 반복 종료 조건 강화 ----------------------------------------------
@@ -113,16 +112,22 @@ class QueryProcessor:
                     # 2) 직전 계획이 오류 없이 성공 → LLM이 계획을 또 제시하더라도   
                     #    동일/유사 작업 반복일 가능성이 높으므로 종료
                     if next_plan is None and has_errors:
-                        # case 1-a: 오류 존재 + 계획 없음 → "다른 방법"으로 한 번 더 시도
+                        # 오류가 있었지만 추가 계획이 없을 때: 다른 방법 시도 요청
                         iterations += 1
                         current_input = "다른 방법으로 시도해줘"
                         continue
-                    break
+                    break  # 추가 계획이 없으면 종료
 
-                # 다음 계획이 존재하고, 직전 계획에 오류가 있었거나 실행되지 않은 경우에만 반복
+                # 중복 계획 체크
+                plan_hash = self._generate_plan_hash(next_plan)
+                if plan_hash in executed_plans:
+                    self.output_manager.print_warning("⚠️ 중복 계획 감지 → 종료")
+                    break
+                executed_plans.add(plan_hash)
+
+                # 다음 계획 실행
                 iterations += 1
-                current_input = continue_prompt
-                continue
+                current_input = f"다음 계획을 실행해주세요: {next_plan.description}"
 
             except Exception as e:
                 self.output_manager.log_if_debug(
@@ -234,3 +239,15 @@ class QueryProcessor:
         # 도구가 실제로 사용되었다면 보류 작업 클리어 (실행 완료로 간주)
         if used_tools:
             self.conversation_manager.clear_pending_actions()
+
+    def _generate_plan_hash(self, plan: dict) -> str:
+        """
+        계획을 해시로 변환하는 함수
+
+        Args:
+            plan: 계획 데이터
+
+        Returns:
+            str: 해시된 계획
+        """
+        return hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest()

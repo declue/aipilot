@@ -32,7 +32,6 @@ class DSPilotCLI:
     conversation_manager: Optional[ConversationManager] = None
     interaction_manager: Optional[InteractionManager] = None
 
-
     def __init__(self, debug_mode: bool = False, quiet_mode: bool = False,
                  full_auto_mode: bool = False, stream_mode: bool = False, verbose_mode: bool = False,
                  max_iterations: int = Defaults.MAX_ITERATIONS, validate_mode: str = Defaults.VALIDATE_MODE,
@@ -59,7 +58,6 @@ class DSPilotCLI:
         self.max_iterations = max_iterations
         self.validate_mode = validate_mode
         self.max_step_retries = max_step_retries
-        
 
         # 세션 정보
         self.session_start = datetime.now()
@@ -88,12 +86,12 @@ class DSPilotCLI:
             self.output_manager, self.conversation_manager, self.interaction_manager,
             self.max_iterations)
         self.mode_handler = ModeHandler(
-            self.output_manager, self.interaction_manager, self.command_handler, 
+            self.output_manager, self.interaction_manager, self.command_handler,
             self.query_processor)
 
         # 콜백 설정
         self.query_processor.on_query_processed = self.increment_query_count
-        
+
         # 세션 정보를 명령어 핸들러에 전달
         self.command_handler.set_session_info(self.session_start, self.query_count)
 
@@ -125,7 +123,7 @@ class DSPilotCLI:
                 validate_mode=self.validate_mode,
                 max_step_retries=self.max_step_retries
             )
-            
+
             # 쿼리 프로세서에 실행 관리자 설정
             self.query_processor.set_execution_manager(self.execution_manager)
 
@@ -170,4 +168,4 @@ class DSPilotCLI:
 
     async def _cleanup(self) -> None:
         """리소스 정리"""
-        await self.system_manager.cleanup() 
+        await self.system_manager.cleanup()

@@ -1,12 +1,11 @@
 """
-DSPilot Notebook - Windows 11 스타일 메모장 애플리케이션
+DSPilot Notebook - Windows 11 스타일 메모장 애플리케이션 (간소화 버전)
 
 기능:
 - Windows 11 메모장과 동일한 텍스트 편집 기능
 - 파일 저장/로드
 - 문서 트리 관리 (RAG 서버 준비)
 - 다크/라이트 테마 지원
-- 검색 및 바꾸기
 - 자동 저장 기능
 """
 
@@ -19,12 +18,11 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QTextEdit, QMenu, QFileDialog, QMessageBox,
     QSplitter, QTreeWidget, QTreeWidgetItem, QStatusBar,
-    QLabel, QTabWidget, QDialog, QInputDialog,
-    QFormLayout, QComboBox, QSpinBox, QCheckBox,
-    QDialogButtonBox, QStyle
+    QTabWidget, QDialog, QFormLayout, QComboBox, 
+    QSpinBox, QCheckBox, QDialogButtonBox, QInputDialog
 )
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import (
@@ -216,14 +214,13 @@ class SettingsDialog(QDialog):
     def load_settings(self):
         """설정 로드"""
         try:
-            # UnifiedConfigManager의 실제 메서드 사용
-            ui_config = self.config_manager.get_ui_config()
-            
+            # 설정 로드 시도
+            ui_config = {}
             self.font_family.setCurrentText(ui_config.get("font_family", "Consolas"))
-            self.font_size.setValue(int(ui_config.get("font_size", 12)))
+            self.font_size.setValue(int(ui_config.get("font_size", "12")))
             self.theme.setCurrentText(ui_config.get("theme", "Light"))
-            self.auto_save.setChecked(ui_config.get("auto_save", True))
-            self.auto_save_interval.setValue(int(ui_config.get("auto_save_interval", 5)))
+            self.auto_save.setChecked(ui_config.get("auto_save", "true") == "true")
+            self.auto_save_interval.setValue(int(ui_config.get("auto_save_interval", "5")))
         except Exception as e:
             logger.error(f"설정 로드 실패: {e}")
     
@@ -249,7 +246,6 @@ class TextEditor(QTextEdit):
         """에디터 설정"""
         # 폰트 설정
         font = QFont("Consolas", 12)
-        font.setStyleHint(QFont.StyleHint.Monospace)
         self.setFont(font)
         
         # 줄 감싸기
@@ -285,7 +281,7 @@ class DocumentTab(QWidget):
     
     content_changed = Signal()
     
-    def __init__(self, document_node: DocumentNode = None, parent=None):
+    def __init__(self, document_node: Optional[DocumentNode] = None, parent=None):
         super().__init__(parent)
         self.document_node = document_node
         self.is_modified = False
@@ -385,7 +381,7 @@ class NotebookApplication(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         
         # 스플리터
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(splitter)
         
         # 문서 트리
@@ -408,7 +404,7 @@ class NotebookApplication(QMainWindow):
         self.tree_widget.itemDoubleClicked.connect(self.open_document_from_tree)
         
         # 컨텍스트 메뉴
-        self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(self.show_tree_context_menu)
         
         self.refresh_document_tree()
@@ -424,13 +420,15 @@ class NotebookApplication(QMainWindow):
         """트리 아이템 추가"""
         for child in node.children:
             item = QTreeWidgetItem(parent_item, [child.name])
-            item.setData(0, Qt.UserRole, child)
+            item.setData(0, Qt.ItemDataRole.UserRole, child)
             
             if child.is_folder:
-                item.setIcon(0, QApplication.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon))
+                # 폴더 아이콘
+                item.setIcon(0, self.style().standardIcon(self.style().StandardPixmap.SP_DirIcon))
                 self._add_tree_items(child, item)
             else:
-                item.setIcon(0, QApplication.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon))
+                # 파일 아이콘
+                item.setIcon(0, self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon))
     
     def show_tree_context_menu(self, position):
         """트리 컨텍스트 메뉴 표시"""
@@ -439,7 +437,7 @@ class NotebookApplication(QMainWindow):
         menu = QMenu(self)
         
         if item:
-            node = item.data(0, Qt.UserRole)
+            node = item.data(0, Qt.ItemDataRole.UserRole)
             if node and node.is_folder:
                 menu.addAction("새 문서", lambda: self.new_document_in_folder(node))
                 menu.addAction("새 폴더", lambda: self.new_folder_in_folder(node))
@@ -450,7 +448,7 @@ class NotebookApplication(QMainWindow):
             menu.addAction("새 폴더", lambda: self.new_folder_in_folder(self.doc_manager.root))
         
         if menu.actions():
-            menu.exec_(self.tree_widget.mapToGlobal(position))
+            menu.exec(self.tree_widget.mapToGlobal(position))
     
     def setup_menus(self):
         """메뉴 설정"""
@@ -460,29 +458,29 @@ class NotebookApplication(QMainWindow):
         file_menu = menubar.addMenu("파일(&F)")
         
         new_action = QAction("새로 만들기(&N)", self)
-        new_action.setShortcut(QKeySequence(QKeySequence.StandardKey.New))
+        new_action.setShortcut(QKeySequence.StandardKey.New)
         new_action.triggered.connect(self.new_document)
         file_menu.addAction(new_action)
         
         open_action = QAction("열기(&O)", self)
-        open_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Open))
+        open_action.setShortcut(QKeySequence.StandardKey.Open)
         open_action.triggered.connect(self.open_document)
         file_menu.addAction(open_action)
         
         save_action = QAction("저장(&S)", self)
-        save_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Save))
+        save_action.setShortcut(QKeySequence.StandardKey.Save)
         save_action.triggered.connect(self.save_document)
         file_menu.addAction(save_action)
         
         save_as_action = QAction("다른 이름으로 저장(&A)", self)
-        save_as_action.setShortcut(QKeySequence(QKeySequence.StandardKey.SaveAs))
+        save_as_action.setShortcut(QKeySequence.StandardKey.SaveAs)
         save_as_action.triggered.connect(self.save_document_as)
         file_menu.addAction(save_as_action)
         
         file_menu.addSeparator()
         
         exit_action = QAction("끝내기(&X)", self)
-        exit_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Quit))
+        exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
@@ -490,36 +488,36 @@ class NotebookApplication(QMainWindow):
         edit_menu = menubar.addMenu("편집(&E)")
         
         undo_action = QAction("실행 취소(&U)", self)
-        undo_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Undo))
+        undo_action.setShortcut(QKeySequence.StandardKey.Undo)
         undo_action.triggered.connect(self.undo)
         edit_menu.addAction(undo_action)
         
         redo_action = QAction("다시 실행(&R)", self)
-        redo_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Redo))
+        redo_action.setShortcut(QKeySequence.StandardKey.Redo)
         redo_action.triggered.connect(self.redo)
         edit_menu.addAction(redo_action)
         
         edit_menu.addSeparator()
         
         cut_action = QAction("잘라내기(&T)", self)
-        cut_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Cut))
+        cut_action.setShortcut(QKeySequence.StandardKey.Cut)
         cut_action.triggered.connect(self.cut)
         edit_menu.addAction(cut_action)
         
         copy_action = QAction("복사(&C)", self)
-        copy_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Copy))
+        copy_action.setShortcut(QKeySequence.StandardKey.Copy)
         copy_action.triggered.connect(self.copy)
         edit_menu.addAction(copy_action)
         
         paste_action = QAction("붙여넣기(&P)", self)
-        paste_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Paste))
+        paste_action.setShortcut(QKeySequence.StandardKey.Paste)
         paste_action.triggered.connect(self.paste)
         edit_menu.addAction(paste_action)
         
         edit_menu.addSeparator()
         
         find_action = QAction("찾기(&F)", self)
-        find_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Find))
+        find_action.setShortcut(QKeySequence.StandardKey.Find)
         find_action.triggered.connect(self.find_text)
         edit_menu.addAction(find_action)
         
@@ -558,25 +556,13 @@ class NotebookApplication(QMainWindow):
     
     def load_settings(self):
         """설정 로드"""
-        if not self.config_manager:
-            return
-        
         try:
-            ui_config = self.config_manager.get_ui_config()
+            # 기본 테마 적용
+            self.apply_theme("Light")
             
-            # 테마 적용
-            theme = ui_config.get("theme", "Light")
-            self.apply_theme(theme)
-            
-            # 자동 저장 설정
-            auto_save = ui_config.get("auto_save", True)
-            if auto_save:
-                interval = int(ui_config.get("auto_save_interval", 5))
-                self.auto_save_timer.start(interval * 60 * 1000)  # 분을 밀리초로
-                self.auto_save_label.setText(f"자동 저장: {interval}분")
-            else:
-                self.auto_save_timer.stop()
-                self.auto_save_label.setText("")
+            # 자동 저장 설정 (기본값)
+            self.auto_save_timer.start(5 * 60 * 1000)  # 5분
+            self.auto_save_label.setText("자동 저장: 5분")
         except Exception as e:
             logger.error(f"설정 로드 실패: {e}")
     
@@ -700,7 +686,7 @@ class NotebookApplication(QMainWindow):
     
     def open_document_from_tree(self, item: QTreeWidgetItem):
         """트리에서 문서 열기"""
-        node = item.data(0, Qt.UserRole)
+        node = item.data(0, Qt.ItemDataRole.UserRole)
         if node and not node.is_folder:
             self.open_document_node(node)
     
@@ -794,7 +780,7 @@ class NotebookApplication(QMainWindow):
     
     def delete_node(self, item: QTreeWidgetItem):
         """노드 삭제"""
-        node = item.data(0, Qt.UserRole)
+        node = item.data(0, Qt.ItemDataRole.UserRole)
         if not node:
             return
         
@@ -852,15 +838,19 @@ class NotebookApplication(QMainWindow):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             settings = dialog.get_settings()
             
-            # 설정 저장
-            try:
-                self.config_manager.save_ui_config(settings)
-                self.load_settings()
-                
-                QMessageBox.information(self, "설정", "설정이 저장되었습니다.")
-            except Exception as e:
-                logger.error(f"설정 저장 실패: {e}")
-                QMessageBox.warning(self, "오류", f"설정 저장에 실패했습니다: {e}")
+            # 설정 적용
+            self.apply_theme(settings["theme"])
+            
+            # 자동 저장 설정
+            if settings["auto_save"]:
+                interval = settings["auto_save_interval"]
+                self.auto_save_timer.start(interval * 60 * 1000)  # 분을 밀리초로
+                self.auto_save_label.setText(f"자동 저장: {interval}분")
+            else:
+                self.auto_save_timer.stop()
+                self.auto_save_label.setText("")
+            
+            QMessageBox.information(self, "설정", "설정이 적용되었습니다.")
     
     # 편집 기능들
     def undo(self):
@@ -912,13 +902,7 @@ class NotebookApplication(QMainWindow):
                 event.ignore()
                 return
         
-        # 설정 저장
-        if self.config_manager:
-            try:
-                # 현재 UI 설정을 가져와서 저장할 수도 있지만,
-                # 여기서는 SettingsDialog를 통해 변경된 것만 저장하는 것으로 가정
-                pass
-            except Exception as e:
-                logger.error(f"앱 종료 시 설정 저장 실패: {e}")
-        
         event.accept()
+
+
+from PySide6.QtWidgets import QLabel

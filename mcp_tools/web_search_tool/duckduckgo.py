@@ -151,7 +151,17 @@ class DuckDuckGoService:
                     if url and not url.startswith(("http://", "https://")):
                         url = "https://" + url
 
-                    source = url.split("//")[-1].split("/")[0] if url else ""
+                    # 안전한 URL 파싱
+                    source = ""
+                    if url:
+                        try:
+                            parts = url.split("//")
+                            if len(parts) > 1:
+                                domain_parts = parts[-1].split("/")
+                                if domain_parts:
+                                    source = domain_parts[0]
+                        except (IndexError, AttributeError):
+                            source = ""
 
                     # 본문 크롤링 (상위 20개 결과만, 성능 고려)
                     full_content = ""
@@ -208,8 +218,17 @@ class DuckDuckGoService:
                                 "body", "") or item.get("snippet", "")
                             if url and not url.startswith(("http://", "https://")):
                                 url = "https://" + url
-                            source = url.split(
-                                "//")[-1].split("/")[0] if url else ""
+                            # 안전한 URL 파싱
+                            source = ""
+                            if url:
+                                try:
+                                    parts = url.split("//")
+                                    if len(parts) > 1:
+                                        domain_parts = parts[-1].split("/")
+                                        if domain_parts:
+                                            source = domain_parts[0]
+                                except (IndexError, AttributeError):
+                                    source = ""
 
                             # 본문 크롤링 (상위 10개만)
                             full_content = ""
@@ -290,7 +309,18 @@ class DuckDuckGoService:
 
                         description = desc_elem.get_text(
                             strip=True) if desc_elem else ""
-                        source = url.split("//")[-1].split("/")[0]
+                        
+                        # 안전한 URL 파싱
+                        source = ""
+                        if url:
+                            try:
+                                parts = url.split("//")
+                                if len(parts) > 1:
+                                    domain_parts = parts[-1].split("/")
+                                    if domain_parts:
+                                        source = domain_parts[0]
+                            except (IndexError, AttributeError):
+                                source = ""
 
                         # 본문 크롤링 (상위 15개만)
                         full_content = ""

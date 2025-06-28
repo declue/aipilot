@@ -29,9 +29,9 @@ class ResponseGenerator:
         self.prompt_manager = prompt_manager.get_default_prompt_manager()
 
     async def generate_final_response(self,
-                                     original_prompt: str,
-                                     step_results: Dict[int, Any],
-                                     streaming_callback: Optional[Callable[[str], None]] = None) -> None:
+                                      original_prompt: str,
+                                      step_results: Dict[int, Any],
+                                      streaming_callback: Optional[Callable[[str], None]] = None) -> None:
         """
         최종 응답 생성
 
@@ -104,4 +104,4 @@ class ResponseGenerator:
     def _output_fallback_response(self, results_summary: str) -> None:
         """응답 생성 실패 시 폴백 출력"""
         self.output_manager.print_success("작업 완료")
-        self.output_manager.print_info(f"결과: {results_summary}") 
+        self.output_manager.print_info(f"결과: {results_summary}")

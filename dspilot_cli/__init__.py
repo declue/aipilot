@@ -36,6 +36,7 @@ def _patched_dumps(obj, *args, **kwargs):  # noqa: D401 pylint: disable=missing-
         kwargs["default"] = _dataclass_safe_default
     return _original_json_dumps(obj, *args, **kwargs)
 
+
 # json.dumps 패치 (한 번만 적용)
 if not hasattr(_json.dumps, "_dspilot_patched"):
     _json.dumps = _patched_dumps  # type: ignore[assignment]

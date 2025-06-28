@@ -547,6 +547,8 @@ class BaseAgent(ConfigMixin, ConversationMixin, ToolProcessorMixin, LLMInterface
                 "비스트리밍 완료: response=%d자, tools=%d개", len(
                     response_text), len(used_tools)
             )
+            # workflow_name 정의 (누락된 부분)
+            workflow_name = "react_agent"
             result = self._create_response_data(response_text)
             result["workflow"] = str(workflow_name)
             return result

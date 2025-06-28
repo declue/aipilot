@@ -1,0 +1,280 @@
+# DSPilot CLI 개발 가이드라인
+
+## 프로젝트 목적
+
+DSPilot는 **범용적인 MCP(Model Context Protocol) Agent 도구**입니다. Claude Code와 같은 수준의 범용성을 목표로 하며, 특정 도구나 조건에 의존하지 않는 확장 가능한
+Agent 시스템을 구축합니다.
+
+## 핵심 원칙
+
+### 1. 범용성 우선 (Genericity First)
+
+- **절대 금지**: 특정 MCP 도구를 위한 조건부 로직
+- **절대 금지**: 도구명 기반 분기 처리 (`if tool_name == "write_file"`)
+- **절대 금지**: 특정 도구를 위한 전용 프롬프트나 템플릿
+- **지향점**: 모든 MCP 도구가 동일한 방식으로 처리되어야 함
+
+```python
+# ❌ 잘못된 예시 - 특정 도구 의존
+if tool_name == "write_file":
+    # write_file 전용 로직
+    pass
+elif tool_name == "search_web":
+    # search_web 전용 로직
+    pass
+
+# ✅ 올바른 예시 - 범용적 처리
+result = await self.mcp_tool_manager.call_mcp_tool(tool_name, arguments)
+processed_result = self._process_tool_result(result, context)
+```
+
+### 2. 메타데이터 기반 처리 (Metadata-Driven)
+
+- 도구의 스키마와 메타데이터를 활용한 동적 처리
+- 런타임에 도구 정보를 분석하여 적절한 처리 방식 결정
+- 도구의 특성을 하드코딩하지 않고 스키마에서 추론
+
+```python
+# ✅ 올바른 접근 - 메타데이터 기반
+def _analyze_tool_requirements(self, tool_schema: Dict[str, Any]) -> ToolContext:
+    """도구 스키마를 분석하여 처리 방식 결정"""
+    return_type = tool_schema.get("returns", {}).get("type", "string")
+    required_params = tool_schema.get("parameters", {}).get("required", [])
+    
+    return ToolContext(
+        expects_file_path="path" in required_params,
+        returns_structured_data=return_type == "object",
+        is_async_operation="async" in tool_schema.get("properties", {})
+    )
+```
+
+### 3. 플러그인 아키텍처 (Plugin Architecture)
+
+- 새로운 도구 지원을 위해 기존 코드 수정 불필요
+- 확장 가능한 프로세서 및 검증기 시스템
+- 의존성 역전 원칙(DIP) 적용
+
+```python
+# ✅ 확장 가능한 프로세서 시스템
+class ToolResultProcessorRegistry:
+    def register_processor(self, result_type: str, processor: ResultProcessor):
+        """결과 타입별 프로세서 등록"""
+        
+    def get_processor(self, result_type: str) -> Optional[ResultProcessor]:
+        """결과 타입에 맞는 프로세서 반환"""
+```
+
+## 아키텍처 가이드라인
+
+### 1. 계층 분리 (Layer Separation)
+
+```
+┌─────────────────────────────────────┐
+│ CLI Layer (dspilot_cli)             │ ← 사용자 인터페이스
+├─────────────────────────────────────┤
+│ Core Layer (dspilot_core)           │ ← 비즈니스 로직
+├─────────────────────────────────────┤
+│ MCP Layer (mcp_tool_manager)        │ ← 도구 추상화
+├─────────────────────────────────────┤
+│ Tool Layer (MCP Tools)              │ ← 실제 도구들
+└─────────────────────────────────────┘
+```
+
+### 2. 책임 분리 (Separation of Concerns)
+
+#### CLI Layer 책임
+
+- 사용자 입력/출력 처리
+- 명령어 파싱 및 라우팅
+- 진행 상황 표시
+
+#### Core Layer 책임
+
+- Agent 로직 및 워크플로우
+- 도구 결과 처리 및 분석
+- 대화 컨텍스트 관리
+
+#### MCP Layer 책임
+
+- 도구 검색 및 호출
+- 스키마 변환 및 검증
+- 연결 관리
+
+## 코딩 가이드라인
+
+### 1. 설정 기반 동작 (Configuration-Driven)
+
+```python
+# ✅ 설정 기반 도구 처리
+class ToolExecutionConfig:
+    retry_count: int = 3
+    timeout_seconds: int = 30
+    validation_mode: str = "auto"  # auto, strict, off
+    
+    def should_validate_result(self, tool_schema: Dict) -> bool:
+        """스키마 기반 검증 필요성 판단"""
+        return (self.validation_mode == "strict" or 
+                (self.validation_mode == "auto" and 
+                 tool_schema.get("critical", False)))
+```
+
+### 2. 동적 프롬프트 생성 (Dynamic Prompt Generation)
+
+```python
+# ✅ 범용적 프롬프트 생성
+def build_tool_analysis_prompt(self, tools: List[Tool], user_request: str) -> str:
+    """사용 가능한 도구들을 기반으로 동적 프롬프트 생성"""
+    tool_descriptions = []
+    for tool in tools:
+        description = f"- {tool.name}: {tool.description}"
+        if tool.parameters:
+            params = ", ".join(tool.parameters.get("required", []))
+            description += f" (requires: {params})"
+        tool_descriptions.append(description)
+    
+    return self.prompt_manager.get_formatted_prompt(
+        "analysis_prompts",
+        user_message=user_request,
+        tools_desc="\n".join(tool_descriptions)
+    )
+```
+
+### 3. 결과 처리 추상화 (Result Processing Abstraction)
+
+```python
+# ✅ 범용적 결과 처리
+class UniversalResultProcessor:
+    def process_result(self, raw_result: Any, context: ProcessingContext) -> ProcessedResult:
+        """도구 종류에 관계없이 결과를 처리"""
+        
+        # 1. 결과 타입 감지
+        result_type = self._detect_result_type(raw_result)
+        
+        # 2. 적절한 프로세서 선택
+        processor = self.registry.get_processor(result_type)
+        
+        # 3. 컨텍스트 기반 처리
+        return processor.process(raw_result, context)
+```
+
+### 4. 에러 처리 일반화 (Generalized Error Handling)
+
+```python
+# ✅ 범용적 에러 처리
+class ToolExecutionError:
+    def __init__(self, tool_name: str, error_type: str, message: str):
+        self.tool_name = tool_name
+        self.error_type = error_type  # "timeout", "validation", "execution"
+        self.message = message
+    
+    def is_retryable(self) -> bool:
+        """에러 타입에 따른 재시도 가능성 판단"""
+        return self.error_type in ["timeout", "network", "temporary"]
+```
+
+## 확장성 가이드라인
+
+### 1. 새로운 도구 추가 시
+
+- 기존 코드 수정 없이 플러그인 방식으로 추가
+- 도구별 특수 로직 없이 스키마만으로 동작
+- 표준 MCP 프로토콜 준수
+
+### 2. 새로운 결과 타입 지원 시
+
+- `ResultProcessor` 인터페이스 구현
+- 레지스트리에 등록
+- 기존 도구들에 자동 적용
+
+### 3. 새로운 검증 로직 추가 시
+
+- `ResultValidator` 인터페이스 구현
+- 설정 기반 활성화/비활성화
+- 모든 도구에 일관적 적용
+
+## 금지 사항 (Anti-Patterns)
+
+### 1. 도구별 하드코딩
+
+```python
+# ❌ 절대 금지
+if tool_name == "file_explorer":
+    # 파일 탐색기 전용 로직
+    
+if "write" in tool_name:
+    # 쓰기 도구들을 위한 특별 처리
+```
+
+### 2. 조건부 프롬프트
+
+```python
+# ❌ 절대 금지
+if tool_name in ["write_file", "create_file"]:
+    prompt = "파일 생성 전용 프롬프트"
+else:
+    prompt = "일반 프롬프트"
+```
+
+### 3. 도구별 결과 파싱
+
+```python
+# ❌ 절대 금지
+if tool_name == "search_web":
+    results = parse_search_results(raw_result)
+elif tool_name == "file_read":
+    results = parse_file_content(raw_result)
+```
+
+## 목표 달성 지표
+
+### 1. 범용성 측정
+
+- [ ] 새로운 MCP 도구 추가 시 코드 수정 불필요
+- [ ] 도구명 기반 조건문 0개
+- [ ] 모든 도구가 동일한 실행 경로 사용
+
+### 2. 확장성 측정
+
+- [ ] 플러그인 방식으로 새 기능 추가 가능
+- [ ] 설정 변경만으로 동작 방식 조정 가능
+- [ ] 스키마 기반 자동 적응
+
+### 3. 유지보수성 측정
+
+- [ ] 단일 책임 원칙 준수
+- [ ] 의존성 역전 원칙 적용
+- [ ] 테스트 커버리지 80% 이상
+
+## 개발 워크플로우
+
+### 1. 새 기능 개발 시
+
+1. **범용성 검토**: 특정 도구에만 적용되는 기능인가?
+2. **추상화 설계**: 어떻게 일반화할 수 있는가?
+3. **확장성 고려**: 미래의 도구들도 지원할 수 있는가?
+4. **테스트 작성**: 다양한 도구로 테스트했는가?
+
+### 2. 코드 리뷰 체크리스트
+
+- [ ] 도구명 기반 조건문 없음
+- [ ] 하드코딩된 도구별 로직 없음
+- [ ] 스키마 기반 동적 처리 사용
+- [ ] 확장 가능한 구조 적용
+
+### 3. 리팩토링 우선순위
+
+1. 도구별 특수 로직 제거
+2. 설정 기반 동작으로 변경
+3. 플러그인 아키텍처 적용
+4. 테스트 커버리지 향상
+
+## 결론
+
+DSPilot는 **Claude Code 수준의 범용성**을 목표로 합니다. 이를 위해서는:
+
+1. **특정 도구에 의존하지 않는** 설계
+2. **메타데이터 기반의 동적 처리**
+3. **확장 가능한 플러그인 아키텍처**
+4. **일관된 추상화 레벨 유지**
+
+이 가이드라인을 준수하여 진정한 범용 MCP Agent 도구를 구축해나가겠습니다.

@@ -74,7 +74,7 @@ class CommandHandler:
         self.output_manager.print_status(
             components,
             None,  # session_start
-            0,     # query_count
+            0,  # query_count
             self.conversation_manager.conversation_history,
             pending_actions
         )
