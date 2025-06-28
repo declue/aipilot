@@ -414,15 +414,22 @@ def write_file(path: str, content: str, mode: str = "w", encoding: str = DEFAULT
         file_size = os.path.getsize(abs_path)
         file_type = file_service.get_file_type(abs_path)
 
+        # 실제 저장된 내용 요약 (디버깅용)
+        content_preview = content[:100] + "..." if len(content) > 100 else content
+        lines_count = content.count('\n') + 1 if content else 0
+
         return {
             "success": True,
-            "message": f"파일에 {'쓰기' if mode == 'w' else '추가'} 완료: {abs_path}",
+            "message": f"파일에 {'쓰기' if mode == 'w' else '추가'} 완료: {abs_path} ({lines_count}줄, {len(content)}자)",
             "path": abs_path,
             "size": file_size,
             "size_formatted": file_service.format_size(file_size),
             "type": file_type,
             "mode": mode,
-            "encoding": encoding
+            "encoding": encoding,
+            "content_length": len(content),
+            "lines_count": lines_count,
+            "content_preview": content_preview
         }
 
     except Exception as e:
