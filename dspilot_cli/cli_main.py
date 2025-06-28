@@ -14,7 +14,7 @@ from typing import Optional
 
 import colorama
 
-from dspilot_cli.constants import Commands, Messages, StyleColors
+from dspilot_cli.constants import Commands, Defaults, Messages, StyleColors
 from dspilot_cli.conversation_manager import ConversationManager
 from dspilot_cli.execution_manager import ExecutionManager
 from dspilot_cli.interaction_manager import InteractionManager
@@ -35,7 +35,9 @@ class DSPilotCLI:
     """
 
     def __init__(self, debug_mode: bool = False, quiet_mode: bool = False,
-                 full_auto_mode: bool = False, stream_mode: bool = False, verbose_mode: bool = False) -> None:
+                 full_auto_mode: bool = False, stream_mode: bool = False, verbose_mode: bool = False,
+                 max_iterations: int = Defaults.MAX_ITERATIONS, validate_mode: str = Defaults.VALIDATE_MODE,
+                 max_step_retries: int = Defaults.MAX_STEP_RETRIES) -> None:
         """
         DSPilot CLI 초기화
 
@@ -45,6 +47,9 @@ class DSPilotCLI:
             full_auto_mode: 전체 자동 모드 여부
             stream_mode: 스트리밍 모드 여부
             verbose_mode: 상세 출력 모드 여부
+            max_iterations: Agent 반복 실행 최대 횟수 (기본 30)
+            validate_mode: 도구 결과 검증 모드(auto/off/strict)
+            max_step_retries: 단계 실패 시 자동 재시도 횟수 (기본 2)
         """
         # 기본 설정
         self.debug_mode = debug_mode
@@ -52,6 +57,9 @@ class DSPilotCLI:
         self.full_auto_mode = full_auto_mode
         self.stream_mode = stream_mode
         self.verbose_mode = verbose_mode
+        self.max_iterations = max_iterations
+        self.validate_mode = validate_mode
+        self.max_step_retries = max_step_retries
 
         # 세션 정보
         self.session_start = datetime.now()
@@ -91,7 +99,9 @@ class DSPilotCLI:
                 self.output_manager,
                 self.interaction_manager,
                 llm_agent,
-                mcp_tool_manager
+                mcp_tool_manager,
+                validate_mode=self.validate_mode,
+                max_step_retries=self.max_step_retries
             )
 
         # 상호작용 모드 설정
@@ -199,35 +209,83 @@ class DSPilotCLI:
         Args:
             user_input: 사용자 입력
         """
-        # 사용자 입력을 히스토리에 추가
-        self.conversation_manager.add_to_history("user", user_input)
-
-        # AI 응답 생성
-        llm_agent = self.system_manager.get_llm_agent()
-        if not llm_agent:
-            self.output_manager.print_error(Messages.AGENT_NOT_INITIALIZED)
+        if not self.execution_manager:
+            self.output_manager.print_error("실행 관리자가 초기화되지 않았습니다.")
             return
 
-        self.output_manager.log_if_debug(
-            f"=== CLI: 대화형 Agent 처리 시작: '{user_input}' ===")
+        iterations = 0
+        current_input = user_input
+        continue_prompt = "계속 진행해줘"
+        seen_plan_sigs = set()
 
-        try:
-            await self._run_interactive_agent(user_input)
-        except Exception as e:
-            self.output_manager.log_if_debug(
-                f"=== CLI: 대화형 Agent 처리 실패: {e} ===", "error")
-            self.output_manager.print_error(f"처리 중 오류가 발생했습니다: {str(e)}")
+        while iterations < self.max_iterations:
+            try:
+                # 사용자 입력을 히스토리에 추가 (반복 포함)
+                if iterations == 0:
+                    self.conversation_manager.add_to_history("user", current_input)
 
-    async def _run_interactive_agent(self, user_input: str) -> None:
+                self.output_manager.log_if_debug(
+                    f"=== CLI: 대화형 Agent 처리 시작 (iteration {iterations+1}/{self.max_iterations}): '{current_input}' ===")
+
+                # 에이전트 실행 (계획 수립 및 실행 포함)
+                result_flags = await self._run_interactive_agent(current_input)
+                has_errors = result_flags.get("has_errors", False)
+                plan_executed = result_flags.get("has_plan", False)
+
+                # 실행 후 추가 계획이 필요한지 확인
+                enhanced_prompt = self.conversation_manager.build_enhanced_prompt("")
+                next_plan = await self.execution_manager.analyze_request_and_plan(enhanced_prompt)
+
+                # 중복 플랜 감지
+                if next_plan:
+                    import hashlib
+                    import json as _json
+                    plan_sig = hashlib.sha256(_json.dumps(next_plan.__dict__, sort_keys=True).encode()).hexdigest()
+                    if plan_sig in seen_plan_sigs:
+                        # 동일한 계획을 반복 실행하려고 하면 루프 종료
+                        self.output_manager.print_warning("동일한 실행 계획이 반복되어 종료합니다.")
+                        break
+                    seen_plan_sigs.add(plan_sig)
+
+                if next_plan is None:
+                    if has_errors:
+                        # 오류가 있었지만 추가 계획이 없을 때: 다른 방법 시도 요청
+                        iterations += 1
+                        current_input = "다른 방법으로 시도해줘"
+                        continue
+                    break  # 추가 계획이 없으면 종료
+
+                # 다음 계획이 존재 → 반복 수행
+                iterations += 1
+                current_input = continue_prompt
+                continue
+
+            except Exception as e:
+                self.output_manager.log_if_debug(
+                    f"=== CLI: 대화형 Agent 처리 실패: {e} ===", "error")
+                self.output_manager.print_error(f"처리 중 오류가 발생했습니다: {str(e)}")
+                break
+
+        if iterations >= self.max_iterations:
+            self.output_manager.print_warning(
+                f"최대 반복 횟수({self.max_iterations})에 도달했습니다. 작업을 종료합니다.")
+
+    async def _run_interactive_agent(self, user_input: str) -> dict:
         """
         대화형 Agent 실행
 
         Args:
             user_input: 사용자 입력
+
+        Returns:
+            dict: 실행된 계획이 있었는지 여부 (True: 계획 실행, False: 직접 응답)
         """
         if not self.execution_manager:
             self.output_manager.print_error("실행 관리자가 초기화되지 않았습니다.")
-            return
+            return {
+                "has_plan": False,
+                "has_errors": False
+            }
 
         # 이전 대화 맥락을 포함한 프롬프트 생성
         enhanced_prompt = self.conversation_manager.build_enhanced_prompt(
@@ -257,10 +315,22 @@ class DSPilotCLI:
                     self.output_manager.finish_streaming_output()
                 
                 await self._display_response(response_data)
-            return
+            return {
+                "has_plan": False,
+                "has_errors": False
+            }
 
         # 2단계: 대화형 실행 (스트리밍 콜백 전달)
-        await self.execution_manager.execute_interactive_plan(plan, enhanced_prompt, streaming_callback)
+        result_info = await self.execution_manager.execute_interactive_plan(plan, enhanced_prompt, streaming_callback)
+        has_errors = bool(result_info.get("errors")) if isinstance(result_info, dict) else False
+        # errors logged as pending actions also
+        if has_errors:
+            for err in result_info.get("errors", []):
+                self.output_manager.print_warning(f"도구 실행 오류 감지: {err}")
+        return {
+            "has_plan": True,
+            "has_errors": has_errors
+        }
 
     async def _display_response(self, response_data: dict) -> None:
         """
@@ -381,6 +451,27 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="스트리밍 모드 (LLM 응답을 실시간으로 출력)"
     )
 
+    parser.add_argument(
+        "--iterations", "-i",
+        type=int,
+        default=Defaults.MAX_ITERATIONS,
+        help="Agent 반복 실행 최대 횟수 (기본 30)"
+    )
+
+    parser.add_argument(
+        "--validate-mode",
+        choices=["auto", "off", "strict"],
+        default=Defaults.VALIDATE_MODE,
+        help="도구 결과 검증 모드(auto/off/strict)"
+    )
+
+    parser.add_argument(
+        "--step-retries",
+        type=int,
+        default=Defaults.MAX_STEP_RETRIES,
+        help="단계 실패 시 자동 재시도 횟수 (기본 2)"
+    )
+
     return parser
 
 
@@ -432,6 +523,9 @@ async def main() -> None:
     quiet_mode = bool(args.query) and not debug_mode  # verbose는 debug_mode에서 제외
     full_auto_mode = args.full_auto
     stream_mode = args.stream
+    max_iterations = args.iterations
+    validate_mode = args.validate_mode
+    step_retries = args.step_retries
 
     # 로깅 설정
     setup_logging(debug_mode or verbose_mode, quiet_mode)  # verbose 모드도 로깅 레벨 조정
@@ -441,7 +535,10 @@ async def main() -> None:
         quiet_mode=quiet_mode,
         full_auto_mode=full_auto_mode,
         stream_mode=stream_mode,
-        verbose_mode=verbose_mode
+        verbose_mode=verbose_mode,
+        max_iterations=max_iterations,
+        validate_mode=validate_mode,
+        max_step_retries=step_retries
     )
 
     try:

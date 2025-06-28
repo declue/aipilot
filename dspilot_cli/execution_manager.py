@@ -4,6 +4,7 @@ DSPilot CLI 실행 관리 모듈
 """
 
 import json
+import re
 from typing import Any, Callable, Dict, List, Optional
 
 from dspilot_cli.constants import (
@@ -30,6 +31,8 @@ class ExecutionManager:
         interaction_manager: InteractionManager,
         llm_agent: BaseAgent,
         mcp_tool_manager: MCPToolManager,
+        validate_mode: str = Defaults.VALIDATE_MODE,
+        max_step_retries: int = Defaults.MAX_STEP_RETRIES
     ) -> None:
         """
         실행 관리자 초기화
@@ -39,11 +42,31 @@ class ExecutionManager:
             interaction_manager: 상호작용 관리자
             llm_agent: LLM 에이전트
             mcp_tool_manager: MCP 도구 관리자
+            validate_mode: 결과 검증 모드
+            max_step_retries: 최대 단계 재시도 횟수
         """
         self.output_manager = output_manager
         self.interaction_manager = interaction_manager
         self.llm_agent = llm_agent
         self.mcp_tool_manager = mcp_tool_manager
+        self.max_step_retries = max_step_retries
+
+        # 범용 결과 검증기 초기화 (필요 시)
+        try:
+            from dspilot_core.llm.utils.argument_fixer import (
+                GenericArgumentFixer,  # pylint: disable=import-error
+            )
+            from dspilot_core.llm.utils.result_validator import (
+                GenericResultValidator,  # pylint: disable=import-error
+            )
+            self.result_validator = GenericResultValidator(
+                llm_service=self.llm_agent.llm_service,
+                mode=validate_mode
+            )
+            self.argument_fixer = GenericArgumentFixer(self.llm_agent.llm_service)
+        except Exception:  # noqa: broad-except
+            self.result_validator = None
+            self.argument_fixer = None
 
     async def analyze_request_and_plan(self, user_message: str) -> Optional[ExecutionPlan]:
         """
@@ -88,7 +111,7 @@ class ExecutionManager:
         return None
 
     async def execute_interactive_plan(self, plan: ExecutionPlan, original_prompt: str, 
-                                      streaming_callback: Optional[Callable[[str], None]] = None) -> None:
+                                      streaming_callback: Optional[Callable[[str], None]] = None) -> Dict[str, Any]:
         """
         대화형 계획 실행
 
@@ -96,27 +119,49 @@ class ExecutionManager:
             plan: 실행 계획
             original_prompt: 원본 프롬프트
             streaming_callback: 스트리밍 콜백 함수
+        Returns:
+            Dict[str, Any]: {
+               "step_results": Dict[int, Any],
+               "errors": List[str]
+            }
         """
         if not plan.steps:
-            return
+            return {"step_results": {}, "errors": []}
 
         self.output_manager.print_execution_plan(plan.__dict__)
         step_results: Dict[int, Any] = {}
+        errors: List[str] = []
 
         for step in plan.steps:
-            if not await self._execute_step(step, step_results):
-                return
+            success = await self._execute_step(step, step_results, original_prompt)
+            if not success:
+                # 중단된 경우 오류로 간주하고 종료
+                errors.append(f"단계 {step.step} 중단")
+                break
 
         # 최종 결과 분석 및 출력
         await self._generate_final_response(original_prompt, step_results, streaming_callback)
 
-    async def _execute_step(self, step: ExecutionStep, step_results: Dict[int, Any]) -> bool:
+        # 추가: 결과 내 error 키워드 탐지
+        for raw in step_results.values():
+            try:
+                data = json.loads(raw)
+                if isinstance(data, dict) and data.get("error"):
+                    errors.append(str(data.get("error")))
+            except Exception:
+                if re.search(r"error", str(raw), re.IGNORECASE):
+                    errors.append(str(raw))
+
+        return {"step_results": step_results, "errors": errors}
+
+    async def _execute_step(self, step: ExecutionStep, step_results: Dict[int, Any], original_prompt: str) -> bool:
         """
         단일 단계 실행
 
         Args:
             step: 실행 단계
             step_results: 이전 단계 결과들
+            original_prompt: 원본 프롬프트
 
         Returns:
             계속 진행 여부
@@ -144,28 +189,68 @@ class ExecutionManager:
 
         # 도구 실행
         try:
-            self.output_manager.print_step_execution(step.tool_name)
+            retries = 0
+            while retries <= self.max_step_retries:
+                self.output_manager.print_step_execution(step.tool_name)
 
-            # 이전 단계 결과 참조 처리
-            processed_args = self._process_step_arguments(
-                step.arguments, step_results)
+                # 이전 단계 결과 참조 처리
+                processed_args = self._process_step_arguments(
+                    step.arguments, step_results)
 
-            # 도구 실행
-            result = await self.mcp_tool_manager.call_mcp_tool(step.tool_name, processed_args)
-            step_results[step.step] = result
+                # 도구 실행
+                try:
+                    result = await self.mcp_tool_manager.call_mcp_tool(step.tool_name, processed_args)
+                    exec_error = ""
+                except Exception as exec_e:
+                    exec_error = str(exec_e)
+                    result = json.dumps({"error": exec_error})
 
-            self.output_manager.print_step_completed(step.step)
-            return True
+                # 결과 검증 (옵션)
+                needs_retry = False
+                if self.result_validator:
+                    eval_res = await self.result_validator.evaluate(
+                        user_prompt=original_prompt,
+                        tool_name=step.tool_name,
+                        tool_args=processed_args,
+                        raw_result=result
+                    )
+                    needs_retry = self.result_validator.needs_retry(eval_res)
+                    if needs_retry:
+                        self.output_manager.print_warning(
+                            f"⚠️ 결과 신뢰도 낮음 → 재시도 {retries+1}/{self.max_step_retries}")
 
+                # 실행 예외가 있었으면 무조건 retry
+                if exec_error:
+                    needs_retry = True
+
+                if not needs_retry:
+                    step_results[step.step] = result
+                    self.output_manager.print_step_completed(step.step)
+                    return True
+
+                retries += 1
+
+                # 매개변수 수정 시도
+                if self.argument_fixer:
+                    fixed = await self.argument_fixer.suggest(
+                        user_prompt=original_prompt,
+                        tool_name=step.tool_name,
+                        original_args=processed_args,
+                        error_msg=exec_error or "low_confidence_result"
+                    )
+                    if fixed:
+                        processed_args.update(fixed)
+                        self.output_manager.print_info(
+                            f"🔧 파라미터 자동 수정 적용: {fixed}")
+                        continue
+
+            # 재시도 모두 실패 → 오류 처리
+            self.output_manager.print_step_error(step.step, "결과 검증 실패")
+            return False
         except Exception as e:
             error_msg = str(e)
             self.output_manager.print_step_error(step.step, error_msg)
-
-            # 오류 발생 시 사용자에게 계속 진행할지 묻기
-            if not self.interaction_manager.get_continue_confirmation():
-                return False
-
-        return True
+            return False
 
     async def _get_available_tools(self) -> List[Any]:
         """사용 가능한 도구 목록 가져오기"""

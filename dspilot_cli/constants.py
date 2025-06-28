@@ -98,6 +98,9 @@ class Defaults:
     MAX_PENDING_ACTIONS = 3
     RESULT_SUMMARY_MAX_LENGTH = 200
     PROMPT_PREVIEW_LENGTH = 100
+    MAX_ITERATIONS = 30
+    MAX_STEP_RETRIES = 2
+    VALIDATE_MODE = "auto"  # auto|off|strict
 
 
 # 분석 프롬프트 템플릿
