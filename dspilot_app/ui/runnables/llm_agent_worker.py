@@ -4,7 +4,7 @@ BaseAgent를 QThreadPool에서 실행하기 위한 QRunnable 래퍼
 
 import asyncio
 import logging
-from typing import Any, Callable, Optional
+from typing import Any
 
 from PySide6.QtCore import QRunnable, Slot
 
@@ -22,12 +22,10 @@ class LLMAgentWorker(QRunnable):
         self: "LLMAgentWorker",
         user_message: str,
         llm_agent: BaseAgent,
-        streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> None:
         super().__init__()
         self.user_message = user_message
         self.llm_agent = llm_agent
-        self.streaming_callback = streaming_callback
         self.signals = WorkerSignals()
         self.signals.result.connect(self.handle_result)
         self.signals.error.connect(self.handle_error)
@@ -46,6 +44,12 @@ class LLMAgentWorker(QRunnable):
         self.is_running = False
         if self.llm_agent:
             self.llm_agent.cancel()
+
+    def _stream_chunk(self, chunk: str) -> None:
+        """스트리밍 청크를 받아 signal을 emit하는 콜백"""
+        if self.is_running:
+            self._has_streamed = True
+            self.signals.streaming_chunk.emit(chunk)
 
     @Slot()
     def run(self) -> None:
@@ -67,9 +71,8 @@ class LLMAgentWorker(QRunnable):
             try:
                 # 비동기 메서드 실행
                 result = loop.run_until_complete(
-                    self.llm_agent.generate_response(self.user_message, self.streaming_callback)
+                    self.llm_agent.generate_response(self.user_message, self._stream_chunk)
                 )
-                self.signals.finished.emit(result)
 
                 if self.is_running:
                     logger.info("LLM Agent 응답 생성 완료")
@@ -81,9 +84,9 @@ class LLMAgentWorker(QRunnable):
                         reasoning = result.get("reasoning", "")
                         logger.debug(f"응답 파싱 결과: response={len(response)}자, tools={used_tools}, reasoning={len(reasoning)}자")
                     else:
-                        response = result
+                        response = str(result)
                         used_tools = []
-                        logger.debug(f"단순 응답: {len(str(response))}자")
+                        logger.debug(f"단순 응답: {len(response)}자")
 
                     # 스트리밍 데이터 전송 여부 로그
                     logger.debug(f"스트리밍 여부: has_streamed={self._has_streamed}, response_length={len(response) if response else 0}")
