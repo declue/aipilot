@@ -126,6 +126,7 @@ workflow = get_workflow("my_custom")()
 
 from dspilot_core.llm.workflow.base_workflow import BaseWorkflow
 from dspilot_core.llm.workflow.basic_chat_workflow import BasicChatWorkflow
+from dspilot_core.llm.workflow.code_modification_workflow import CodeModificationWorkflow
 from dspilot_core.llm.workflow.research_workflow import ResearchWorkflow
 from dspilot_core.llm.workflow.smart_workflow import SmartWorkflow
 from dspilot_core.llm.workflow.workflow_utils import (
@@ -137,6 +138,7 @@ from dspilot_core.llm.workflow.workflow_utils import (
 __all__ = [
     "BaseWorkflow", 
     "BasicChatWorkflow", 
+    "CodeModificationWorkflow",
     "SmartWorkflow", 
     "ResearchWorkflow",
     "get_workflow", 

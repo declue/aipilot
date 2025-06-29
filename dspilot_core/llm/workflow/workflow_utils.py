@@ -247,6 +247,7 @@ from langchain_core.runnables import RunnableConfig
 
 from dspilot_core.llm.workflow.base_workflow import BaseWorkflow
 from dspilot_core.llm.workflow.basic_chat_workflow import BasicChatWorkflow
+from dspilot_core.llm.workflow.code_modification_workflow import CodeModificationWorkflow
 from dspilot_core.llm.workflow.research_workflow import ResearchWorkflow
 from dspilot_core.llm.workflow.smart_workflow import SmartWorkflow
 from dspilot_core.util.logger import setup_logger
@@ -258,6 +259,7 @@ logger = setup_logger("workflow_utils") or logging.getLogger("workflow_utils")
 _WORKFLOW_REGISTRY: Dict[str, Type[BaseWorkflow]] = {
     # === 핵심 워크플로우 ===
     "basic": BasicChatWorkflow,      # 순수 LLM 기반 질의응답
+    "code_mod": CodeModificationWorkflow,  # 코드 수정 전용 워크플로우
     "research": ResearchWorkflow,    # 전문 리서치 및 조사  
     "smart": SmartWorkflow,          # 통합 스마트 워크플로우 (권장)
     
