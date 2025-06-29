@@ -744,6 +744,10 @@ class MainWindow(QMainWindow):
 
         # StreamingManager의 스트리밍 완료 처리 호출
         self.streaming_manager.on_streaming_finished()  # UI 상태 복원
+
+        # AI 응답이 완료되었으므로 관련 UI를 모두 활성화
+        self.stop_ai_response()
+
         if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("준비됨")
             self.status_label.setStyleSheet(

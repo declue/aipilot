@@ -40,6 +40,13 @@ class LLMAgentWorker(QRunnable):
         self._has_streamed: bool = False
         self.is_running = True
 
+    def stop(self) -> None:
+        """워커 중지"""
+        logger.info("LLM Agent 워커 중지 요청됨")
+        self.is_running = False
+        if self.llm_agent:
+            self.llm_agent.cancel()
+
     @Slot()
     def run(self) -> None:
         """워커 실행"""

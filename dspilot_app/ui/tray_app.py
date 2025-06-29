@@ -27,6 +27,8 @@ class TrayApp(QObject):
         app: Any,
         mcp_manager: Optional[Any] = None,
         mcp_tool_manager: Optional[Any] = None,
+        planning_service: Optional[Any] = None,
+        execution_manager: Optional[Any] = None,
         app_instance: Optional[Any] = None,
         theme_manager: Optional[Any] = None,
     ) -> None:
@@ -35,6 +37,8 @@ class TrayApp(QObject):
         self.app = app
         self.mcp_manager = mcp_manager
         self.mcp_tool_manager = mcp_tool_manager
+        self.planning_service = planning_service
+        self.execution_manager = execution_manager
         self.app_instance = app_instance
         self.theme_manager = theme_manager
 
@@ -63,7 +67,13 @@ class TrayApp(QObject):
         logger.debug("시스템 트레이 지원 여부: %s", QSystemTrayIcon.isSystemTrayAvailable())
 
         # 창 인스턴스 생성 (App 인스턴스 전달)
-        self.main_window = MainWindow(self.mcp_manager, self.mcp_tool_manager, self.app_instance)  
+        self.main_window = MainWindow(
+            mcp_manager=self.mcp_manager,
+            mcp_tool_manager=self.mcp_tool_manager,
+            planning_service=self.planning_service,
+            execution_manager=self.execution_manager,
+            app_instance=self.app_instance,
+        )
 
         # 메인 윈도우에 트레이 앱 참조 설정
         self.main_window.tray_app = self  # type: ignore
