@@ -272,13 +272,13 @@ logger = logging.getLogger(__name__)
 class SmartWorkflow(BaseWorkflow):
     """
     통합 스마트 워크플로우
-    
+
     사용자 요청의 복잡도를 자동 분석하여 최적의 처리 방식을 선택하는 지능형 워크플로우입니다.
-    
+
     - 단순 요청: 직접 도구 실행으로 빠른 처리
     - 복잡 요청: Plan & Execute로 정확한 처리
     - 모든 MCP 도구와 호환되는 범용 워크플로우
-    
+
     Attributes:
         llm_service: LLM 서비스 인스턴스
         mcp_tool_manager: MCP 도구 관리자
@@ -290,7 +290,7 @@ class SmartWorkflow(BaseWorkflow):
     def __init__(self, llm_service=None, mcp_tool_manager=None):
         """
         SmartWorkflow 초기화
-        
+
         Args:
             llm_service: LLM 서비스 인스턴스 (선택사항)
             mcp_tool_manager: MCP 도구 관리자 (선택사항)
@@ -300,7 +300,7 @@ class SmartWorkflow(BaseWorkflow):
         self.workflow_name = "smart"
         self.max_iterations = 10
         self.context_window = 20
-        
+
         # AdaptiveWorkflow 고급 기능들 추가
         self.execution_context = {}  # 실행 컨텍스트 저장
         self.step_memory = {}  # 단계별 메모리
@@ -317,17 +317,17 @@ class SmartWorkflow(BaseWorkflow):
     ) -> str:
         """
         스마트 워크플로우 실행
-        
+
         사용자 요청을 분석하여 복잡도에 따라 최적의 처리 방식을 자동 선택합니다.
-        
+
         Args:
             agent: 실행할 BaseAgent 인스턴스
             user_message: 사용자 요청 메시지
             streaming_callback: 실시간 진행 상황 콜백 함수
-            
+
         Returns:
             str: 처리 결과 메시지
-            
+
         Raises:
             Exception: 워크플로우 실행 중 복구 불가능한 오류 발생 시
         """
@@ -360,13 +360,13 @@ class SmartWorkflow(BaseWorkflow):
     async def _get_available_tools(self) -> List[Any]:
         """
         사용 가능한 MCP 도구 목록 반환
-        
+
         Returns:
             List[Any]: 사용 가능한 도구 목록 (빈 리스트 가능)
         """
         if not self.mcp_tool_manager or not hasattr(self.mcp_tool_manager, 'get_langchain_tools'):
             return []
-        
+
         try:
             tools = await self.mcp_tool_manager.get_langchain_tools()
             logger.debug(f"사용 가능한 도구 수: {len(tools)}")
@@ -378,20 +378,21 @@ class SmartWorkflow(BaseWorkflow):
     async def _analyze_complexity(self, agent: Any, message: str, tools: List[Any]) -> str:
         """
         사용자 요청의 복잡도 분석
-        
+
         LLM에게 요청 내용과 사용 가능한 도구 목록을 제공하여
         simple/medium/complex 중 하나로 분류하도록 합니다.
-        
+
         Args:
             agent: BaseAgent 인스턴스
             message: 사용자 요청 메시지  
             tools: 사용 가능한 도구 목록
-            
+
         Returns:
             str: "simple", "medium", "complex" 중 하나 (기본값: "simple")
         """
-        tools_desc = "\n".join([f"- {tool.name}: {tool.description}" for tool in tools])
-        
+        tools_desc = "\n".join(
+            [f"- {tool.name}: {tool.description}" for tool in tools])
+
         analysis_prompt = f"""다음 사용자 요청의 복잡도를 분석해주세요:
 
 사용자 요청: {message}
@@ -427,20 +428,20 @@ JSON 형식으로 응답:
     ) -> str:
         """
         단순 요청 처리
-        
+
         BaseAgent의 auto_tool_flow를 활용하여 직접적이고 빠른 처리를 수행합니다.
         대부분의 일반적인 요청들이 이 방식으로 효율적으로 처리됩니다.
-        
+
         Args:
             agent: BaseAgent 인스턴스
             message: 사용자 요청 메시지
             streaming_callback: 스트리밍 콜백
-            
+
         Returns:
             str: 처리 결과
         """
         logger.info("단순 요청으로 처리 - 직접 도구 실행")
-        
+
         if streaming_callback:
             streaming_callback("🔧 도구 실행 중...\n")
 
@@ -454,7 +455,7 @@ JSON 형식으로 응답:
                     return str(result)
             except Exception as e:
                 logger.warning(f"auto_tool_flow 실행 실패: {e} - LLM 응답으로 폴백")
-        
+
         # 폴백: 일반 LLM 응답
         return await self._generate_llm_response(agent, message, streaming_callback)
 
@@ -463,27 +464,27 @@ JSON 형식으로 응답:
     ) -> str:
         """
         복잡 요청 처리 (고급 기능 포함)
-        
+
         AdaptiveWorkflow의 고급 Plan & Execute 전략:
         1. 실행 계획 수립 및 중복 감지
         2. 계획 개선 및 최적화
         3. 단계별 실행 (재시도, 검증 포함)
         4. 실패 시 계획 수정 및 재시도
         5. 결과 통합 및 품질 평가
-        
+
         Args:
             agent: BaseAgent 인스턴스  
             message: 사용자 요청 메시지
             streaming_callback: 스트리밍 콜백
-            
+
         Returns:
             str: 통합된 최종 결과
         """
         logger.info("복잡 요청으로 처리 - 고급 Plan & Execute 전략")
-        
+
         max_plan_iterations = 3  # 최대 계획 수정 횟수
         plan_iteration = 0
-        
+
         while plan_iteration < max_plan_iterations:
             try:
                 # 1. 계획 수립
@@ -497,7 +498,7 @@ JSON 형식으로 응답:
                     logger.warning(f"중복 계획 감지 (반복 {plan_iteration + 1})")
                     if streaming_callback:
                         streaming_callback("⚠️ 중복 계획 감지, 다른 접근 방법 시도 중...\n")
-                    
+
                     # 계획 수정 요청
                     plan = await self._refine_execution_plan(agent, message, plan, streaming_callback)
                     if not plan or not plan.get("steps"):
@@ -505,27 +506,30 @@ JSON 형식으로 응답:
 
                 # 3. 계획 실행
                 if streaming_callback:
-                    streaming_callback(f"📋 실행 계획 승인됨 (반복 {plan_iteration + 1})\n")
-                
+                    streaming_callback(
+                        f"📋 실행 계획 승인됨 (반복 {plan_iteration + 1})\n")
+
                 results = await self._execute_plan(agent, plan, streaming_callback)
-                
+
                 # 4. 실행 결과 평가
-                success_rate = sum(1 for r in results.values() if r.get("success")) / len(results) if results else 0
-                
+                success_rate = sum(1 for r in results.values() if r.get(
+                    "success")) / len(results) if results else 0
+
                 if success_rate >= 0.7:  # 70% 이상 성공 시 결과 통합
                     return await self._integrate_results(agent, message, plan, results, streaming_callback)
                 else:
                     # 실패율이 높으면 계획 수정 시도
                     logger.warning(f"실행 성공률 낮음: {success_rate:.1%}, 계획 수정 시도")
                     if streaming_callback:
-                        streaming_callback(f"⚠️ 실행 성공률 낮음 ({success_rate:.1%}), 계획 수정 중...\n")
-                    
+                        streaming_callback(
+                            f"⚠️ 실행 성공률 낮음 ({success_rate:.1%}), 계획 수정 중...\n")
+
                     plan_iteration += 1
-                    
+
                     # 실패 원인 분석하여 다음 계획에 반영
                     failure_context = self._analyze_execution_failures(results)
                     self.execution_context["failure_analysis"] = failure_context
-                    
+
                     if plan_iteration >= max_plan_iterations:
                         # 최대 시도 횟수 도달 시 부분 성공 결과라도 반환
                         logger.info("최대 계획 수정 횟수 도달, 부분 결과 반환")
@@ -534,11 +538,11 @@ JSON 형식으로 응답:
             except Exception as e:
                 logger.error(f"복잡 요청 처리 실패 (반복 {plan_iteration + 1}): {e}")
                 plan_iteration += 1
-                
+
                 if plan_iteration >= max_plan_iterations:
                     logger.error("최대 시도 횟수 도달 - 단순 처리로 폴백")
                     return await self._handle_simple_request(agent, message, streaming_callback)
-        
+
         # 모든 시도 실패 시 단순 처리로 폴백
         logger.warning("모든 복잡 처리 시도 실패 - 단순 처리로 폴백")
         return await self._handle_simple_request(agent, message, streaming_callback)
@@ -548,21 +552,22 @@ JSON 형식으로 응답:
     ) -> Dict[str, Any]:
         """
         실행 계획 수립
-        
+
         사용자 요청을 분석하여 단계별 실행 계획을 JSON 형태로 생성합니다.
         각 단계는 사용할 도구와 매개변수를 포함합니다.
-        
+
         Args:
             agent: BaseAgent 인스턴스
             message: 사용자 요청 메시지  
             streaming_callback: 스트리밍 콜백
-            
+
         Returns:
             Dict[str, Any]: 실행 계획 (빈 딕셔너리 가능)
         """
         tools = await self._get_available_tools()
-        tools_desc = "\n".join([f"- {tool.name}: {tool.description}" for tool in tools])
-        
+        tools_desc = "\n".join(
+            [f"- {tool.name}: {tool.description}" for tool in tools])
+
         planning_prompt = f"""사용자 요청을 분석하여 단계별 실행 계획을 수립해주세요:
 
 사용자 요청: {message}
@@ -597,14 +602,14 @@ JSON 형식으로 응답:
         try:
             response = await agent._generate_basic_response(planning_prompt, None)
             plan = self._extract_json_from_response(response)
-            
+
             if plan and plan.get("steps"):
                 logger.debug(f"실행 계획 수립 완료: {len(plan['steps'])}단계")
                 return plan
             else:
                 logger.warning("유효한 실행 계획을 생성하지 못함")
                 return {}
-                
+
         except Exception as e:
             logger.error(f"실행 계획 수립 중 오류: {e}")
             return {}
@@ -614,24 +619,24 @@ JSON 형식으로 응답:
     ) -> Dict[int, Any]:
         """
         계획된 단계들을 순차적으로 실행 (고급 기능 포함)
-        
+
         AdaptiveWorkflow의 고급 기능들을 통합:
         - 단계별 재시도 메커니즘
         - 매개변수 동적 치환
         - 실행 결과 검증
         - 컨텍스트 메모리 관리
-        
+
         Args:
             agent: BaseAgent 인스턴스
             plan: 실행 계획 딕셔너리
             streaming_callback: 스트리밍 콜백
-            
+
         Returns:
             Dict[int, Any]: 단계별 실행 결과
         """
         results = {}
         steps = plan.get("steps", [])
-        
+
         if streaming_callback:
             streaming_callback(f"⚡ {len(steps)}단계 실행 시작\n")
 
@@ -640,20 +645,21 @@ JSON 형식으로 응답:
             tool_name = step.get("tool")
             args = step.get("args", {})
             desc = step.get("desc", f"단계 {step_num}")
-            
+
             # 매개변수 동적 치환 (이전 단계 결과 참조)
             processed_args = self._process_step_arguments(args, results)
-            
+
             # 단계별 재시도 로직
             retry_count = 0
             success = False
             last_error = None
-            
+
             while retry_count <= self.max_retries and not success:
                 try:
                     if self.mcp_tool_manager and tool_name:
-                        logger.debug(f"단계 {step_num} 실행 (시도 {retry_count + 1}): {tool_name}")
-                        
+                        logger.debug(
+                            f"단계 {step_num} 실행 (시도 {retry_count + 1}): {tool_name}")
+
                         # 사용자 승인 요청 (인터랙티브 모드)
                         if self.interaction_mode and retry_count == 0:
                             approval = await self._request_step_approval(step, streaming_callback)
@@ -665,26 +671,26 @@ JSON 형식으로 응답:
                                     "skipped": True
                                 }
                                 break
-                        
+
                         result = await self.mcp_tool_manager.call_mcp_tool(tool_name, processed_args)
-                        
+
                         # 결과 검증
                         if self._validate_step_result(result, step):
                             results[step_num] = {
-                                "success": True, 
+                                "success": True,
                                 "result": result,
                                 "tool": tool_name,
                                 "description": desc,
                                 "retry_count": retry_count
                             }
-                            
+
                             # 컨텍스트 메모리에 저장
                             self.step_memory[step_num] = {
                                 "result": result,
                                 "tool": tool_name,
                                 "timestamp": self._get_timestamp()
                             }
-                            
+
                             success = True
                             if streaming_callback:
                                 retry_msg = f" (재시도 {retry_count}회)" if retry_count > 0 else ""
@@ -693,34 +699,36 @@ JSON 형식으로 응답:
                             raise Exception("결과 검증 실패")
                     else:
                         results[step_num] = {
-                            "success": False, 
+                            "success": False,
                             "error": "도구 관리자 또는 도구명 없음",
                             "description": desc
                         }
                         break
-                        
+
                 except Exception as e:
                     last_error = str(e)
                     retry_count += 1
-                    logger.warning(f"단계 {step_num} 실행 실패 (시도 {retry_count}): {e}")
-                    
+                    logger.warning(
+                        f"단계 {step_num} 실행 실패 (시도 {retry_count}): {e}")
+
                     if retry_count <= self.max_retries:
                         if streaming_callback:
-                            streaming_callback(f"⚠️ {desc} 실패, 재시도 중... ({retry_count}/{self.max_retries})\n")
-                        
+                            streaming_callback(
+                                f"⚠️ {desc} 실패, 재시도 중... ({retry_count}/{self.max_retries})\n")
+
                         # 재시도 전 잠시 대기
                         import asyncio
                         await asyncio.sleep(1)
-            
+
             # 최종 실패 처리
             if not success:
                 results[step_num] = {
-                    "success": False, 
+                    "success": False,
                     "error": last_error or "알 수 없는 오류",
                     "description": desc,
                     "retry_count": retry_count - 1
                 }
-                
+
                 if streaming_callback:
                     streaming_callback(f"❌ {desc} (최종 실패)\n")
 
@@ -734,17 +742,17 @@ JSON 형식으로 응답:
     ) -> str:
         """
         실행 결과들을 통합하여 최종 응답 생성
-        
+
         성공한 단계들의 결과를 종합하여 사용자 요청에 대한 
         완전하고 유용한 답변을 생성합니다.
-        
+
         Args:
             agent: BaseAgent 인스턴스
             message: 원래 사용자 요청
             plan: 실행 계획
             results: 단계별 실행 결과
             streaming_callback: 스트리밍 콜백
-            
+
         Returns:
             str: 통합된 최종 응답
         """
@@ -790,20 +798,20 @@ JSON 형식으로 응답:
     ) -> str:
         """
         일반 LLM 응답 생성 (폴백 메서드)
-        
+
         MCP 도구를 사용할 수 없거나 다른 처리 방식이 실패했을 때
         순수 LLM 기반으로 응답을 생성합니다.
-        
+
         Args:
             agent: BaseAgent 인스턴스
             message: 사용자 메시지
             streaming_callback: 스트리밍 콜백
-            
+
         Returns:
             str: LLM 생성 응답
         """
         logger.info("일반 LLM 응답 생성")
-        
+
         try:
             if hasattr(agent, '_generate_basic_response'):
                 return await agent._generate_basic_response(message, streaming_callback)
@@ -816,13 +824,13 @@ JSON 형식으로 응답:
     def _extract_json_from_response(self, response: str) -> Dict[str, Any]:
         """
         LLM 응답에서 JSON 데이터 추출
-        
+
         마크다운 코드 블록이나 일반 텍스트에 포함된 JSON을 파싱합니다.
         여러 패턴을 시도하여 최대한 JSON을 추출하려고 시도합니다.
-        
+
         Args:
             response: LLM 응답 텍스트
-            
+
         Returns:
             Dict[str, Any]: 파싱된 JSON 데이터 (실패 시 빈 딕셔너리)
         """
@@ -835,7 +843,7 @@ JSON 형식으로 응답:
                 r'(\{[^{}]*"[^"]*"[^{}]*\})',       # 기본 JSON 객체
                 r'(\{.*?\})'                        # 단순 중괄호 패턴
             ]
-            
+
             for pattern in patterns:
                 match = re.search(pattern, response, re.DOTALL)
                 if match:
@@ -843,33 +851,33 @@ JSON 형식으로 응답:
                         return json.loads(match.group(1))
                     except json.JSONDecodeError:
                         continue
-            
+
             # 패턴 매칭 실패 시 전체 텍스트로 시도
             return json.loads(response.strip())
-            
+
         except Exception as e:
             logger.debug(f"JSON 추출 실패: {e}")
             return {}
 
     # === AdaptiveWorkflow 고급 기능 헬퍼 메서드들 ===
-    
+
     def _process_step_arguments(self, args: Dict[str, Any], previous_results: Dict[int, Any]) -> Dict[str, Any]:
         """
         단계 매개변수 동적 치환
-        
+
         이전 단계 결과를 참조하는 매개변수를 실제 값으로 치환합니다.
         예: {"file": "$step_1"} -> {"file": "actual_filename.txt"}
-        
+
         Args:
             args: 원본 매개변수
             previous_results: 이전 단계 실행 결과
-            
+
         Returns:
             Dict[str, Any]: 치환된 매개변수
         """
         if not args or not previous_results:
             return args
-            
+
         processed = {}
         for key, value in args.items():
             if isinstance(value, str) and value.startswith("$step_"):
@@ -878,24 +886,25 @@ JSON 형식으로 응답:
                     if step_num in previous_results and previous_results[step_num].get("success"):
                         result = previous_results[step_num]["result"]
                         # 결과에서 적절한 값 추출 (파일명, 내용 등)
-                        processed[key] = self._extract_reference_value(result, key)
+                        processed[key] = self._extract_reference_value(
+                            result, key)
                     else:
                         processed[key] = value  # 치환 실패 시 원본 유지
                 except ValueError:
                     processed[key] = value
             else:
                 processed[key] = value
-                
+
         return processed
-    
+
     def _extract_reference_value(self, result: Any, context_key: str) -> str:
         """
         단계 결과에서 컨텍스트에 맞는 값 추출
-        
+
         Args:
             result: 단계 실행 결과
             context_key: 매개변수 키 (힌트로 사용)
-            
+
         Returns:
             str: 추출된 값
         """
@@ -911,25 +920,25 @@ JSON 형식으로 응답:
                 return str(result)
         else:
             return str(result)
-    
+
     async def _request_step_approval(self, step: Dict[str, Any], streaming_callback: Optional[Callable[[str], None]] = None) -> bool:
         """
         사용자에게 단계 실행 승인 요청
-        
+
         Args:
             step: 실행할 단계 정보
             streaming_callback: 스트리밍 콜백
-            
+
         Returns:
             bool: 승인 여부 (True: 승인, False: 거부)
         """
         if not self.interaction_mode:
             return True
-            
+
         tool_name = step.get("tool", "알 수 없음")
         desc = step.get("desc", "설명 없음")
         args = step.get("args", {})
-        
+
         approval_message = f"""
 🔧 단계 실행 승인 요청:
 - 도구: {tool_name}
@@ -937,60 +946,60 @@ JSON 형식으로 응답:
 - 매개변수: {json.dumps(args, ensure_ascii=False, indent=2)}
 
 실행하시겠습니까? (y/n): """
-        
+
         if streaming_callback:
             streaming_callback(approval_message)
-            
-        # 실제 구현에서는 사용자 입력을 받아야 하지만, 
+
+        # 실제 구현에서는 사용자 입력을 받아야 하지만,
         # 여기서는 기본적으로 승인으로 처리 (워크플로우 컨텍스트에서는 자동 승인)
         return True
-    
+
     def _validate_step_result(self, result: Any, step: Dict[str, Any]) -> bool:
         """
         단계 실행 결과 검증
-        
+
         Args:
             result: 실행 결과
             step: 단계 정보
-            
+
         Returns:
             bool: 검증 성공 여부
         """
         if result is None:
             return False
-            
+
         # 기본 검증: 결과가 존재하고 오류가 없는지 확인
         if isinstance(result, dict):
             if "error" in result or "exception" in result:
                 return False
             if result.get("success") is False:
                 return False
-                
+
         # 도구별 특별 검증 (필요시 확장)
         tool_name = step.get("tool", "")
         if tool_name == "file_read" and not result:
             return False
         elif tool_name == "web_search" and not result:
             return False
-            
+
         return True
-    
+
     def _get_timestamp(self) -> str:
         """현재 타임스탬프 반환"""
         from datetime import datetime
         return datetime.now().isoformat()
-    
+
     def set_interaction_mode(self, interactive: bool) -> None:
         """인터랙션 모드 설정"""
         self.interaction_mode = interactive
         logger.debug(f"SmartWorkflow 인터랙션 모드: {interactive}")
-    
+
     def _generate_plan_hash(self, plan: Dict[str, Any]) -> str:
         """계획 해시 생성 (중복 감지용)"""
         import hashlib
         plan_str = json.dumps(plan, sort_keys=True)
         return hashlib.sha256(plan_str.encode()).hexdigest()
-    
+
     def _is_duplicate_plan(self, plan: Dict[str, Any]) -> bool:
         """계획 중복 여부 확인"""
         plan_hash = self._generate_plan_hash(plan)
@@ -998,30 +1007,31 @@ JSON 형식으로 응답:
             return True
         self.executed_plan_hashes.add(plan_hash)
         return False
-    
+
     async def _refine_execution_plan(
-        self, agent: Any, message: str, original_plan: Dict[str, Any], 
+        self, agent: Any, message: str, original_plan: Dict[str, Any],
         streaming_callback: Optional[Callable[[str], None]] = None
     ) -> Dict[str, Any]:
         """
         실행 계획 개선 및 수정
-        
+
         실패한 계획이나 중복 계획을 분석하여 개선된 새로운 계획을 생성합니다.
-        
+
         Args:
             agent: BaseAgent 인스턴스
             message: 원본 사용자 요청
             original_plan: 기존 계획
             streaming_callback: 스트리밍 콜백
-            
+
         Returns:
             Dict[str, Any]: 개선된 실행 계획
         """
         tools = await self._get_available_tools()
-        tools_desc = "\n".join([f"- {tool.name}: {tool.description}" for tool in tools])
-        
+        tools_desc = "\n".join(
+            [f"- {tool.name}: {tool.description}" for tool in tools])
+
         failure_context = self.execution_context.get("failure_analysis", "")
-        
+
         refinement_prompt = f"""기존 실행 계획을 분석하여 개선된 새로운 계획을 수립해주세요:
 
 원본 사용자 요청: {message}
@@ -1061,25 +1071,26 @@ JSON 형식으로 응답:
         try:
             response = await agent._generate_basic_response(refinement_prompt, None)
             refined_plan = self._extract_json_from_response(response)
-            
+
             if refined_plan and refined_plan.get("steps"):
-                logger.debug(f"계획 개선 완료: {refined_plan.get('improvements', '개선사항 없음')}")
+                logger.debug(
+                    f"계획 개선 완료: {refined_plan.get('improvements', '개선사항 없음')}")
                 return refined_plan
             else:
                 logger.warning("계획 개선 실패")
                 return {}
-                
+
         except Exception as e:
             logger.error(f"계획 개선 중 오류: {e}")
             return {}
-    
+
     def _analyze_execution_failures(self, results: Dict[int, Any]) -> str:
         """
         실행 실패 원인 분석
-        
+
         Args:
             results: 단계별 실행 결과
-            
+
         Returns:
             str: 실패 원인 분석 텍스트
         """
@@ -1089,14 +1100,14 @@ JSON 형식으로 응답:
                 error = result.get("error", "알 수 없는 오류")
                 tool = result.get("tool", "알 수 없음")
                 desc = result.get("description", f"단계 {step_num}")
-                
+
                 failures.append(f"단계 {step_num} ({tool}): {desc} - {error}")
-        
+
         if not failures:
             return "실행 실패 없음"
-            
+
         analysis = "실행 실패 분석:\n" + "\n".join(failures)
-        
+
         # 공통 실패 패턴 분석
         common_errors = []
         for failure in failures:
@@ -1108,16 +1119,16 @@ JSON 형식으로 응답:
                 common_errors.append("네트워크 연결 문제")
             elif "매개변수" in failure or "argument" in failure.lower():
                 common_errors.append("매개변수 오류")
-        
+
         if common_errors:
             analysis += f"\n\n공통 문제 패턴: {', '.join(set(common_errors))}"
-            
+
         return analysis
-    
+
     def get_execution_statistics(self) -> Dict[str, Any]:
         """
         실행 통계 정보 반환
-        
+
         Returns:
             Dict[str, Any]: 실행 통계
         """
@@ -1128,7 +1139,7 @@ JSON 형식으로 응답:
             "max_retries": self.max_retries,
             "interaction_mode": self.interaction_mode
         }
-    
+
     def clear_execution_history(self) -> None:
         """실행 히스토리 초기화"""
         self.execution_context.clear()
@@ -1138,34 +1149,36 @@ JSON 형식으로 응답:
         logger.info("SmartWorkflow 실행 히스토리 초기화 완료")
 
     # === 레거시 호환 인터페이스 ===
-    
+
     async def process(self, message: str, context: List[ConversationMessage] = None) -> LLMResponse:
         """
         레거시 호환 인터페이스
-        
+
         ConversationMessage 기반의 기존 인터페이스와 호환성을 제공합니다.
         새로운 코드에서는 run() 메서드 사용을 권장합니다.
-        
+
         Args:
             message: 사용자 메시지
             context: 대화 컨텍스트 (사용되지 않음)
-            
+
         Returns:
             LLMResponse: 응답 객체
         """
         try:
             if self.llm_service:
                 response = await self.llm_service.generate_response(
-                    context or [ConversationMessage(role="user", content=message)]
+                    context or [ConversationMessage(
+                        role="user", content=message)]
                 )
                 return response
-            
+
             return LLMResponse(
                 response="LLM 서비스가 초기화되지 않았습니다.",
-                metadata={"error": "llm_service_not_initialized", "workflow": self.workflow_name}
+                metadata={"error": "llm_service_not_initialized",
+                          "workflow": self.workflow_name}
             )
         except Exception as e:
             return LLMResponse(
                 response=f"처리 중 오류: {str(e)}",
                 metadata={"error": str(e), "workflow": self.workflow_name}
-            ) 
+            )

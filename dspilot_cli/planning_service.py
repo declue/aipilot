@@ -50,6 +50,7 @@ sequenceDiagram
 """
 
 import json
+import re
 from typing import Any, Dict, List, Optional
 
 import dspilot_core.instructions.prompt_manager as prompt_manager
@@ -116,6 +117,7 @@ class PlanningService:
             워크플로우 실행 결과 (패턴이 감지되지 않으면 None)
         """
         # 코드 수정 패턴 감지
+        # 1. 코드 수정 패턴 감지 및 워크플로우 실행
         if await self._is_code_modification_request(user_message):
             self.output_manager.log_if_debug("코드 수정 패턴 감지, CodeModificationWorkflow 실행")
             
@@ -132,8 +134,22 @@ class PlanningService:
                 self.output_manager.log_if_debug(f"워크플로우 실행 실패: {e}", "error")
                 return None
 
-        # 다른 워크플로우 패턴들을 여기에 추가할 수 있습니다.
-        # 예: 리서치 패턴, 분석 패턴 등
+        # 2. 리서치/검색 패턴 감지 및 워크플로우 실행
+        if await self._is_research_request(user_message):
+            self.output_manager.log_if_debug("리서치 패턴 감지, ResearchWorkflow 실행")
+            
+            def research_streaming_callback(content: str) -> None:
+                self.output_manager.log_if_debug(f"[워크플로우] {content.strip()}")
+
+            try:
+                workflow_class = get_workflow("research")
+                workflow = workflow_class()
+                result = await workflow.run(self.llm_agent, user_message, research_streaming_callback)
+                self.output_manager.log_if_debug(f"워크플로우 실행 완료: {result}")
+                return result
+            except Exception as e:
+                self.output_manager.log_if_debug(f"워크플로우 실행 실패: {e}", "error")
+                return None
 
         return None
 
@@ -168,6 +184,43 @@ class PlanningService:
         has_file_path = bool(re.search(file_path_pattern, user_message))
         
         return has_modification_keyword and (has_file_reference or has_file_path)
+
+    async def _is_research_request(self, user_message: str) -> bool:
+        """
+        리서치/검색 요청인지 판단합니다.
+        
+        Args:
+            user_message: 사용자 메시지
+            
+        Returns:
+            리서치 요청 여부
+        """
+        # 메타데이터 기반 패턴 감지
+        research_keywords = [
+            "검색", "찾아", "알아봐", "조사", "리서치", "research", "search",
+            "뉴스", "정보", "동향", "트렌드", "현황", "분석", "요약"
+        ]
+        
+        # 종합적인 작업을 나타내는 키워드
+        comprehensive_keywords = [
+            "요약해서", "정리해서", "파일로 저장", "블로그", "보고서", 
+            "정리된 내용", "종합", "취합"
+        ]
+        
+        message_lower = user_message.lower()
+        
+        # 1차: 리서치 관련 키워드 존재
+        has_research_keyword = any(keyword in message_lower for keyword in research_keywords)
+        
+        # 2차: 종합적 작업 키워드 존재 (검색 + 가공 + 저장)
+        has_comprehensive_keyword = any(keyword in message_lower for keyword in comprehensive_keywords)
+        
+        # 3차: 시간 범위 키워드 (최신성 요구)
+        time_keywords = ["최신", "어제", "오늘", "이번주", "최근", "latest", "recent"]
+        has_time_keyword = any(keyword in message_lower for keyword in time_keywords)
+        
+        # 리서치 패턴 판단: (검색 키워드 + 종합 작업) 또는 (검색 키워드 + 시간 키워드)
+        return has_research_keyword and (has_comprehensive_keyword or has_time_keyword)
 
     async def _create_standard_execution_plan(self, user_message: str) -> Optional[ExecutionPlan]:
         """
@@ -240,7 +293,10 @@ class PlanningService:
 
             # 최종 스텝 배열 재정렬 (step 키 기준)
             filtered_steps.sort(key=lambda s: s.get("step", 0))
-            raw_plan["steps"] = filtered_steps
+            
+            # 계획 검증 및 수정
+            validated_steps = self._validate_and_fix_plan_steps(filtered_steps)
+            raw_plan["steps"] = validated_steps
 
             execution_plan = self._create_execution_plan(raw_plan)
             # 실행 단계가 없는 경우는 도구 실행이 불필요한 것과 동일하게 간주하여 None 반환
@@ -290,3 +346,59 @@ class PlanningService:
             description=plan_data.get("description", "도구 실행 계획"),
             steps=steps
         )
+
+    def _validate_and_fix_plan_steps(self, steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        계획 단계들을 검증하고 잘못된 부분을 수정합니다.
+        
+        Args:
+            steps: 원본 계획 단계들
+            
+        Returns:
+            검증 및 수정된 계획 단계들
+        """
+        validated_steps = []
+        
+        for step in steps:
+            validated_step = step.copy()
+            arguments = step.get("arguments", {})
+            
+            # arguments 내의 잘못된 플레이스홀더 감지 및 수정
+            fixed_arguments = {}
+            for key, value in arguments.items():
+                if isinstance(value, str) and self._is_malformed_argument_value(value):
+                    fixed_value = self._fix_malformed_argument_value(value, key, step.get("step", 0))
+                    fixed_arguments[key] = fixed_value
+                    self.output_manager.log_if_debug(
+                        f"🔧 계획 수정: '{value}' -> '{fixed_value}'"
+                    )
+                else:
+                    fixed_arguments[key] = value
+            
+            validated_step["arguments"] = fixed_arguments
+            validated_steps.append(validated_step)
+        
+        return validated_steps
+
+    def _is_malformed_argument_value(self, value: str) -> bool:
+        """인수 값이 잘못된 형태인지 검사 (범용적 패턴)"""
+        malformed_patterns = [
+            "이전 단계",
+            "앞서",
+            "step_\\d+의",
+            "결과를 바탕으로",
+            "기준으로"
+        ]
+        return any(re.search(pattern, value) for pattern in malformed_patterns)
+
+    def _fix_malformed_argument_value(self, value: str, key: str, step_num: int) -> str:
+        """잘못된 인수 값을 올바른 플레이스홀더로 수정 (범용적 로직)"""
+        # 1. 단계 번호가 명시적으로 언급된 경우
+        step_mentions = re.findall(r'step[_\s]*(\d+)', value.lower())
+        if step_mentions:
+            mentioned_step = step_mentions[-1]  # 마지막에 언급된 단계 사용
+            return f"$step_{mentioned_step}"
+        
+        # 2. 기본 휴리스틱: 이전 단계 참조
+        prev_step = max(1, step_num - 1)
+        return f"$step_{prev_step}"

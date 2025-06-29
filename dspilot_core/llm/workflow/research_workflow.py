@@ -325,6 +325,10 @@ class ResearchWorkflow(BaseWorkflow):
             final_report = await self._generate_comprehensive_report(
                 agent, message, verified_data, streaming_callback
             )
+            
+            # 6단계: 파일 저장 (사용자가 파일 저장을 요청한 경우)
+            if any(keyword in message.lower() for keyword in ["파일로 저장", "파일명", ".md", "저장하고"]):
+                await self._save_report_to_file(agent, final_report, message, streaming_callback)
 
             logger.info("전문 리서치 워크플로우 완료")
             return final_report
@@ -370,13 +374,13 @@ class ResearchWorkflow(BaseWorkflow):
         - 영어와 한국어 혼용 가능
 
         JSON 형식으로 응답:
-        {
+        {{
             "queries": [
                 "검색쿼리1",
                 "검색쿼리2",
                 ...
             ]
-        }
+        }}
         """
 
         if streaming_callback:
@@ -483,11 +487,11 @@ class ResearchWorkflow(BaseWorkflow):
         4. 최신 업데이트가 필요한 부분
 
         JSON 형식으로 응답:
-        {
+        {{
             "need_additional_search": true/false,
             "additional_queries": ["쿼리1", "쿼리2", "쿼리3"],
             "reason": "추가 검색이 필요한 이유"
-        }
+        }}
         """
 
         if streaming_callback:
@@ -653,6 +657,63 @@ class ResearchWorkflow(BaseWorkflow):
         final_report = await agent._generate_basic_response(report_prompt, streaming_callback)
         
         return final_report
+
+    async def _save_report_to_file(
+        self, agent: Any, report: str, original_message: str,
+        streaming_callback: Optional[Callable[[str], None]] = None
+    ) -> None:
+        """
+        리서치 보고서를 파일로 저장
+        
+        Args:
+            agent: LLM 에이전트  
+            report: 생성된 리서치 보고서
+            original_message: 원본 사용자 메시지
+            streaming_callback: 진행 상황 콜백
+        """
+        try:
+            if streaming_callback:
+                streaming_callback("💾 리서치 보고서를 파일로 저장 중...\n")
+            
+            # 파일명 생성 로직
+            import datetime
+            import re
+
+            # 사용자가 명시적으로 파일명을 지정했는지 확인
+            filename_match = re.search(r'(\w+날짜|\d{4}-\d{2}-\d{2}).*\.md', original_message)
+            if filename_match:
+                # 어제 날짜 계산
+                yesterday = datetime.date.today() - datetime.timedelta(days=1)
+                filename = f"{yesterday.strftime('%Y-%m-%d')}.md"
+            else:
+                # 기본 파일명
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"research_report_{timestamp}.md"
+            
+            # MCP write_file 도구 사용
+            if hasattr(agent, "mcp_tool_manager") and agent.mcp_tool_manager:
+                tools = await agent.mcp_tool_manager.get_langchain_tools()
+                write_tool = next((tool for tool in tools if tool.name == "write_file"), None)
+                
+                if write_tool:
+                    result = await write_tool.ainvoke({
+                        "path": filename,
+                        "content": report
+                    })
+                    
+                    if streaming_callback:
+                        streaming_callback(f"✅ 파일 저장 완료: {filename}\n")
+                    
+                    logger.info(f"리서치 보고서 파일 저장 완료: {filename}")
+                else:
+                    logger.warning("write_file 도구를 찾을 수 없음")
+            else:
+                logger.warning("MCP 도구 관리자가 없어 파일 저장 불가")
+                
+        except Exception as e:
+            logger.error(f"파일 저장 실패: {e}")
+            if streaming_callback:
+                streaming_callback(f"❌ 파일 저장 실패: {str(e)}\n")
 
     async def _fallback_research(
         self, agent: Any, message: str, streaming_callback: Optional[Callable[[str], None]] = None

@@ -53,6 +53,10 @@ class ArgumentProcessor:
             elif isinstance(value, str) and ("<" in value and ">" in value):
                 processed[key] = self._substitute_angle_step(
                     value, key, step_results)
+            elif isinstance(value, str) and self._is_malformed_placeholder(value):
+                # LLM이 잘못된 설명문을 사용한 경우 자동 복구 시도
+                processed[key] = self._recover_from_malformed_placeholder(
+                    value, key, step_results)
             else:
                 processed[key] = value
 
@@ -76,11 +80,9 @@ class ArgumentProcessor:
                     replacement = self._extract_by_path(step_results[step_num], path_suffix)
                     if replacement is None:
                         # fallback to generic extraction
-                        context = "filename" if arg_key == "path" else "content"
-                        replacement = self._extract_content_by_context(step_results[step_num], context)
+                        replacement = self._extract_meaningful_content_from_dict(step_results[step_num])
                 else:
-                    context = "filename" if arg_key == "path" else "content"
-                    replacement = self._extract_content_by_context(step_results[step_num], context)
+                    replacement = self._extract_meaningful_content_from_dict(step_results[step_num])
 
                 processed_value = (
                     processed_value[: match.start()] + str(replacement) + processed_value[match.end():]
@@ -88,70 +90,99 @@ class ArgumentProcessor:
         return processed_value
 
     def _substitute_angle_step(self, raw: str, arg_key: str, step_results: Dict[int, Any]) -> str:
-        """Handle `<stepX>` and semantic placeholders."""
+        """Handle `<stepX>` placeholders (범용적 처리)."""
         processed_value = raw
-        context = "filename" if arg_key == "path" else "content"
+        
         for step_num, step_result in step_results.items():
-            processed_value = processed_value.replace(
-                f"<step{step_num}>", self._extract_content_by_context(
-                    step_result, context)
-            )
+            # 기본 패턴들
             patterns = [
+                f"<step{step_num}>",
                 f"<step_{step_num}>",
                 f"<step{step_num}_result>",
                 f"<step_{step_num}_result>",
             ]
+            
+            replacement = self._extract_meaningful_content_from_dict(step_result)
+            
             for pattern in patterns:
-                processed_value = processed_value.replace(
-                    pattern, self._extract_content_by_context(
-                        step_result, context)
-                )
-
-        # 의미적 플레이스홀더 예: <오늘날짜>, <생성된_뉴스_콘텐츠>
-        for step_num, step_result in step_results.items():
-            if "<오늘날짜>" in processed_value and step_num == 1:
-                processed_value = processed_value.replace(
-                    "<오늘날짜>", self._extract_content_by_context(
-                        step_result, context)
-                )
-            if "<생성된_뉴스_콘텐츠>" in processed_value and step_num == 2:
-                processed_value = processed_value.replace(
-                    "<생성된_뉴스_콘텐츠>", self._extract_content_by_context(
-                        step_result, context)
-                )
+                processed_value = processed_value.replace(pattern, replacement)
+        
         return processed_value
+
+    # ------------------------------------------------------------------
+    # Malformed placeholder recovery helpers
+    # ------------------------------------------------------------------
+    def _is_malformed_placeholder(self, value: str) -> bool:
+        """LLM이 잘못된 설명문을 사용했는지 감지 (범용적 패턴)"""
+        if not isinstance(value, str):
+            return False
+        
+        # 범용적인 설명문 패턴 감지
+        malformed_patterns = [
+            "이전 단계",
+            "앞서",
+            "위에서",
+            "step_\\d+의",
+            "결과를 바탕으로",
+            "기준으로",
+            "계산된",
+            "생성된",
+            "요약된"
+        ]
+        
+        import re
+        return any(re.search(pattern, value) for pattern in malformed_patterns)
+
+    def _recover_from_malformed_placeholder(self, value: str, key: str, step_results: Dict[int, Any]) -> str:
+        """잘못된 설명문을 적절한 step 결과로 복구 (범용적 로직)"""
+        import re
+
+        # 1. 단계 번호가 명시적으로 언급된 경우
+        step_mentions = re.findall(r'step[_\s]*(\d+)', value.lower())
+        if step_mentions:
+            step_num = int(step_mentions[-1])  # 마지막에 언급된 단계 사용
+            if step_num in step_results:
+                return self._extract_meaningful_content_from_dict(step_results[step_num])
+        
+        # 2. 기본 휴리스틱: 파일명은 첫 번째 단계, 내용은 마지막 단계
+        if step_results:
+            if key == "path" and 1 in step_results:
+                # 파일명의 경우 첫 번째 단계 결과 사용
+                result = self._extract_meaningful_content_from_dict(step_results[1])
+                # 확장자가 없으면 기본 확장자 추가
+                if result and not '.' in result.split('/')[-1]:
+                    result += ".txt"
+                return result
+            else:
+                # 내용의 경우 마지막 단계 결과 사용
+                last_step = max(step_results.keys())
+                return self._extract_meaningful_content_from_dict(step_results[last_step])
+        
+        # 3. 복구 실패 시 원본 반환
+        return value
 
     # ------------------------------------------------------------------
     # Content extraction helpers (moved from StepExecutor)
     # ------------------------------------------------------------------
-    def _extract_content_by_context(self, data: Dict[str, Any], context: str) -> str:
-        """컨텍스트에 따라 적절한 콘텐츠를 추출합니다."""
-        if context.lower().startswith("filename"):
-            if "iso_date" in data:
-                return data["iso_date"]
-            if "date" in data:
-                return data["date"]
-            if "result" in data and self._contains_date_info(str(data["result"])):
-                return self._extract_date_from_text(str(data["result"]))
-
-        # default to content
-        if self._is_empty_or_useless_content(data):
-            return self._generate_fallback_content(data)
-
-        if "results" in data and isinstance(data["results"], list) and data["results"]:
-            return self._summarize_search_results(data["results"])
-
-        return self._extract_meaningful_content_from_dict(data)
 
     def _summarize_search_results(self, results: Any) -> str:
+        """검색 결과를 간단히 요약"""
+        if not results:
+            return "검색 결과가 없습니다."
+        
         summary = []
-        for i, result in enumerate(results[:3], 1):
+        for i, result in enumerate(results[:5], 1):
             if isinstance(result, dict):
-                title = result.get("title", f"뉴스 {i}")
+                title = result.get("title", f"결과 {i}")
                 snippet = result.get("snippet", result.get("description", ""))
                 url = result.get("url", "")
-                summary.append(f"## {title}\n\n{snippet}\n\n출처: {url}")
-        return "\n\n".join(summary)
+                
+                if snippet:
+                    summary.append(f"{i}. {title}\n{snippet[:200]}...\n출처: {url}\n")
+                else:
+                    summary.append(f"{i}. {title}\n출처: {url}\n")
+        
+        return "\n".join(summary)
 
     def _extract_meaningful_content_from_dict(self, data: Dict[str, Any]) -> str:
         for field in ["content", "message", "text", "description"]:
