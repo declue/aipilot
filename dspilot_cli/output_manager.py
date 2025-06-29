@@ -185,9 +185,13 @@ class OutputManager:
 
     def print_step_error(self, step_num: int, error: str) -> None:
         """단계 오류 정보 출력"""
-        if not self.quiet_mode:
-            print(
-                f"{StyleColors.ERROR}❌ 단계 {step_num} 실행 실패: {error}{StyleColors.RESET_ALL}")
+        # quiet_mode 라도 오류는 반드시 사용자에게 보여준다.
+        if self.quiet_mode and not (self.debug_mode or self.verbose_mode):
+            # 최소 포맷으로 출력
+            print(f"[ERROR] 단계 {step_num} 실패: {error}")
+        else:
+            # 컬러 적용 출력
+            print(f"{StyleColors.ERROR}❌ 단계 {step_num} 실행 실패: {error}{StyleColors.RESET_ALL}")
 
     def print_task_cancelled(self) -> None:
         """작업 중단 정보 출력"""

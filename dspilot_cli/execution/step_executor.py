@@ -88,6 +88,7 @@ class StepExecutor:  # pylint: disable=too-many-instance-attributes
         # ------------------------------------------------------------------
         retries = 0
         last_exec_error = ""
+        exec_error = ""  # 루프 외부에서도 접근 가능하도록 초기화
         while retries <= self.max_step_retries:
             self.output_manager.print_step_execution(step.tool_name)
 
@@ -107,8 +108,27 @@ class StepExecutor:  # pylint: disable=too-many-instance-attributes
                 self.output_manager.log_if_debug(f"🔍 도구 실행 예외: {exec_error}")
                 result = json.dumps({"error": exec_error})
 
-            # 2.3 결과 검증
+            # ------------------------------------------------------
+            # 2.3 결과 검증 및 오류 메시지 즉시 출력
+            # ------------------------------------------------------
+            # 결과가 명시적으로 success=False 이면 우선 실패로 간주
             needs_retry = False
+            explicit_fail = False
+
+            try:
+                parsed_result = json.loads(result) if isinstance(result, str) else result
+                if isinstance(parsed_result, dict) and parsed_result.get("success") is False:
+                    explicit_fail = True
+                    exec_error = parsed_result.get("error", "도구가 success=False 반환") or exec_error
+            except Exception:  # noqa: broad-except
+                pass
+
+            # 실행 예외 또는 success False 가 확인된 경우 즉시 사용자에 출력
+            error_printed = False
+            if exec_error and not error_printed:
+                self.output_manager.print_step_error(step.step, exec_error)
+                error_printed = True
+
             if self.result_validator is not None:
                 eval_res = await self.result_validator.evaluate(
                     user_prompt=original_prompt,
@@ -123,6 +143,8 @@ class StepExecutor:  # pylint: disable=too-many-instance-attributes
 
                 if not exec_error and self.success_evaluator.is_successful(result, step.tool_name):
                     needs_retry = False
+                elif explicit_fail:
+                    needs_retry = True
 
                 if needs_retry:
                     self.output_manager.print_warning(
@@ -132,7 +154,7 @@ class StepExecutor:  # pylint: disable=too-many-instance-attributes
             if exec_error:
                 needs_retry = True
 
-            # 2.4 성공 처리
+            # 2.4 성공 여부, 재시도 판단 ---------------------------------
             if not needs_retry:
                 step_results[step.step] = result
                 self.output_manager.print_step_completed(step.step)
@@ -142,6 +164,10 @@ class StepExecutor:  # pylint: disable=too-many-instance-attributes
             retries += 1
             if retries > 1 and exec_error and exec_error == last_exec_error:
                 self.output_manager.print_warning("⚠️ 동일 오류 반복 → 추가 재시도 중단")
+                # 동일 오류 반복 – 사용자에게 오류 사유 출력 후 실패 처리
+                if exec_error and not error_printed:
+                    self.output_manager.print_step_error(step.step, exec_error or "동일 오류 반복")
+                    error_printed = True
                 return False
             last_exec_error = exec_error
 
@@ -158,5 +184,9 @@ class StepExecutor:  # pylint: disable=too-many-instance-attributes
                     self.output_manager.print_info(f"🔧 파라미터 자동 수정 적용: {fixed_args}")
 
         # 모든 재시도 실패
-        self.output_manager.print_step_error(step.step, "결과 검증 실패")
+        # 마지막 단계 실패 시 – 이미 exec_error 가 출력된 경우 중복 방지
+        if not exec_error:
+            if exec_error and not error_printed:
+                self.output_manager.print_step_error(step.step, "결과 검증 실패")
+                error_printed = True
         return False 
