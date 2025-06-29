@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from typing import Any, Optional
@@ -14,21 +15,26 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from application.config.config_manager import ConfigManager
-from application.llm.agents.agent_factory import AgentFactory
-from application.llm.mcp.mcp_manager import MCPManager
-from application.llm.mcp.mcp_tool_manager import MCPToolManager
-from application.tasks.task_thread import TaskThread
-from application.ui.common.style_manager import StyleManager
-from application.ui.common.theme_manager import ThemeManager, ThemeMode
-from application.ui.domain.conversation_manager import ConversationManager
-from application.ui.domain.message_manager import MessageManager
-from application.ui.domain.streaming_manager import StreamingManager
-from application.ui.managers.ui_setup_manager import UISetupManager
-from application.ui.runnables.llm_agent_worker import LLMAgentWorker
-from application.ui.settings_window import SettingsWindow
-from application.ui.widgets.new_message_notification import NewMessageNotification
-from application.util.logger import setup_logger
+from dspilot_app.services.execution_manager import ExecutionManager
+from dspilot_app.services.models.execution_plan import ExecutionPlan, ExecutionStep
+from dspilot_app.services.planning_service import PlanningService
+from dspilot_app.ui.common.style_manager import StyleManager
+from dspilot_app.ui.common.theme_manager import ThemeManager, ThemeMode
+from dspilot_app.ui.domain.conversation_manager import ConversationManager
+from dspilot_app.ui.domain.message_manager import MessageManager
+from dspilot_app.ui.domain.streaming_manager import StreamingManager
+from dspilot_app.ui.managers.ui_setup_manager import UISetupManager
+from dspilot_app.ui.runnables.llm_agent_worker import LLMAgentWorker
+from dspilot_app.ui.settings_window import SettingsWindow
+from dspilot_app.ui.widgets.new_message_notification import NewMessageNotification
+from dspilot_core.config.config_manager import ConfigManager
+from dspilot_core.llm.agents.agent_factory import AgentFactory
+from dspilot_core.llm.mcp.mcp_manager import MCPManager
+from dspilot_core.llm.mcp.mcp_tool_manager import MCPToolManager
+from dspilot_core.tasks.task_manager import TaskManager
+
+# from dspilot_core.tasks.task_thread import TaskThread
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("main_window") or logging.getLogger("main_window")
 
@@ -40,17 +46,29 @@ class MainWindow(QMainWindow):
         self,
         mcp_manager: MCPManager,
         mcp_tool_manager: MCPToolManager,
+        planning_service: PlanningService,
+        execution_manager: ExecutionManager,
         app_instance: Optional[Any] = None,
     ):
         super().__init__()
         self.config_manager = ConfigManager()
         self.mcp_manager = mcp_manager
         self.mcp_tool_manager = mcp_tool_manager
+        self.planning_service = planning_service
+        self.execution_manager = execution_manager
         self._app = app_instance  # App 인스턴스 참조 저장
         self.ui_config = self.config_manager.get_ui_config()
         self.tray_app = None  # TrayApp 참조
         self.settings_window: SettingsWindow | None = None
         self.task_thread: Any = None  # TaskThread 참조
+        self.message_manager = MessageManager(self)
+        self.conversation_manager = ConversationManager()
+        self.streaming_manager = StreamingManager(self)
+        self.ui_setup_manager = UISetupManager(self)
+        self.task_manager: Optional[TaskManager] = None
+        self.webhook_status_checker: Optional[QTimer] = None
+        self._last_scroll_value = 0
+        self._scroll_at_bottom = True
 
         # 테마 관리자 초기화
         self.theme_manager = ThemeManager(self.config_manager)
@@ -105,11 +123,6 @@ class MainWindow(QMainWindow):
         self.setup_ui()
 
         # 매니저 인스턴스 생성 (UI 설정 후)
-        self.conversation_manager = ConversationManager()
-        self.message_manager = MessageManager(self)
-        self.streaming_manager = StreamingManager(self)
-
-        # Agent 초기화
         self.llm_agent = AgentFactory.create_agent(
             config_manager=self.config_manager, mcp_tool_manager=self.mcp_tool_manager
         )
@@ -142,10 +155,56 @@ class MainWindow(QMainWindow):
             self.update_theme_toggle_button()
 
         # TaskThread 초기화 및 시작
-        self.init_task_scheduler()
+        # self.init_task_scheduler()
 
         # Webhook 상태 체크 타이머 설정
         self.init_webhook_status_checker()
+
+        self._connect_signals()
+
+    def _connect_signals(self) -> None:
+        """Connect signals to slots"""
+        self.execution_manager.execution_started.connect(self.on_execution_started)
+        self.execution_manager.step_started.connect(self.on_step_started)
+        self.execution_manager.step_finished.connect(self.on_step_finished)
+        self.execution_manager.step_error.connect(self.on_step_error)
+        self.execution_manager.plan_finished.connect(self.on_plan_finished)
+        self.execution_manager.final_response_chunk.connect(self.on_final_response_chunk)
+        self.execution_manager.final_response_ready.connect(self.on_final_response_ready)
+
+    def on_execution_started(self, plan: ExecutionPlan) -> None:
+        """Handles the start of a plan execution."""
+        self.add_system_message(f"🚀 **실행 계획 시작:** {plan.description}")
+
+    def on_step_started(self, step: ExecutionStep) -> None:
+        """Handles the start of a step."""
+        self.add_system_message(f"**[{step.step}단계]** {step.tool_name} 실행: {step.description}")
+
+    def on_step_finished(self, step: ExecutionStep, result: Any) -> None:
+        """Handles the completion of a step."""
+        result_str = str(result)
+        if len(result_str) > 200:
+            result_str = result_str[:200] + "..."
+        self.add_system_message(f"✅ **[{step.step}단계]** 완료. 결과: `{result_str}`")
+
+    def on_step_error(self, step: ExecutionStep, error: str) -> None:
+        """Handles an error in a step."""
+        self.add_system_message(f"❌ **[{step.step}단계]** 오류: {error}")
+
+    def on_plan_finished(self, results: dict) -> None:
+        """Handles the completion of a plan."""
+        self.add_system_message("🏁 **실행 계획 완료.** 최종 응답을 생성합니다.")
+
+    def on_final_response_chunk(self, chunk: str) -> None:
+        """Handles a chunk of the final streaming response."""
+        self.streaming_manager.add_streaming_chunk(chunk)
+
+    def on_final_response_ready(self, full_response: str, used_tools: list) -> None:
+        """Handles the full final response."""
+        self.streaming_manager.finish_streaming(full_response)
+        if self.streaming_manager.state.current_streaming_bubble:
+            self.streaming_manager.state.current_streaming_bubble.set_used_tools(used_tools)
+        self.stop_ai_response()  # Clean up worker and buttons
 
     def set_window_icon(self) -> None:
         """윈도우 아이콘 설정"""
@@ -612,81 +671,66 @@ class MainWindow(QMainWindow):
         # 스크롤 방식을 사용하므로 창 크기를 고정적으로 유지
 
     def stop_ai_response(self) -> None:
-        """AI 응답 중단"""
-        self.streaming_manager.stop_streaming()  # UI 상태 복원
-        if hasattr(self, "status_label") and self.status_label is not None:
-            self.status_label.setText("중단됨")
-            self.status_label.setStyleSheet(
-                f"""
-                QLabel {{
-                    color: #DC2626;
-                    background-color: transparent;
-                    border: none;
-                    padding: 8px 16px;
-                    font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
-                    font-family: '{self.ui_config['font_family']}';
-                }}
-            """
-            )
+        """AI 응답 중지 및 관련 UI 상태 초기화"""
+        if self.streaming_manager.is_streaming():
+            self.streaming_manager.stop_streaming()
 
-        if hasattr(self, "send_button"):
-            self.send_button.setEnabled(True)
-            self.send_button.show()
+        if self.llm_agent:
+            self.llm_agent.cancel()
 
-        if hasattr(self, "stop_button"):
-            self.stop_button.hide()
+        self.input_text.setDisabled(False)
+        self.send_button.setDisabled(False)
+        self.stop_button.hide()
+        self.send_button.show()
+        logger.debug("AI 응답 중지 및 UI 활성화")
+        self.input_text.setFocus()
 
-    def request_ai_response(self, _message: str) -> None:
-        """AI 응답 요청 (LLM Agent 사용)"""
-        # 이전 워커가 실행 중이면 중지
-        current_worker = self.streaming_manager.current_worker()
-        if current_worker and hasattr(current_worker, "stop"):
-            current_worker.stop()  # UI 상태 업데이트
-        if hasattr(self, "status_label") and self.status_label is not None:
-            self.status_label.setText("생각 중...")
-            self.status_label.setStyleSheet(
-                f"""
-                QLabel {{
-                    color: #D97706;
-                    background-color: transparent;
-                    border: none;
-                    padding: 8px 16px;
-                    font-size: {max(self.ui_config['font_size'] - 2, 10)}px;
-                    font-family: '{self.ui_config['font_family']}';
-                }}
-            """
-            )
+    def request_ai_response(self, message: str) -> None:
+        """사용자 메시지에 대한 AI 응답 요청 (메인 로직)"""
+        if not self.llm_agent:
+            self.add_system_message("LLM 에이전트가 초기화되지 않았습니다.")
+            return
 
-        if hasattr(self, "send_button"):
-            self.send_button.setEnabled(False)
-            self.send_button.hide()
+        self.input_text.setDisabled(True)
+        self.send_button.setDisabled(True)
+        self.stop_button.show()
+        self.send_button.hide()
 
-        if hasattr(self, "stop_button"):
-            self.stop_button.show()
+        async def run_request():
+            try:
+                # 1. Analyze the request and create a plan
+                plan = await self.planning_service.analyze_request_and_plan(message)
 
-        # LLM Agent Worker 실행
-        worker = LLMAgentWorker(
-            _message,  # 사용자 메시지
-            self.llm_agent,  # LLM Agent 인스턴스
-            self.handle_ai_response,  # 콜백
-        )
+                if plan and plan.steps:
+                    # 2. If a plan exists, execute it
+                    await self.execution_manager.execute_plan(plan, message)
+                    # The final response is handled by signals from ExecutionManager
+                else:
+                    # 3. If no plan, proceed with a direct chat response
+                    logger.info("실행 계획이 없습니다. 일반 채팅 응답을 진행합니다.")
+                    worker = LLMAgentWorker(
+                        user_message=message,
+                        llm_agent=self.llm_agent,
+                    )
+                    worker.signals.streaming_started.connect(self.on_streaming_started)
+                    worker.signals.streaming_chunk.connect(self.on_streaming_chunk)
+                    worker.signals.streaming_finished.connect(self.on_streaming_finished)
+                    worker.signals.error.connect(self.handle_ai_error)
+                    self.streaming_manager.state.current_worker = worker
+                    QThreadPool.globalInstance().start(worker)
 
-        # StreamingState에 current_worker 저장
-        self.streaming_manager.state.current_worker = worker
+            except Exception as e:
+                logger.error(f"AI 응답 요청 중 오류 발생: {e}", exc_info=True)
+                self.handle_ai_error(f"오류 발생: {e}")
 
-        # 스트리밍 시그널 연결
-        worker.signals.streaming_started.connect(self.on_streaming_started)
-        worker.signals.streaming_chunk.connect(self.on_streaming_chunk)
-        worker.signals.streaming_finished.connect(self.on_streaming_finished)
-
-        QThreadPool.globalInstance().start(worker)
+        asyncio.run(run_request())
 
     def on_streaming_started(self) -> None:
         """스트리밍 시작 시 호출"""
-        logger.info("스트리밍 시작됨")
+        self.streaming_manager.start_streaming()
+        logger.debug("스트리밍 UI 시작")
         if hasattr(self, "status_label") and self.status_label is not None:
             self.status_label.setText("답변 중...")
-        self.streaming_manager.start_streaming()
 
     def on_streaming_chunk(self, chunk: str) -> None:
         """스트리밍 청크 수신 시 호출"""
@@ -730,26 +774,11 @@ class MainWindow(QMainWindow):
         # 창 크기 조정 (스트리밍 완료 후 강제 스크롤)
         self.force_scroll_to_bottom()
 
-    def handle_ai_response(self, response_data: Any) -> None:
-        """AI 응답 처리 (LLM Agent 완료 후 호출)"""
-        logger.debug(f"AI 응답 처리: {response_data}")
-
-        # 응답 데이터 처리
-        if isinstance(response_data, dict):
-            response = response_data.get("response", "")
-            used_tools = response_data.get("used_tools", [])
-
-            # 도구 사용 정보를 StreamingManager에 전달
-            if used_tools and hasattr(self, "streaming_manager"):
-                self.streaming_manager.set_used_tools(used_tools)
-                logger.debug(f"도구 사용 정보 설정: {used_tools}")
-        else:
-            response = response_data
-
-        # ConversationManager에 AI 응답 추가 (LLM Agent는 이미 추가함)
-        self.conversation_manager.add_assistant_message(response)
-
-        logger.debug("AI 응답 처리 완료")
+    def handle_ai_error(self, error_msg: str) -> None:
+        """AI 응답 중 에러 발생 시 처리"""
+        logger.error("AI 응답 에러: %s", error_msg)
+        self.add_system_message(f"죄송합니다. 응답 생성 중 오류가 발생했습니다.\n\n오류: {error_msg}")
+        self.stop_ai_response()
 
     def adjust_browser_height(self, browser: Any) -> None:
         """브라우저 높이 자동 조정"""
@@ -766,12 +795,12 @@ class MainWindow(QMainWindow):
             self.hide()
         else:
             # 완전 종료 시 TaskThread 정리
-            if hasattr(self, "task_thread") and self.task_thread:
-                logger.info("작업 스케줄러 스레드 종료 중...")
-                self.task_thread.stop_scheduler()
-                self.task_thread.quit()
-                self.task_thread.wait(3000)  # 3초 대기
-                logger.info("작업 스케줄러 스레드 종료 완료")
+            # if hasattr(self, "task_thread") and self.task_thread:
+            #     logger.info("작업 스케줄러 스레드 종료 중...")
+            #     self.task_thread.stop_scheduler()
+            #     self.task_thread.quit()
+            #     self.task_thread.wait(3000)  # 3초 대기
+            #     logger.info("작업 스케줄러 스레드 종료 완료")
             event.accept()
 
     def showEvent(self, event: Any) -> None:  # pylint: disable=invalid-name
@@ -836,13 +865,14 @@ class MainWindow(QMainWindow):
 
     def init_task_scheduler(self) -> None:
         """작업 스케줄러 초기화"""
-        try:
-
-            self.task_thread = TaskThread()
-            self.task_thread.start()
-            logger.info("작업 스케줄러 스레드 시작됨")
-        except Exception as e:
-            logger.error(f"작업 스케줄러 초기화 실패: {e}")
+        # try:
+        #
+        #     self.task_thread = TaskThread()
+        #     self.task_thread.start()
+        #     logger.info("작업 스케줄러 스레드 시작됨")
+        # except Exception as e:
+        #     logger.error(f"작업 스케줄러 초기화 실패: {e}")
+        pass  # Temporarily disabled
 
     def init_webhook_status_checker(self) -> None:
         """Webhook 서버 상태 체크 타이머 초기화"""
@@ -1048,8 +1078,8 @@ class MainWindow(QMainWindow):
             self.settings_window.settings_changed.connect(self.on_settings_changed)
 
             # TaskThread를 TaskTabManager에 전달
-            if self.task_thread and hasattr(self.settings_window, "task_tab_manager"):
-                self.settings_window.task_tab_manager.set_task_thread(self.task_thread)
+            # if self.task_thread and hasattr(self.settings_window, "task_tab_manager"):
+            #     self.settings_window.task_tab_manager.set_task_thread(self.task_thread)
 
             # 현재 테마를 설정창에 적용
             if hasattr(self.settings_window, "update_theme"):
@@ -1457,7 +1487,7 @@ class MainWindow(QMainWindow):
             colors = self.theme_manager.get_theme_colors()
 
             # 입력 텍스트 영역 업데이트
-            if hasattr(self, "input_text") and self.input_text:
+            if hasattr(self, "input_text") and self.input_text is not None:
                 self.input_text.setStyleSheet(
                     f"""
                     QTextEdit {{
@@ -1476,7 +1506,7 @@ class MainWindow(QMainWindow):
                 )
 
             # 전송 버튼 업데이트
-            if hasattr(self, "send_button") and self.send_button:
+            if hasattr(self, "send_button") and self.send_button is not None:
                 self.send_button.setStyleSheet(
                     f"""
                     QPushButton {{
@@ -1502,7 +1532,7 @@ class MainWindow(QMainWindow):
                 )
 
             # 중단 버튼 업데이트
-            if hasattr(self, "stop_button") and self.stop_button:
+            if hasattr(self, "stop_button") and self.stop_button is not None:
                 self.stop_button.setStyleSheet(
                     f"""
                     QPushButton {{
@@ -1614,7 +1644,7 @@ class MainWindow(QMainWindow):
                 self._ui_setup_manager.update_container_themes()
             else:
                 # UI 설정 매니저가 없으면 직접 업데이트
-                from application.ui.managers.ui_setup_manager import UISetupManager
+                from dspilot_app.ui.managers.ui_setup_manager import UISetupManager
 
                 ui_manager = UISetupManager(self)
                 ui_manager.update_container_themes()

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
-    from application.ui.presentation.ai_chat_bubble import AIChatBubble
+    from dspilot_app.ui.presentation.ai_chat_bubble import AIChatBubble
 
 
 class StreamingState:

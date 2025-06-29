@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """UserChatBubble – Presentation Layer
 
-기존 `application.ui.user_chat_bubble` 구현을 이동.
+기존 `dspilot_app.ui.user_chat_bubble` 구현을 이동.
 """
 
 # pylint: disable=too-many-lines
@@ -21,9 +21,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from application.ui.chat_bubble import ChatBubble
-from application.util.logger import setup_logger
-from application.util.markdown_manager import MarkdownManager
+from dspilot_app.ui.chat_bubble import ChatBubble
+from dspilot_core.util.logger import setup_logger
+from dspilot_core.util.markdown_manager import MarkdownManager
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 

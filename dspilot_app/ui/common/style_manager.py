@@ -4,7 +4,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import QLabel, QWidget
 
-from application.ui.common.theme_manager import ThemeManager
+from dspilot_app.ui.common.theme_manager import ThemeManager
 
 
 class StyleManager:  # pylint: disable=too-few-public-methods

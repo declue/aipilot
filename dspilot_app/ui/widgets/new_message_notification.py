@@ -3,7 +3,7 @@ import logging
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton
 
-from application.util.logger import setup_logger
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 

@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 import markdown
 
-from application.util.markdown_manager import MarkdownManager
+from dspilot_core.util.markdown_manager import MarkdownManager
 
 
 class StreamingHtmlRenderer:

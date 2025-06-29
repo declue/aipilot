@@ -10,13 +10,13 @@ from PySide6.QtCore import QObject, QSize, Qt, QTimer
 from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QMenu, QStyle, QSystemTrayIcon
 
-from application.api.fastapi_thread import FastAPIThread
-from application.config.config_manager import ConfigManager
-from application.ui.main_window import MainWindow
-from application.ui.signals.tray_noficiation_signals import TrayNotificationSignals
-from application.ui.test_window import TestWindow
-from application.ui.tray_notification_dialog import TrayNotificationDialog
-from application.util.logger import setup_logger
+from dspilot_app.api.fastapi_thread import FastAPIThread
+from dspilot_app.ui.main_window import MainWindow
+from dspilot_app.ui.signals.tray_noficiation_signals import TrayNotificationSignals
+from dspilot_app.ui.test_window import TestWindow
+from dspilot_app.ui.tray_notification_dialog import TrayNotificationDialog
+from dspilot_core.config.config_manager import ConfigManager
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
@@ -63,7 +63,7 @@ class TrayApp(QObject):
         logger.debug("시스템 트레이 지원 여부: %s", QSystemTrayIcon.isSystemTrayAvailable())
 
         # 창 인스턴스 생성 (App 인스턴스 전달)
-        self.main_window = MainWindow(self.mcp_manager, self.mcp_tool_manager, self.app_instance)  # type: ignore
+        self.main_window = MainWindow(self.mcp_manager, self.mcp_tool_manager, self.app_instance)  
 
         # 메인 윈도우에 트레이 앱 참조 설정
         self.main_window.tray_app = self  # type: ignore

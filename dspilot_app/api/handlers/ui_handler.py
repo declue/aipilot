@@ -2,9 +2,9 @@
 
 from typing import Any, Dict
 
-from application.api.handlers.base_handler import BaseHandler
-from application.api.models.ui_font_request import UIFontRequest
-from application.api.models.ui_settings_request import UISettingsRequest
+from dspilot_app.api.handlers.base_handler import BaseHandler
+from dspilot_app.api.models.ui_font_request import UIFontRequest
+from dspilot_app.api.models.ui_settings_request import UISettingsRequest
 
 
 class UIHandler(BaseHandler):

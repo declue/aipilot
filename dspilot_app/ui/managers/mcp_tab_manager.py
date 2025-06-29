@@ -2,11 +2,11 @@ import os
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
-from application.ui.managers.mcp_data_manager import MCPDataManager
-from application.ui.managers.mcp_log_manager import MCPLogManager
-from application.ui.managers.mcp_server_status_manager import MCPServerStatusManager
-from application.ui.managers.mcp_tools_manager import MCPToolsManager
-from application.ui.managers.mcp_ui_builder import MCPUIBuilder
+from dspilot_app.ui.managers.mcp_data_manager import MCPDataManager
+from dspilot_app.ui.managers.mcp_log_manager import MCPLogManager
+from dspilot_app.ui.managers.mcp_server_status_manager import MCPServerStatusManager
+from dspilot_app.ui.managers.mcp_tools_manager import MCPToolsManager
+from dspilot_app.ui.managers.mcp_ui_builder import MCPUIBuilder
 
 
 class MCPSignals(QObject):

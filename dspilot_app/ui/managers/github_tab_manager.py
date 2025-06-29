@@ -23,10 +23,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from application.config.config_manager import ConfigManager
+from dspilot_core.config.config_manager import ConfigManager
 
 if TYPE_CHECKING:
-    from application.ui.main_window import MainWindow
+    from dspilot_app.ui.main_window import MainWindow
 
 
 class GitHubTabManager:

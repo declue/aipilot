@@ -2,9 +2,9 @@
 
 from typing import Any, Dict
 
-from application.api.handlers.base_handler import BaseHandler
-from application.api.models.chat_history_request import ChatHistoryRequest
-from application.api.models.chat_message_request import ChatMessageRequest
+from dspilot_app.api.handlers.base_handler import BaseHandler
+from dspilot_app.api.models.chat_history_request import ChatHistoryRequest
+from dspilot_app.api.models.chat_message_request import ChatMessageRequest
 
 
 class ChatHandler(BaseHandler):

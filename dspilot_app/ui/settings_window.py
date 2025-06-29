@@ -7,11 +7,8 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QMainWindow, QPushButton, QWidget
 
-from application.config.config_manager import ConfigManager
-from application.llm.mcp.mcp_manager import MCPManager
-from application.llm.mcp.mcp_tool_manager import MCPToolManager
-from application.ui.common.theme_manager import ThemeManager
-from application.ui.managers import (
+from dspilot_app.ui.common.theme_manager import ThemeManager
+from dspilot_app.ui.managers import (
     GitHubTabManager,
     LLMTabManager,
     MCPTabManager,
@@ -20,6 +17,9 @@ from application.ui.managers import (
     UISetupManager,
     UITabManager,
 )
+from dspilot_core.config.config_manager import ConfigManager
+from dspilot_core.llm.mcp.mcp_manager import MCPManager
+from dspilot_core.llm.mcp.mcp_tool_manager import MCPToolManager
 
 logger = logging.getLogger(__name__)
 

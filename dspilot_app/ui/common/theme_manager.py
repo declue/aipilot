@@ -4,7 +4,7 @@ from typing import Dict
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication, QWidget
 
-from application.config.config_manager import ConfigManager
+from dspilot_core.config.config_manager import ConfigManager
 
 
 class ThemeMode(Enum):

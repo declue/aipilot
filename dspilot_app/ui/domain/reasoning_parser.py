@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 
-from application.util.logger import setup_logger
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 

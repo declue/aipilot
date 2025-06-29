@@ -6,7 +6,7 @@ import requests
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
-from application.config.config_manager import ConfigManager
+from dspilot_core.config.config_manager import ConfigManager
 
 
 class TestWindow(QMainWindow):

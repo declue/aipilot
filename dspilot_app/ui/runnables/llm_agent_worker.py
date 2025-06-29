@@ -6,11 +6,11 @@ import asyncio
 import logging
 from typing import Any, Callable, Optional
 
-from PyQt5.QtCore import QRunnable, pyqtSlot
+from PySide6.QtCore import QRunnable, Slot
 
-from application.llm.agents.base_agent import BaseAgent
-from application.ui.signals.worker_signals import WorkerSignals
-from application.util.logger import setup_logger
+from dspilot_app.ui.signals.worker_signals import WorkerSignals
+from dspilot_core.llm.agents.base_agent import BaseAgent
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
@@ -40,7 +40,7 @@ class LLMAgentWorker(QRunnable):
         self._has_streamed: bool = False
         self.is_running = True
 
-    @pyqtSlot()
+    @Slot()
     def run(self) -> None:
         """워커 실행"""
         if not self.is_running:

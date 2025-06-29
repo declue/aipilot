@@ -26,8 +26,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from application.tasks.models.task_config import TaskConfig
-from application.util.logger import setup_logger
+from dspilot_core.tasks.models.task_config import TaskConfig
+from dspilot_core.util.logger import setup_logger
 
 logger = setup_logger("ui") or logging.getLogger("ui")
 
@@ -501,7 +501,7 @@ class TaskTabManager:
         """스케줄러 시작"""
         if not self.task_thread:
             # TaskThread가 없으면 새로 생성
-            from application.tasks.task_thread import TaskThread
+            from dspilot_core.tasks.task_thread import TaskThread
 
             self.task_thread = TaskThread()
             self.set_task_thread(self.task_thread)

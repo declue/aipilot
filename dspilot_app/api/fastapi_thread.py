@@ -8,7 +8,7 @@ import uvicorn
 from fastapi import FastAPI
 from PySide6.QtCore import QThread, Signal
 
-from application.util.logger import setup_logger
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("api") or logging.getLogger("api")
 

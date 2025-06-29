@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING, Any, List
 
 from PySide6.QtCore import QTimer
 
-from application.ui.domain.reasoning_parser import ReasoningParser
-from application.ui.domain.streaming_state import StreamingState
-from application.util.logger import setup_logger
+from dspilot_app.ui.domain.reasoning_parser import ReasoningParser
+from dspilot_app.ui.domain.streaming_state import StreamingState
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
 if TYPE_CHECKING:
-    from application.ui.presentation.ai_chat_bubble import AIChatBubble
-    from application.ui.presentation.streaming_bubble_manager import StreamingBubbleManager
+    from dspilot_app.ui.presentation.ai_chat_bubble import AIChatBubble
+    from dspilot_app.ui.presentation.streaming_bubble_manager import StreamingBubbleManager
 
 
 class StreamingManager:
@@ -28,7 +28,7 @@ class StreamingManager:
         self.reasoning_parser: ReasoningParser = ReasoningParser()
 
         # Runtime import to avoid circular dependency
-        from application.ui.presentation.streaming_bubble_manager import StreamingBubbleManager
+        from dspilot_app.ui.presentation.streaming_bubble_manager import StreamingBubbleManager
 
         self.bubble_manager: StreamingBubbleManager = StreamingBubbleManager(
             main_window, self.ui_config

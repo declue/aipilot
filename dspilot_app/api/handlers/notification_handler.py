@@ -3,12 +3,12 @@
 import logging
 from typing import Any, Dict
 
-from application.api.handlers.base_handler import BaseHandler
-from application.api.models.dialog_notification_request import DialogNotificationRequest
-from application.api.models.notification_message import NotificationMessage
-from application.api.models.notification_request import NotificationRequest
-from application.api.models.system_notification_request import SystemNotificationRequest
-from application.util.logger import setup_logger
+from dspilot_app.api.handlers.base_handler import BaseHandler
+from dspilot_app.api.models.dialog_notification_request import DialogNotificationRequest
+from dspilot_app.api.models.notification_message import NotificationMessage
+from dspilot_app.api.models.notification_request import NotificationRequest
+from dspilot_app.api.models.system_notification_request import SystemNotificationRequest
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("api") or logging.getLogger("api")
 

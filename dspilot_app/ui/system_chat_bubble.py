@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from application.ui.chat_bubble import ChatBubble
-from application.util.logger import setup_logger
+from dspilot_app.ui.chat_bubble import ChatBubble
+from dspilot_app.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 

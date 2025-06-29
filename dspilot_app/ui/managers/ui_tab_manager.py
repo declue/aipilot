@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from application.ui.common.style_manager import StyleManager
+from dspilot_app.ui.common.style_manager import StyleManager
 
 
 class UITabManager:

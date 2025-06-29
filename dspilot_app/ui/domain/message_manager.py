@@ -5,9 +5,9 @@ from typing import Any, Optional
 
 from PySide6.QtCore import QTimer
 
-from application.ui.presentation.ai_chat_bubble import AIChatBubble
-from application.ui.presentation.system_chat_bubble import SystemChatBubble
-from application.ui.presentation.user_chat_bubble import UserChatBubble
+from dspilot_app.ui.presentation.ai_chat_bubble import AIChatBubble
+from dspilot_app.ui.presentation.system_chat_bubble import SystemChatBubble
+from dspilot_app.ui.presentation.user_chat_bubble import UserChatBubble
 
 logger: logging.Logger = logging.getLogger("message_manager")
 

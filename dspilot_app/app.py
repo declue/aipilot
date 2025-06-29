@@ -2,14 +2,18 @@ import logging
 import sys
 import threading
 
-from application.api.api_server import APIServer
-from application.config.config_manager import ConfigManager
-from application.llm.mcp.mcp_manager import MCPManager
-from application.llm.mcp.mcp_tool_manager import MCPToolManager
-from application.ui.qt_app import QtApp
-from application.ui.signals.notification_signals import NotificationSignals
-from application.util.logger import setup_logger
-from application.util.webhook_client import WebhookClient
+from dspilot_app.api.api_server import APIServer
+from dspilot_app.services.execution_manager import ExecutionManager
+from dspilot_app.services.planning_service import PlanningService
+from dspilot_app.ui.qt_app import QtApp
+from dspilot_app.ui.signals.notification_signals import NotificationSignals
+from dspilot_core.config.config_manager import ConfigManager
+from dspilot_core.llm.agents.agent_factory import AgentFactory
+from dspilot_core.llm.agents.base_agent import BaseAgent
+from dspilot_core.llm.mcp.mcp_manager import MCPManager
+from dspilot_core.llm.mcp.mcp_tool_manager import MCPToolManager
+from dspilot_core.util.logger import setup_logger
+from dspilot_core.util.webhook_client import WebhookClient
 
 logger = setup_logger("app") or logging.getLogger("app")
 
@@ -21,10 +25,13 @@ class App:
     config_manager: ConfigManager
     mcp_manager: MCPManager
     mcp_tool_manager: MCPToolManager
+    planning_service: PlanningService
+    execution_manager: ExecutionManager
     api_app: APIServer
     notification_signals: NotificationSignals
     qt_app: QtApp
     webhook_client: WebhookClient | None
+    llm_agent: BaseAgent
 
     def _init_config(self) -> ConfigManager:
         """Config 관리자 초기화"""
@@ -40,6 +47,22 @@ class App:
         mcp_tool_manager = MCPToolManager(mcp_manager, self.config_manager)
         logger.debug("MCP 도구 관리자 초기화 완료")
         return mcp_manager, mcp_tool_manager
+
+    def _init_planning_service(
+        self, llm_agent: BaseAgent, mcp_tool_manager: MCPToolManager
+    ) -> PlanningService:
+        """계획 서비스 초기화"""
+        planning_service = PlanningService(llm_agent, mcp_tool_manager)
+        logger.debug("계획 서비스 초기화 완료")
+        return planning_service
+
+    def _init_execution_manager(
+        self, llm_agent: BaseAgent, mcp_tool_manager: MCPToolManager
+    ) -> ExecutionManager:
+        """실행 관리자 초기화"""
+        execution_manager = ExecutionManager(llm_agent, mcp_tool_manager)
+        logger.debug("실행 관리자 초기화 완료")
+        return execution_manager
 
     def _init_api(
         self,
@@ -66,9 +89,17 @@ class App:
         mcp_manager: MCPManager,
         mcp_tool_manager: MCPToolManager,
         api_app: APIServer,
+        planning_service: PlanningService,
+        execution_manager: ExecutionManager,
     ) -> QtApp:
         """QT 앱 초기화 - 메인 App 인스턴스(self)를 전달"""
-        return QtApp(mcp_manager, mcp_tool_manager, api_app, self)
+        return QtApp(
+            mcp_manager,
+            mcp_tool_manager,
+            api_app,
+            planning_service=planning_service,
+            execution_manager=execution_manager,
+        )
 
     def _init_webhook_client(self) -> WebhookClient | None:
         """Webhook 클라이언트 초기화"""
@@ -112,27 +143,57 @@ class App:
         logger.info("Webhook 클라이언트 초기화 완료")
         return webhook_client
 
+    def _init_llm_agent(self) -> BaseAgent:
+        """LLM Agent 초기화"""
+        logger.debug("LLM Agent 초기화 시작")
+        agent = AgentFactory.create_agent(
+            config_manager=self.config_manager,
+            mcp_tool_manager=self.mcp_tool_manager,
+            agent_type="problem"
+        )
+        logger.debug("LLM Agent 초기화 완료")
+        return agent
+
     def __init__(self) -> None:
         """애플리케이션 초기화"""
-        # 설정 관리자 초기화
-        self.config_manager = self._init_config()
-
-        # MCP 관리자 초기화
-        self.mcp_manager, self.mcp_tool_manager = self._init_mcp()
-
         # 공통 컴포넌트 초기화
         self.notification_signals = NotificationSignals()
-
+        
+        # Config 관리자 초기화
+        self.config_manager = self._init_config()
+        
+        # MCP 관리자 초기화
+        self.mcp_manager, self.mcp_tool_manager = self._init_mcp()
+        
+        # LLM 에이전트 초기화
+        self.llm_agent = self._init_llm_agent()
+        
+        # 계획 및 실행 서비스 초기화
+        self.planning_service = self._init_planning_service(self.llm_agent, self.mcp_tool_manager)
+        self.execution_manager = self._init_execution_manager(
+            self.llm_agent, self.mcp_tool_manager
+        )
+        
         # API 초기화
         self.api_app = self._init_api(
-            self.mcp_manager, self.mcp_tool_manager, self.notification_signals
+            self.mcp_manager,
+            self.mcp_tool_manager,
+            self.notification_signals
         )
-
-        # QT 초기화
-        self.qt_app = self._init_qt(self.mcp_manager, self.mcp_tool_manager, self.api_app)
-
-        # Webhook 클라이언트 초기화
+        
+        # QT 앱 초기화
+        self.qt_app = self._init_qt(
+            self.mcp_manager,
+            self.mcp_tool_manager,
+            self.api_app,
+            self.planning_service,
+            self.execution_manager,
+        )
+        
+        # 웹훅 클라이언트 초기화
         self.webhook_client = self._init_webhook_client()
+        
+        logger.info("애플리케이션 초기화 완료")
 
     def _start_webhook_client(self) -> None:
         """Webhook 클라이언트 시작 - 별도 스레드에서 실행"""

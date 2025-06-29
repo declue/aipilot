@@ -2,8 +2,8 @@
 
 from typing import Any, Dict
 
-from application.api.handlers.base_handler import BaseHandler
-from application.api.models.llm_request import LLMRequest
+from dspilot_app.api.handlers.base_handler import BaseHandler
+from dspilot_app.api.models.llm_request import LLMRequest
 
 
 class LLMHandler(BaseHandler):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""application.ui.presentation
+"""dspilot_app.ui.presentation
 
 Presentation layer components (PySide6 widgets).
 
@@ -9,16 +9,16 @@ Presentation layer components (PySide6 widgets).
 이동하거나 리팩토링할 예정입니다.
 """
 
-from application.ui.presentation.ai_chat_bubble import AIChatBubble  # type: ignore
-from application.ui.presentation.chat_bubble import ChatBubble  # type: ignore
-from application.ui.presentation.streaming_bubble_manager import (
+from dspilot_app.ui.presentation.ai_chat_bubble import AIChatBubble  # type: ignore
+from dspilot_app.ui.presentation.chat_bubble import ChatBubble  # type: ignore
+from dspilot_app.ui.presentation.streaming_bubble_manager import (
     StreamingBubbleManager,  # type: ignore
 )
-from application.ui.presentation.streaming_html_renderer import (
+from dspilot_app.ui.presentation.streaming_html_renderer import (
     StreamingHtmlRenderer,  # type: ignore
 )
-from application.ui.presentation.system_chat_bubble import SystemChatBubble  # type: ignore
-from application.ui.presentation.user_chat_bubble import UserChatBubble  # type: ignore
+from dspilot_app.ui.presentation.system_chat_bubble import SystemChatBubble  # type: ignore
+from dspilot_app.ui.presentation.user_chat_bubble import UserChatBubble  # type: ignore
 
 __all__: list[str] = [
     "ChatBubble",

@@ -10,10 +10,10 @@ from typing import Any, Dict, List
 
 from PySide6.QtCore import QTimer
 
-from application.ui.domain.streaming_state import StreamingState
-from application.ui.presentation.ai_chat_bubble import AIChatBubble
-from application.ui.presentation.streaming_html_renderer import StreamingHtmlRenderer
-from application.util.logger import setup_logger
+from dspilot_app.ui.domain.streaming_state import StreamingState
+from dspilot_app.ui.presentation.ai_chat_bubble import AIChatBubble
+from dspilot_app.ui.presentation.streaming_html_renderer import StreamingHtmlRenderer
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 

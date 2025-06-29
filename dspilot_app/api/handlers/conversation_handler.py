@@ -2,8 +2,8 @@
 
 from typing import Any, Dict
 
-from application.api.handlers.base_handler import BaseHandler
-from application.api.models.conversation_file_request import ConversationFileRequest
+from dspilot_app.api.handlers.base_handler import BaseHandler
+from dspilot_app.api.models.conversation_file_request import ConversationFileRequest
 
 
 class ConversationHandler(BaseHandler):

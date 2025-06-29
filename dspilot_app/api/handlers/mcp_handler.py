@@ -2,7 +2,7 @@
 
 from typing import Any, Dict
 
-from application.api.handlers.base_handler import BaseHandler
+from dspilot_app.api.handlers.base_handler import BaseHandler
 
 
 class MCPHandler(BaseHandler):

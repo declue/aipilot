@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from application.api.handlers import (
+from dspilot_app.api.handlers import (
     ChatHandler,
     ConversationHandler,
     LLMHandler,
@@ -11,10 +11,10 @@ from application.api.handlers import (
     NotificationHandler,
     UIHandler,
 )
-from application.llm.mcp.mcp_manager import MCPManager
-from application.llm.mcp.mcp_tool_manager import MCPToolManager
-from application.ui.signals.notification_signals import NotificationSignals
-from application.util.logger import setup_logger
+from dspilot_app.ui.signals.notification_signals import NotificationSignals
+from dspilot_core.llm.mcp.mcp_manager import MCPManager
+from dspilot_core.llm.mcp.mcp_tool_manager import MCPToolManager
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("api") or logging.getLogger("api")
 

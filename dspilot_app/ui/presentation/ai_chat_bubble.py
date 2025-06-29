@@ -16,8 +16,8 @@ from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QPushBu
 from PySide6.QtWidgets import QTextBrowser as _QtTextBrowser
 from PySide6.QtWidgets import QVBoxLayout
 
-from application.ui.presentation.base_chat_bubble import ChatBubble
-from application.util.logger import setup_logger
+from dspilot_app.ui.presentation.base_chat_bubble import ChatBubble
+from dspilot_core.util.logger import setup_logger
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
@@ -282,7 +282,7 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         """추론 과정과 함께 내용을 렌더링합니다."""
         import markdown
 
-        from application.util.markdown_manager import MarkdownManager
+        from dspilot_core.util.markdown_manager import MarkdownManager
 
         # 추론 과정을 마크다운으로 변환
         reasoning_html = self._markdown_to_styled_html(self.reasoning_content)
@@ -377,7 +377,7 @@ class AIChatBubble(ChatBubble):  # pylint: disable=too-many-ancestors
         )
 
         # 마크다운을 HTML로 변환
-        from application.util.markdown_manager import MarkdownManager
+        from dspilot_core.util.markdown_manager import MarkdownManager
 
         html_content = self._markdown_to_styled_html(content)
 

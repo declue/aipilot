@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication, QFrame, QLayout, QTextBrowser
 
-from application.util.logger import setup_logger
+from dspilot_core.util.logger import setup_logger
 
 if TYPE_CHECKING:
-    from application.ui.common.theme_manager import ThemeManager
+    from dspilot_app.ui.common.theme_manager import ThemeManager
 
 logger: logging.Logger = setup_logger("ui") or logging.getLogger("ui")
 
