@@ -1,6 +1,6 @@
 import asyncio
 
-from application.llm.workflow import BasicChatWorkflow
+from dspilot_core.llm.workflow import BasicChatWorkflow
 
 
 class DummyAgent:

@@ -108,7 +108,11 @@ class PlanningService:
             # JSON 파싱
             plan_data = self._parse_plan_response(response.response)
             if plan_data and plan_data.get("need_tools", False):
-                return self._create_execution_plan(plan_data.get("plan", {}))
+                execution_plan = self._create_execution_plan(plan_data.get("plan", {}))
+                # 실행 단계가 없는 경우는 도구 실행이 불필요한 것과 동일하게 간주하여 None 반환
+                if execution_plan and execution_plan.steps:
+                    return execution_plan
+                return None
 
         except Exception as e:
             self.output_manager.log_if_debug(f"계획 수립 실패: {e}", "warning")

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from application.llm.workflow.basic_chat_workflow import BasicChatWorkflow
-from application.llm.workflow.workflow_utils import (
+from dspilot_core.llm.workflow.basic_chat_workflow import BasicChatWorkflow
+from dspilot_core.llm.workflow.workflow_utils import (
     get_available_workflows,
     get_workflow,
     register_workflow,
@@ -92,7 +92,7 @@ class TestWorkflowUtils:
     
     def test_register_workflow(self):
         """워크플로우 등록 테스트"""
-        from application.llm.workflow.base_workflow import BaseWorkflow
+        from dspilot_core.llm.workflow.base_workflow import BaseWorkflow
         
         class TestWorkflow(BaseWorkflow):
             async def run(self, agent, message, streaming_callback=None):

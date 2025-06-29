@@ -31,6 +31,7 @@ print_response()
 """
 
 import logging
+import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -239,6 +240,12 @@ class OutputManager:
             print(message)
         else:
             print(f"{StyleColors.ERROR}❌ {message}{StyleColors.RESET_ALL}")
+
+        # 디버그/상세 모드일 때는 스택트레이스 출력으로 원인 파악 지원
+        if self.debug_mode or self.verbose_mode:
+            tb = traceback.format_exc()
+            if tb and tb.strip() != "NoneType: None":
+                print(f"{StyleColors.WARNING}{tb}{StyleColors.RESET_ALL}")
 
     def print_warning(self, message: str) -> None:
         """경고 메시지 출력"""

@@ -1,8 +1,9 @@
 import logging
 from typing import Any, Optional
 
+from dspilot_core.llm.agents.ask_agent import AskAgent
 from dspilot_core.llm.agents.base_agent import BaseAgent
-from dspilot_core.llm.agents.unified_agent import UnifiedAgent
+from dspilot_core.llm.agents.problem_agent import ProblemAgent
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class AgentFactory:
     `AgentFactory` 는 설정(ConfigManager) 내용을 읽어 현재 실행 맥락에 가장
     적합한 `BaseAgent` 서브클래스를 **동적으로 선택**하여 반환합니다.
 
-    현재 구현은 의사 결정 복잡도를 `UnifiedAgent` 내부로 이동시켜
+    현재 구현은 의사 결정 복잡도를 `ProblemAgent` 내부로 이동시켜
     팩토리에서 단순 생성만 수행하지만, 다음과 같은 확장 포인트를 제공합니다.
 
     1. **전략 추가** : `mode` 값에 따라 별도 Agent 클래스를 매핑.
@@ -32,21 +33,29 @@ class AgentFactory:
     """
 
     @staticmethod
-    def create_agent(config_manager: Any, mcp_tool_manager: Optional[Any] = None) -> BaseAgent:
-        """UnifiedAgent를 생성합니다 (모든 처리는 Workflow에 위임)"""
+    def create_agent(
+        config_manager: Any,
+        mcp_tool_manager: Optional[Any] = None,
+        agent_type: str = "problem",
+    ) -> BaseAgent:
+        """AskAgent 또는 ProblemAgent 를 생성하여 반환한다.
+
+        Args:
+            config_manager: 설정 매니저
+            mcp_tool_manager: MCP 도구 매니저
+            agent_type: "ask" 또는 "problem" (대소문자 무관). 기본값은 problem.
+        """
         try:
-            # 설정에서 모드 가져오기
-            llm_config = config_manager.get_llm_config()
-            mode = llm_config.get("mode", "basic").lower()
+            atype = str(agent_type or "problem").lower()
 
-            logger.info("UnifiedAgent 생성: mode=%s", mode)
+            if atype in ("ask", "basic"):
+                logger.info("AskAgent 생성 (type=%s)", atype)
+                return AskAgent(config_manager, mcp_tool_manager)
 
-            # 항상 UnifiedAgent 반환 (내부에서 워크플로우 선택)
-            agent = UnifiedAgent(config_manager, mcp_tool_manager)
-            logger.info("UnifiedAgent 생성 완료")
-            return agent
+            # default → ProblemAgent
+            logger.info("ProblemAgent 생성 (type=%s)", atype)
+            return ProblemAgent(config_manager, mcp_tool_manager)
 
-        except Exception as e:
-            logger.error("Agent 생성 중 오류: %s", e)
-            # 오류 시에도 UnifiedAgent 반환 (기본 워크플로우로 처리)
-            return UnifiedAgent(config_manager, mcp_tool_manager)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("Agent 생성 중 오류 – ProblemAgent 폴백: %s", exc)
+            return ProblemAgent(config_manager, mcp_tool_manager)

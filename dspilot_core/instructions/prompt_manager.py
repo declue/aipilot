@@ -36,7 +36,7 @@ class PromptManager:
         """프롬프트 디렉토리 존재 확인 및 생성"""
         if not self.instructions_dir.exists():
             self.instructions_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"프롬프트 디렉토리 생성: {self.instructions_dir}")
+            logger.info("프롬프트 디렉토리 생성: %s", self.instructions_dir)
 
     def get_prompt(self, prompt_name: str, use_cache: bool = True) -> Optional[str]:
         """프롬프트 템플릿 로드
@@ -61,14 +61,14 @@ class PromptManager:
                 if use_cache:
                     self._prompt_cache[prompt_name] = prompt_content
 
-                logger.debug(f"프롬프트 로드 성공: {prompt_name}")
+                logger.debug("프롬프트 로드 성공: %s", prompt_name)
                 return prompt_content
             else:
-                logger.warning(f"프롬프트 파일 없음: {prompt_file}")
+                logger.warning("프롬프트 파일 없음: %s", prompt_file)
                 return None
 
         except Exception as e:
-            logger.error(f"프롬프트 로드 실패 {prompt_name}: {e}")
+            logger.error("프롬프트 로드 실패 %s: %s", prompt_name, e)
             return None
 
     def get_formatted_prompt(self, prompt_name: str, **kwargs) -> Optional[str]:
@@ -88,10 +88,10 @@ class PromptManager:
         try:
             return template.format(**kwargs)
         except KeyError as e:
-            logger.error(f"프롬프트 포맷팅 실패 - 누락된 변수 {prompt_name}: {e}")
+            logger.error("프롬프트 포맷팅 실패 - 누락된 변수 %s: %s", prompt_name, e)
             return None
         except Exception as e:
-            logger.error(f"프롬프트 포맷팅 오류 {prompt_name}: {e}")
+            logger.error("프롬프트 포맷팅 오류 %s: %s", prompt_name, e)
             return None
 
     def list_available_prompts(self) -> list[str]:
@@ -105,7 +105,7 @@ class PromptManager:
             for file_path in self.instructions_dir.glob("*.txt"):
                 prompt_files.append(file_path.stem)
         except Exception as e:
-            logger.error(f"프롬프트 목록 조회 실패: {e}")
+            logger.error("프롬프트 목록 조회 실패: %s", e)
 
         return sorted(prompt_files)
 
@@ -118,7 +118,7 @@ class PromptManager:
         for prompt_name in cached_prompts:
             self.get_prompt(prompt_name, use_cache=True)
 
-        logger.info(f"프롬프트 캐시 재로드 완료: {len(cached_prompts)}개")
+        logger.info("프롬프트 캐시 재로드 완료: %s개", len(cached_prompts))
 
     def add_custom_prompt(self, prompt_name: str, prompt_content: str) -> bool:
         """커스텀 프롬프트 추가
@@ -139,11 +139,11 @@ class PromptManager:
             # 캐시에도 추가
             self._prompt_cache[prompt_name] = prompt_content
 
-            logger.info(f"커스텀 프롬프트 추가 성공: {prompt_name}")
+            logger.info("커스텀 프롬프트 추가 성공: %s", prompt_name)
             return True
 
         except Exception as e:
-            logger.error(f"커스텀 프롬프트 추가 실패 {prompt_name}: {e}")
+            logger.error("커스텀 프롬프트 추가 실패 %s: %s", prompt_name, e)
             return False
 
     def get_cache_status(self) -> Dict[str, int]:

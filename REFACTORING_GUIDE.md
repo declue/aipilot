@@ -50,19 +50,19 @@ prompt = get_prompt("analysis_prompts", user_message="질문", tools_desc="도�
 #### Open/Closed Principle (OCP)
 
 - 새로운 프롬프트 타입 추가 시 기존 코드 수정 없이 확장 가능
-- 새로운 워크플로우 추가 시 UnifiedAgent 수정 없이 확장 가능
+- 새로운 워크플로우 추가 시 ProblemAgent 수정 없이 확장 가능
 
 #### Dependency Inversion Principle (DIP)
 
 - 구체적 구현 대신 인터페이스에 의존
 - 프롬프트 관리자를 의존성 주입으로 사용
 
-### 3. UnifiedAgent 개선
+### 3. ProblemAgent 개선
 
 #### 범용 에이전트 설계
 
 ```python
-class UnifiedAgent(BaseAgent):
+class ProblemAgent(BaseAgent):
     """
     범용 통합 Agent - Cursor/Claude Code 스타일의 에이전트 구현
     
@@ -153,7 +153,7 @@ class MyCustomWorkflow:
 #### 2. UnifiedAgent에 워크플로우 등록
 
 ```python
-# unified_agent.py의 _mode_to_workflow 딕셔너리에 추가
+# problem_agent.py의 _mode_to_workflow 딕셔너리에 추가
 self._mode_to_workflow = {
     "basic": "basic_chat",
     "mcp_tools": "agent",
@@ -228,7 +228,7 @@ class MyClass:
 
 1. 워크플로우 클래스 구현
 2. `workflow_utils.py`에 등록
-3. `UnifiedAgent`의 매핑에 추가
+3. `ProblemAgent`의 매핑에 추가
 
 ## 성능 개선
 

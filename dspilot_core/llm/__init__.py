@@ -19,7 +19,7 @@ DSPilot Core – LLM 서브시스템
 ```mermaid
 graph TD
     subgraph Agent Layer
-        UA[UnifiedAgent] --> WF[Workflow Engine]
+        PA[ProblemAgent] --> WF[Workflow Engine]
     end
     subgraph Service Layer
         WF -->|Executes Steps| MCP[MCP ToolManager]

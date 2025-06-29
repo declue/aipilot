@@ -35,7 +35,7 @@ class SearchToolResultProcessor(ToolResultProcessor):
             return self._format_search_results(result_obj, results_list)
 
         except Exception as e:
-            logger.error(f"검색 결과 처리 중 오류: {e}")
+            logger.error("검색 결과 처리 중 오류: %s", e)
             return f"- 검색 결과 처리 실패: {tool_result[:100]}..."
 
     def _format_search_results(self, result_obj: Dict, results_list: List[Dict]) -> str:

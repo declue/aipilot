@@ -1,8 +1,8 @@
 """
 MCP 도구 관리자 - langchain-mcp-adapters 0.1.0+ 사용 + 캐싱 시스템
 """
-
 import asyncio
+import io
 import logging
 import os
 import subprocess
@@ -54,7 +54,7 @@ def _silent_popen(*args, **kwargs):
 # 전역 패치 적용 (한 번만 실행)
 if not hasattr(subprocess.Popen, '_mcp_patched'):
     subprocess.Popen = _silent_popen
-    subprocess.Popen._mcp_patched = True
+    subprocess.Popen._mcp_patched = True # pylint: disable=protected-access
 
 # MCP 관련 로거들의 출력 레벨을 ERROR로 설정하여 불필요한 로그 억제
 
@@ -129,8 +129,6 @@ def suppress_subprocess_output():
 @contextmanager
 def suppress_all_output():
     """모든 출력을 완전히 차단하는 더 강력한 컨텍스트 매니저"""
-    import contextlib
-    import io
 
     # 원본 출력 스트림 저장
     original_stdout = sys.stdout

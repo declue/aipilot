@@ -655,7 +655,6 @@ class BaseAgent(ConfigMixin, ConversationMixin, ToolProcessorMixin, LLMInterface
                     response, 'content') else str(response)
 
                 # 마크다운 코드 블록 제거하고 JSON 추출
-                import re
 
                 # 마크다운 코드 블록을 찾아서 JSON 추출
                 json_patterns = [
@@ -750,8 +749,13 @@ class BaseAgent(ConfigMixin, ConversationMixin, ToolProcessorMixin, LLMInterface
                 }
 
             except json.JSONDecodeError:
-                logger.error("LLM 응답의 JSON 파싱 실패: %s", response_text)
-                return None
+                # JSON 형식이 아닌 응답은 "도구 실행이 필요 없는 직접 답변" 으로 간주
+                logger.debug("도구 선택 JSON 미검출 – 직접 응답 처리: %s", response_text[:100].replace("\n", " "))
+                return {  # 기본 응답 데이터 구조와 맞추어 직접 반환
+                    "response": response_text.strip(),
+                    "reasoning": "도구 실행 불필요",
+                    "used_tools": []
+                }
             except Exception as inner_exc:
                 logger.error("도구 선택/실행 중 오류: %s", inner_exc)
                 return None

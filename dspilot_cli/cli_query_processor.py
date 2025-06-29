@@ -231,12 +231,10 @@ class QueryProcessor:
                 return {"has_plan": True, "plan_duplicate": True, "has_errors": False}
 
         if not plan:
-            # 도구가 필요하지 않은 경우 직접 응답
-            # system_manager를 통해 llm_agent 가져오기 (임시 해결책)
-            # 더 나은 방법은 의존성 주입을 통해 llm_agent를 직접 받는 것
-            if hasattr(self.execution_manager, '_llm_agent'):
-                llm_agent = self.execution_manager._llm_agent  # pylint: disable=protected-access
-
+            # ExecutionManager 가 보유한 llm_agent 사용
+            llm_agent = getattr(self.execution_manager, '_llm_agent', None) or getattr(self.execution_manager, 'llm_agent', None)
+            if llm_agent is not None:
+                
                 if hasattr(self.output_manager, 'stream_mode') and self.output_manager.stream_mode:
                     self.output_manager.start_streaming_output()
 
