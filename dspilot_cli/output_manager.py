@@ -72,7 +72,7 @@ class OutputManager:
 
     def log_if_debug(self, message: str, level: str = "info") -> None:
         """디버그 모드일 때만 로그 출력"""
-        if self.debug_mode or self.verbose_mode:
+        if self.debug_mode:
             if level == "error":
                 self.logger.error(message)
             elif level == "warning":
