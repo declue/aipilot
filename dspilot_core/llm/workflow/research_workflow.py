@@ -243,7 +243,6 @@ result = await workflow.run(agent, research_topic, research_progress)
 - **협업 기능**: 여러 에이전트 간 리서치 결과 공유
 """
 
-import datetime
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
@@ -366,12 +365,15 @@ class ResearchWorkflow(BaseWorkflow):
             List[str]: 생성된 검색 쿼리 목록
         """
         query_prompt = f"""
-        주어진 리서치 주제에 대해 가장 효과적이고 핵심적인 검색 쿼리를 3~5개 생성해주세요.
+        주어진 리서치 주제에 대해 가장 효과적이고 핵심적인 검색 쿼리를 생성해주세요.
 
         리서치 주제: "{topic}"
 
         지침:
         - 사용자의 요청 의도를 정확히 파악하고, 그에 맞는 검색어를 만드세요.
+        - 사용자가 "1건", "하나", "아무거나 1개" 등으로 개수를 명시했다면, 1-2개의 핵심적인 검색어만 생성하세요.
+        - 사용자가 "5개", "여러 개" 등으로 여러 개를 요청했다면, 요청한 개수 만큼 검색어를 생성하세요. 여러개라면 10개를 의미합니다.
+        - 개수 언급이 없다면 3-4개의 검색어를 생성하세요.
         - '어제', '최신' 등 시간 관련 표현이 있다면 검색어에 반영하세요.
         - 일반적인 내용보다는, 주제의 핵심을 파고드는 구체적인 검색어를 우선으로 해주세요.
         - 너무 광범위하거나 주제와 관련 없는 검색어는 피해주세요.
@@ -403,11 +405,11 @@ class ResearchWorkflow(BaseWorkflow):
                 queries = query_data.get("queries", [])
             else:
                 # JSON 파싱 실패시 기본 쿼리 생성
-                queries = [topic, f"{topic} latest news", f"{topic} analysis"]
+                queries = [topic]
         except Exception as e:
             logger.warning(f"검색 쿼리 파싱 실패: {e}")
             # 폴백: 기본 쿼리 생성
-            queries = [topic, f"{topic} 최신 동향", f"{topic} 분석", f"{topic} 전문가 의견"]
+            queries = [topic]
 
         self.search_queries = queries
         logger.debug(f"검색 쿼리 생성 완료: {len(queries)}개")
@@ -632,15 +634,31 @@ class ResearchWorkflow(BaseWorkflow):
         if not any(keyword in original_message for keyword in keywords):
             return False, None
 
+        # MCP 도구를 사용하여 현재 날짜 가져오기
+        current_date_info = None
+        try:
+            if hasattr(agent, "mcp_tool_manager") and agent.mcp_tool_manager:
+                tools = await agent.mcp_tool_manager.get_langchain_tools()
+                date_tool = next((tool for tool in tools if tool.name == "get_current_date"), None)
+                
+                if date_tool:
+                    date_result = await date_tool.ainvoke({})
+                    current_date_info = date_result.get("result", "")
+                    logger.info(f"MCP 도구로 현재 날짜 확인: {current_date_info}")
+        except Exception as e:
+            logger.warning(f"MCP 날짜 도구 사용 실패: {e}")
+
         prompt = f"""
         사용자의 요청 메시지를 분석하여 저장할 파일명을 결정해주세요.
 
         요청 메시지: "{original_message}"
+        현재 날짜 정보: "{current_date_info or '정보 없음'}"
 
         분석 지침:
-        1. '어제 날짜', '오늘 날짜' 등의 표현이 있으면 실제 날짜로 변환해주세요. (예: 어제 날짜는 {datetime.date.today() - datetime.timedelta(days=1)} 입니다.)
-        2. 확장자가 명시되지 않았으면, 내용에 맞춰 적절한 확장자(예: .md, .txt)를 붙여주세요.
-        3. 파일명을 특정할 수 없으면, 메시지 내용을 기반으로 `research_summary.md`와 같이 의미있는 기본 파일명을 제안해주세요.
+        1. '어제 날짜', '오늘 날짜' 등의 표현이 있으면 실제 날짜로 변환해주세요.
+        2. 현재 날짜 정보가 제공되었다면 이를 활용하여 어제 날짜를 계산해주세요.
+        3. 확장자가 명시되지 않았으면, 내용에 맞춰 적절한 확장자(예: .md, .txt)를 붙여주세요.
+        4. 파일명을 특정할 수 없으면, 메시지 내용을 기반으로 `research_summary.md`와 같이 의미있는 기본 파일명을 제안해주세요.
 
         JSON 형식으로 응답해주세요:
         {{
@@ -665,6 +683,7 @@ class ResearchWorkflow(BaseWorkflow):
             logger.warning(f"파일명 추출 실패: {e}. 기본 파일명을 사용합니다.")
         
         # Fallback
+        import datetime
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         return True, f"research_report_{timestamp}.md"
 
