@@ -9,8 +9,38 @@ logger = logging.getLogger(__name__)
 
 class AdaptiveWorkflow(BaseWorkflow):
     """
-    사용자 요청을 분석하여 필요한 도구와 단계를 자동으로 계획하고 실행하는 적응형 워크플로우
-    키워드나 특정 조건에 의존하지 않는 범용적인 접근법
+    AdaptiveWorkflow 모듈
+    =====================
+
+    `AdaptiveWorkflow` 는 **다단계 플랜-앤-실행(Plan & Execute)** 전략을 통해
+    사용자 질문을 분석하고, 필요한 MCP 도구 시퀀스를 자동 설계한 뒤 실행·통합
+    하는 고급 워크플로우입니다.
+
+    알고리즘 흐름
+    -------------
+    1. **Analyze & Plan** : LLM 프롬프트를 이용해 JSON 형태의 계획(steps)을 작성.  
+        각 step 은 tool 이름·arguments·dependencies 를 포함.
+    2. **Sequential Execution** : 의존성 그래프를 평가하며 도구를 순차 실행.
+    3. **Error Handling / Retry** : 단계별 성공 여부 및 오류를 기록, 필요 시 스킵.
+    4. **Integrate & Finalize** : 결과를 정제·요약하여 최종 답변을 생성.
+
+    특징
+    ----
+    • *도구 무관성* : Tool 메타데이터만 주어지면 새로운 MCP 도구에도 즉시 대응.  
+    • *결과 참조* : `${step_N_result}` 플레이스홀더 치환으로 단계 간 데이터 전달.
+    • *스트리밍 피드백* : 실행 진행 상황을 실시간 콜백으로 UI/CLI 에 전송.
+
+    Mermaid 활동 다이어그램
+    -----------------------
+    ```mermaid
+    flowchart TD
+        A[Analyze & Plan] --> B{Plan Valid?}
+        B -- No --> G[Fallback Basic LLM]
+        B -- Yes --> C[Execute Steps]
+        C --> D[Aggregate Results]
+        D --> E[Generate Summary]
+        E --> F[Return Answer]
+    ```
     """
 
     def __init__(self):

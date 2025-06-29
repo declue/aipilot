@@ -9,12 +9,41 @@ logger = logging.getLogger(__name__)
 
 class UnifiedAgent(BaseAgent):
     """
-    범용 통합 Agent - Cursor/Claude Code 스타일의 에이전트 구현
+    UnifiedAgent 모듈
+    =================
 
-    특징:
-    - 범용적이고 확장 가능한 설계
-    - 특정 MCP 도구에 의존하지 않는 구조
-    - 다양한 워크플로우를 지원하는 플러그인 시스템
+    `UnifiedAgent` 는 DSPilot 의 **All-in-One 에이전트** 구현체입니다. 사용자가
+    모델 모드( basic / workflow / mcp_tools / research 등) 를 지정하면 내부적으로
+    알맞은 워크플로우를 선택하여 LLM 호출, MCP 도구 사용, 검색 등 복합 작업을
+    수행합니다.
+
+    디자인 포인트
+    -------------
+    1. **워크플로우 디스패치** : `mode` → `workflow_name` 매핑 후 `get_workflow()`
+        메타 팩토리로 클래스를 가져와 인스턴스화.
+    2. **캐싱** : 동일 파라미터로 재호출 시 생성 비용 절감.
+    3. **Interaction Mode** : CLI/GUI 상의 *full-auto* 플래그와 연동해 도구 실행 전
+        사용자 승인 여부를 워크플로우에 전파.
+
+    시퀀스
+    -------
+    ```mermaid
+    sequenceDiagram
+        participant User
+        participant UnifiedAgent
+        participant Workflow
+        participant LLMService
+        User->>UnifiedAgent: generate_response(msg)
+        UnifiedAgent->>Workflow: run(self, msg)
+        Workflow->>LLMService: astream()/ainvoke
+        Workflow-->>UnifiedAgent: result
+        UnifiedAgent-->>User: formatted response
+    ```
+
+    확장 가이드
+    -----------
+    • 새 워크플로우를 추가하려면 `workflow/workflow_utils.py` 의 등록 함수나
+      `get_workflow()` 팩토리에서 이름을 매핑하면 이 Agent 가 자동 인식합니다.
     """
 
     def __init__(self, config_manager: Any, mcp_tool_manager: Optional[Any] = None) -> None:

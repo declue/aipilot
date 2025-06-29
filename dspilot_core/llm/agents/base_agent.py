@@ -1,3 +1,49 @@
+"""
+BaseAgent 모듈
+==============
+
+`BaseAgent` 는 모든 DSPilot LLM 에이전트의 **공통 기능을 캡슐화**하는 추상
+베이스 클래스입니다. 주요 책임은 다음과 같습니다.
+
+1. **LLM 설정 로딩 & 검증**  
+   `ConfigManager` 로부터 `LLMConfig` 딕셔너리를 받아 pydantic 모델로 마샬링
+   후 `LLMConfigValidator` 로 체크.
+2. **Service 초기화**  
+   - `LLMService` : LangChain Chat API 호출 래퍼  
+   - `ConversationService` : 사용자·시스템·assistant 메시지 스토리지
+3. **Tool Result Processing**  
+   `ToolProcessorMixin` 과 `ToolResultProcessorRegistry` 로 MCP 실행 결과를
+   후처리 및 요약.
+4. **Mode Dispatch**  
+   `generate_response()` 에서 모드(basic / mcp_tools / workflow)에 따라
+   별도 핸들러로 분기.
+5. **ReAct Agent 지원**  
+   LangGraph 기반 React agent를 초기화하여 *자율 도구 사용* 모드를 지원.
+
+확장 가이드
+-----------
+• 커스텀 Agent 를 만들려면 본 클래스를 상속 후 `_handle_*_mode` 또는
+  `generate_response` 를 오버라이드하세요.
+• 믹스인 설계로 특정 기능(설정, 대화, 결과 처리)을 재정의하기 용이합니다.
+
+Mermaid 흐름
+------------
+```mermaid
+stateDiagram-v2
+    [*] --> LoadConfig
+    LoadConfig --> InitServices
+    InitServices --> WaitQuery
+    WaitQuery -->|generate_response| DispatchMode
+    DispatchMode --> BasicFlow
+    DispatchMode --> ToolFlow
+    DispatchMode --> WorkflowFlow
+    BasicFlow --> ReturnAnswer
+    ToolFlow --> ReturnAnswer
+    WorkflowFlow --> ReturnAnswer
+    ReturnAnswer --> WaitQuery
+```
+"""
+
 import json
 import logging
 import re

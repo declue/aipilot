@@ -1,6 +1,45 @@
 #!/usr/bin/env python3
 """
 DSPilot CLI 사용자 상호작용 관리 모듈
+===================================
+
+`InteractionManager` 는 CLI 애플리케이션과 **사용자 간 IO** 를 추상화합니다.
+
+주요 책임
+---------
+1. 입력 수집 (get_user_input, get_new_request)
+2. 확인/선택 프롬프트 처리 (get_user_confirmation, get_continue_confirmation)
+3. **Full-Auto 모드** 지원 – 무인 실행 시 사용자 상호작용을 무시하고 자동 진행
+
+상태 머신
+----------
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle -->|user input| AwaitConfirm
+    AwaitConfirm -->|y| Proceed
+    AwaitConfirm -->|s| Skip
+    AwaitConfirm -->|m| Modify
+    AwaitConfirm -->|n| Cancel
+    Proceed --> Idle
+    Skip --> Idle
+    Modify --> Idle
+    Cancel --> Idle
+```
+
+사용 예시
+---------
+```python
+im = InteractionManager(output_manager, full_auto_mode=False)
+choice = im.get_user_confirmation("파일 삭제할까요?", "delete_file", {"path": "foo.txt"})
+if choice is UserChoiceType.PROCEED:
+    delete_file("foo.txt")
+```
+
+테스트 전략
+-----------
+- `monkeypatch` 로 `builtins.input` 을 고정하여 다양한 키 입력 시나리오 검증
+- Full-Auto 모드는 입력 없이 항상 True/PROCEED 를 반환하는지 확인
 """
 
 from typing import Any, Dict

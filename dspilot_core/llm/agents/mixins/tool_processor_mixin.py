@@ -8,6 +8,7 @@ import logging
 import re
 from typing import Any, Callable, Dict, List, Optional
 
+from dspilot_core.instructions import get_prompt as load_prompt
 from dspilot_core.llm.models.conversation_message import ConversationMessage
 from dspilot_core.llm.processors.base_processor import ToolResultProcessorRegistry
 from dspilot_core.llm.processors.search_processor import SearchToolResultProcessor
@@ -78,24 +79,18 @@ class ToolProcessorMixin:
             tools_count = len(used_tools)
             tools_summary = ", ".join(used_tools)
 
-            analysis_prompt = (
-                f"사용자 요청: {user_message}\n\n"
-                f"실행된 도구들 ({tools_count}개): {tools_summary}\n\n"
-                f"수집된 정보:\n{formatted_results}\n\n"
-                "위 정보들을 종합하여 사용자의 요청에 대한 완전하고 유용한 답변을 제공해주세요.\n\n"
-                "**다중 도구 결과 종합 지침:**\n"
-                "- 여러 도구의 결과를 논리적으로 연결하여 통합된 답변 제공\n"
-                "- 각 도구 결과의 핵심 정보를 효과적으로 활용\n"
-                "- 사용자가 원하는 모든 정보를 포괄적으로 포함\n"
-                "- 정보 간의 관련성이나 차이점이 있다면 명확히 설명\n"
-                "- 간결하면서도 완전한 답변으로 구성\n"
-                "- 필요시 시간순, 중요도순 등으로 정보를 구조화\n\n"
-                "사용자의 질문 의도를 정확히 파악하여 가장 유용한 형태로 정보를 제공해주세요."
+            # 프롬프트 템플릿 로드
+            analysis_prompt = load_prompt(
+                "tool_results_analysis_prompt",
+                user_message=user_message,
+                tools_count=tools_count,
+                tools_summary=tools_summary,
+                formatted_results=formatted_results,
             )
 
-            if not analysis_prompt.strip():
-                logger.warning("분석 프롬프트가 비어있음")
-                return formatted_results
+            # 템플릿을 찾지 못하는 경우는 없다고 가정하므로, None 이면 예외 발생
+            if analysis_prompt is None or not analysis_prompt.strip():
+                raise ValueError("tool_results_analysis_prompt 템플릿을 로드하지 못했습니다.")
 
             temp_messages = [ConversationMessage(
                 role="user", content=analysis_prompt)]

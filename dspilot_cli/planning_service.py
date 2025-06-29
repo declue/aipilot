@@ -1,6 +1,41 @@
 #!/usr/bin/env python3
 """
-DSPilot CLI 계획 수립 서비스
+DSPilot CLI 계획 수립 서비스 (PlanningService)
+============================================
+
+사용자 요청을 분석하여 **ExecutionPlan(JSON)** 으로 변환하는 컴포넌트입니다.
+LangChain 호환 MCP Tool 메타데이터를 LLM 에 전달하고, 응답에서 JSON 계획을
+추출·검증한 뒤 `ExecutionManager` 로 반환합니다.
+
+알고리즘 단계
+-------------
+1. 사용 가능한 MCP 도구 메타정보 수집 (`_get_available_tools`)
+2. 분석 프롬프트 렌더링 및 LLM 호출
+3. LLM 응답에서 JSON 구조 추출 (`_parse_plan_response`)
+4. `need_tools` 플래그가 True 이면 `_create_execution_plan` 수행
+
+데이터 흐름
+-----------
+```mermaid
+sequenceDiagram
+    participant EM as ExecutionManager
+    participant PS as PlanningService
+    participant AG as LLM Agent
+    EM->>PS: analyze_request_and_plan(user_message)
+    PS->>AG: analysis_prompt
+    AG-->>PS: JSON (need_tools, plan)
+    PS-->>EM: ExecutionPlan | None
+```
+
+확장 가이드
+-----------
+- 새로운 프롬프트 버전을 추가하려면 `PromptNames` 에 상수를 정의하고, 프롬프트파일을 템플릿 디렉터리에 넣으세요.
+- JSON 파싱 규칙이 변경되면 `_parse_plan_response` 를 오버라이드하여 맞춤 처리 가능합니다.
+
+테스트 전략
+-----------
+- 실패 케이스: LLM 이 비JSON 응답을 반환할 때 None 이 반환되는지 확인
+- 성공 케이스: 미리 준비된 샘플 JSON 응답을 주입해 ExecutionPlan 객체 생성 검증
 """
 
 import json

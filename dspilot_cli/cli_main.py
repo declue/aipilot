@@ -1,6 +1,32 @@
 #!/usr/bin/env python3
 """
 DSPilot CLI - 메인 엔트리 포인트
+
+이 모듈은 *프로세스 부트스트랩per* 로서 다음 책임을 집니다.
+
+1. **명령행 인수 파싱** (`argparse`)  
+   사용자 옵션을 읽어 `DSPilotCLI` 인스턴스 생성에 필요한 파라미터로 변환합니다.
+2. **로깅·컬러 초기화**  
+   `colorama` 를 통해 Windows 호환 ANSI 컬러 지원, 로깅 레벨 설정.
+3. **특수 명령 처리**  
+   `--tools`, `--diagnose` 등은 본 모듈에서 바로 처리하여 빠른 응답 제공.
+4. **비동기 앱 실행**  
+   `asyncio.run()` 으로 `DSPilotCLI.run()` 호출.
+
+아래 ASCII 시퀀스 다이어그램은 주요 흐름을 보여줍니다.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI_Main as cli_main.py
+    participant DSPilotCLI
+    participant SystemManager
+    User->>CLI_Main: dspilot_cli --full-auto "질문"
+    CLI_Main->>DSPilotCLI: 인스턴스화
+    CLI_Main-->>DSPilotCLI: run(query)
+    DSPilotCLI->>SystemManager: initialize()
+    DSPilotCLI->>User: (응답)
+```
 """
 
 import argparse
@@ -138,7 +164,7 @@ async def handle_special_commands(cli: DSPilotCLI, args) -> bool:
 
     if args.diagnose:
         await cli.initialize()
-        await cli.command_handler._show_status_with_session()
+        await cli.command_handler._show_status_with_session()  # pylint: disable=protected-access
         return True
 
     return False

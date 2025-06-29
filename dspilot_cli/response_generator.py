@@ -1,6 +1,42 @@
 #!/usr/bin/env python3
 """
-DSPilot CLI 응답 생성 서비스
+DSPilot CLI 응답 생성 서비스 (ResponseGenerator)
+==============================================
+
+`ResponseGenerator` 는 **단계별 실행 결과**를 기반으로 LLM 에 **최종 분석 프롬프트**를
+보내고 사용자에게 전달할 응답을 생성합니다. 또한 스트리밍 모드를 지원하여
+토큰 단위 출력이 가능합니다.
+
+동작 흐름
+---------
+```mermaid
+flowchart TD
+    A[StepResults] --> RG(ResponseGenerator)
+    RG -->|results_summary| LLM
+    LLM -->|analysis| RG
+    RG --> OM[OutputManager]
+    OM --> User
+```
+
+주요 기능
+---------
+1. _create_results_summary(): 단계 결과를 요약
+2. generate_final_response(): LLM 호출 후 응답 출력
+   • 스트리밍 모드 지원 (start_streaming_output / finish_streaming_output)
+3. 폴백 처리: 프롬프트 로드 실패 또는 LLM 호출 실패 시 최소 결과 출력
+
+사용 예시
+---------
+```python
+rg = ResponseGenerator(output_manager, llm_agent)
+await rg.generate_final_response(prompt, step_results)
+```
+
+테스트 전략
+-----------
+- `step_results` 에 다양한 크기의 결과를 넣어 요약 길이 제한을 검증
+- LLM 호출을 mock 하여 streaming/non-streaming 두 모드 테스트
+- 프롬프트 로드 실패 상황을 simulate 하여 `_output_fallback_response` 호출 확인
 """
 
 from typing import Any, Callable, Dict, Optional

@@ -1,6 +1,33 @@
 #!/usr/bin/env python3
 """
 DSPilot CLI 출력 관리 모듈
+=========================
+
+`OutputManager` 는 CLI 애플리케이션의 **모든 터미널 I/O** 를 단일 지점에서
+관리합니다. 표준 출력은 물론, 로깅·컬러 스타일·스트리밍 버퍼 관리까지 담당해
+다양한 모드(조용한 모드, 디버그, 스트리밍 등)에 대응합니다.
+
+역할 & 특징
+-----------
+1. **스타일 레이어** : `StyleColors` 로 정의된 ANSI 컬러 코드를 이용해 가독성
+   높은 메시지를 출력합니다.
+2. **로깅 래퍼**      : Python `logging` API 를 감싸 `debug_mode`·`verbose_mode`
+   여부에 따라 동적 로그 레벨 제어.
+3. **스트리밍 지원**  : OpenAI / LLM 응답을 청크 단위로 받아 실시간 표시.
+4. **사용자 상호작용 UI** : `InteractionManager` 에서 요청하는 선택 프롬프트를
+   표준화된 형식으로 출력.
+5. **테스트 친화성**  : 모든 출력 함수는 순수 I/O 이외의 부작용이 없어 모킹이
+   용이하도록 설계했습니다.
+
+간략 시퀀스
+------------
+```text
+print_response()
+    ├─ quiet_mode ?
+    │    ├─ True  → 응답만 출력
+    │    └─ False → 컬러 태그 적용 후 출력
+    └─ (stream_mode 시) chunk → handle_streaming_chunk()
+```
 """
 
 import logging
@@ -13,7 +40,10 @@ from dspilot_cli.constants import Messages, StyleColors
 class OutputManager:
     """출력 관리를 담당하는 클래스"""
 
-    def __init__(self, quiet_mode: bool = False, debug_mode: bool = False, stream_mode: bool = False,
+    def __init__(self, 
+                 quiet_mode: bool = False, 
+                 debug_mode: bool = False, 
+                 stream_mode: bool = False,
                  verbose_mode: bool = False) -> None:
         """
         출력 관리자 초기화

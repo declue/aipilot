@@ -102,6 +102,9 @@ class Defaults:
     MAX_STEP_RETRIES = 2
     VALIDATE_MODE = "auto"  # auto|off|strict
 
+    # 1회 프롬프트 토큰 예산 (시스템/유저/컨텍스트 포함)
+    MAX_PROMPT_TOKENS = 1000000
+
 
 # 프롬프트 이름 상수 (파일 기반으로 변경)
 class PromptNames:

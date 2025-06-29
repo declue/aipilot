@@ -1,6 +1,38 @@
 #!/usr/bin/env python3
 """
 DSPilot CLI 시스템 관리 모듈
+===========================
+
+`SystemManager` 는 DSPilot CLI 의 **인프라 컨테이너** 입니다. 
+CLI 수준에서 필요한 모든 하위 시스템(설정, MCP, LLM Agent 등)을 생성·수명 주기 관리합니다.
+또한 다른 모듈이 이 복잡도를 몰라도 되도록 파사드(Facade) 역할을 수행합니다.
+
+주요 책임
+---------
+1. **ConfigManager** : 설정 파일 로드 및 변경 감시.
+2. **MCPManager**    : 외부 MCP 프로세스(gRPC/STDIO 등) 초기화.
+3. **MCPToolManager**: 도구 메타데이터 로드·캐시.
+4. **LLM Agent**      : 프롬프트 관리·대화 컨텍스트 유지 담당 객체.
+5. **Logging 필터링** : noisy 한 MCP 서버 로그를 억제하여 CLI UX 향상.
+6. **Cleanup**        : 종료 시 자원 반납 및 임시 파일 정리.
+
+시퀀스 개요
+-----------
+```text
+initialize()
+    ├─ _setup_mcp_logging()
+    ├─ ConfigManager.load_config()
+    ├─ MCPManager(...)
+    ├─ MCPToolManager.initialize()
+    └─ AgentFactory.create_agent()
+```
+
+아키텍처 원칙
+-------------
+- **SRP** : 각 컴포넌트는 하나의 책임만 가지며, SystemManager 는 오케스트레이션
+  만 담당합니다.
+- **DIP** : 상위 레이어에서 구체 클래스 대신 인터페이스(프로토콜)를 의존.
+- **OCP** : 새로운 MCP 도구가 추가되어도 기존 코드 변경 없이 확장 가능.
 """
 
 import logging

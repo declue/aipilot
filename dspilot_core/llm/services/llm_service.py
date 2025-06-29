@@ -1,5 +1,35 @@
 """
-Langchain 기반 LLM 서비스
+LLMService – LangChain Wrapper
+==============================
+
+`LLMService` 는 DSPilot 내에서 **단일 LLM 공급자**(OpenAI, Ollama 등)를
+LangChain `ChatOpenAI` 객체로 래핑하여 사용하기 쉬운 고수준 API 를 제공합니다.
+
+핵심 기능
+---------
+1. **스트리밍 토큰** : `streaming=True` 설정 시, 토큰이 생성될 때마다
+   `StreamingCallbackHandler` 가 사용자 정의 콜백에 청크를 전달합니다.
+2. **비동기 호출** : `ainvoke` / `astream` 활용으로 IO wait 블로킹 최소화.
+3. **모델 Hot-Swap** : `update_config()` 로 런타임에 새로운 모델 또는
+   엔드포인트로 교체 가능.
+
+시퀀스 다이어그램
+-----------------
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant LLMService
+    participant OpenAI
+    Agent->>LLMService: generate_response(messages, cb)
+    LLMService->>OpenAI: astream()/ainvoke
+    OpenAI-->>LLMService: tokens / response
+    LLMService-->>Agent: LLMResponse
+```
+
+설계 고려사항
+-------------
+• **Retry/Backoff** 는 상위 `BaseAgent` 수준에서 담당.  
+• 본 서비스는 모델 호출 로직 외 상태를 가지지 않아 단위 테스트가 용이.
 """
 
 import logging
