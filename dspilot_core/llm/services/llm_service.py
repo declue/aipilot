@@ -65,6 +65,7 @@ class LLMService:
     def __init__(self, config: LLMConfig):
         self.config = config
         self._llm: Optional[ChatOpenAI] = None
+        self._is_cancelled = False
         self._initialize_llm()
 
     def _initialize_llm(self) -> None:
@@ -98,6 +99,7 @@ class LLMService:
         Returns:
             LLMResponse: 생성된 응답
         """
+        self._is_cancelled = False  # 새 요청이므로 취소 상태 초기화
         try:
             if not self._llm:
                 raise ValueError("LLM이 초기화되지 않았습니다")
@@ -113,6 +115,9 @@ class LLMService:
                 async for chunk in self._llm.astream(
                     langchain_messages, config={"callbacks": [callback_handler]}
                 ):
+                    if self._is_cancelled:
+                        logger.info("스트리밍 작업이 중단되었습니다.")
+                        break
                     if hasattr(chunk, "content"):
                         response_content += chunk.content
 
@@ -153,3 +158,7 @@ class LLMService:
         """리소스 정리"""
         self._llm = None
         logger.debug("LLM 서비스 정리 완료")
+
+    def cancel(self) -> None:
+        """스트리밍 작업을 중단합니다."""
+        self._is_cancelled = True

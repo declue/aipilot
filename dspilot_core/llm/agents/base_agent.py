@@ -87,6 +87,9 @@ class BaseAgent(ConfigMixin, ConversationMixin, ToolProcessorMixin, LLMInterface
         self.llm_service = LLMService(self.llm_config)
         self.conversation_service = ConversationService()
 
+        # 취소 플래그 추가
+        self._is_cancelled = False
+
         # 프로세서 레지스트리 (지연 초기화)
         self._processor_registry: Optional[ToolResultProcessorRegistry] = None
 
@@ -173,6 +176,13 @@ class BaseAgent(ConfigMixin, ConversationMixin, ToolProcessorMixin, LLMInterface
     async def cleanup(self) -> None:  # noqa: D401
         await self.llm_service.cleanup()
         logger.debug("Agent 리소스 정리 완료")
+
+    def cancel(self) -> None:
+        """에이전트의 현재 작업을 중단합니다."""
+        logger.debug(f"Agent {self.__class__.__name__} 작업 중단 요청됨")
+        self._is_cancelled = True
+        if hasattr(self, "llm_service") and self.llm_service:
+            self.llm_service.cancel()
 
     # ---------------------------------------------------------------------
     # 공통 헬퍼
@@ -772,6 +782,7 @@ class BaseAgent(ConfigMixin, ConversationMixin, ToolProcessorMixin, LLMInterface
         user_message: str,
         streaming_callback: Optional[Callable[[str], None]] = None,
     ) -> Dict[str, Any]:
+        self._is_cancelled = False  # 새로운 요청이므로 취소 상태 초기화
         # 공용 진입점 – 모드에 따라 분기 처리
 
         # 1) 사용자 메시지 기록

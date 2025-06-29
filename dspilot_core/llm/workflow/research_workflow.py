@@ -243,6 +243,7 @@ result = await workflow.run(agent, research_topic, research_progress)
 - **협업 기능**: 여러 에이전트 간 리서치 결과 공유
 """
 
+import datetime
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
@@ -321,20 +322,30 @@ class ResearchWorkflow(BaseWorkflow):
             # 4단계: 정보 검증 및 신뢰성 평가
             verified_data = await self._verify_and_validate(agent, enhanced_data, streaming_callback)
             
-            # 5단계: 종합 분석 및 보고서 생성
-            final_report = await self._generate_comprehensive_report(
+            # 5단계: 최종 답변 생성 (기존 보고서 생성을 대체)
+            final_answer = await self._synthesize_final_answer(
                 agent, message, verified_data, streaming_callback
             )
-            
-            # 6단계: 파일 저장 (사용자가 파일 저장을 요청한 경우)
-            if any(keyword in message.lower() for keyword in ["파일로 저장", "파일명", ".md", "저장하고"]):
-                await self._save_report_to_file(agent, final_report, message, streaming_callback)
+
+            # 6단계: 파일 저장 처리 (사용자 요청 시)
+            save_requested, filename = await self._check_and_get_filename(agent, message)
+            if save_requested:
+                if streaming_callback:
+                    streaming_callback(f"💾 '{filename}' 파일로 저장 중...\n")
+                
+                await self._save_content_to_file(agent, final_answer, filename)
+
+                if streaming_callback:
+                    streaming_callback(f"✅ 파일 저장 완료: {filename}\n")
+                
+                logger.info(f"리서치 결과 파일 저장 완료: {filename}")
+                return f"요청하신 내용을 분석하여 '{filename}' 파일로 저장했습니다."
 
             logger.info("전문 리서치 워크플로우 완료")
-            return final_report
+            return final_answer
 
         except Exception as e:
-            logger.error(f"전문 리서치 워크플로우 실행 중 오류: {e}")
+            logger.error(f"전문 리서치 워크플로우 실행 중 오류: {e}", exc_info=True)
             return f"리서치 워크플로우 실행 중 오류가 발생했습니다: {str(e)}"
 
     async def _generate_search_queries(
@@ -580,177 +591,119 @@ class ResearchWorkflow(BaseWorkflow):
             "verified_facts": self._extract_verified_facts(validation_result)
         }
 
-    async def _generate_comprehensive_report(
+    async def _synthesize_final_answer(
         self, agent: Any, original_question: str, verified_data: Dict[str, Any], 
         streaming_callback: Optional[Callable[[str], None]] = None
     ) -> str:
         """
-        종합 리서치 보고서 생성
-        
-        검증된 데이터를 바탕으로 Perplexity 스타일의 전문적인
-        리서치 보고서를 생성합니다.
+        수집된 정보를 바탕으로 사용자의 최종 요청을 수행하고 답변을 생성합니다.
         
         Args:
             agent: LLM 에이전트
-            original_question: 원래 리서치 질문
+            original_question: 원래 사용자 질문
             verified_data: 검증된 데이터
             streaming_callback: 진행 상황 콜백
             
         Returns:
-            str: 완성된 리서치 보고서
+            str: 사용자의 요청에 대한 최종 답변 (예: 요약된 블로그 포스트)
         """
         report_prompt = f"""
         원래 질문: {original_question}
 
-        검증된 데이터:
-        {verified_data.get('validation_analysis', '')}
+        검증된 리서치 데이터:
+        {verified_data.get('validation_analysis', '데이터 없음')}
 
-        위 정보를 바탕으로 Perplexity 스타일의 전문적인 리서치 보고서를 작성해주세요:
+        위 리서치 데이터를 바탕으로, 원래 질문에 대한 최종 답변을 생성해주세요.
+        사용자가 요청한 형식(예: 블로그 포스트, 요약, 보고서 등)을 정확히 준수해야 합니다.
+        단순히 리서치 과정을 보고하는 것이 아니라, 리서치 결과를 활용하여 실제 결과물을 만들어야 합니다.
 
-        # {original_question}
+        예시:
+        - 사용자가 "IT 뉴스 2건을 요약해서 블로그 포스트로 만들어줘"라고 요청했다면,
+          실제 블로그 포스트 형식의 글을 작성해야 합니다.
+        - 사용자가 "주요 내용을 요약해줘"라고 했다면, 핵심만 간추린 요약문을 작성해야 합니다.
 
-        ## 🔍 핵심 요약
-        - 3-4줄로 핵심 내용 요약
-        - 가장 중요한 발견사항
-
-        ## 📊 주요 발견사항
-        1. **첫 번째 핵심 발견**
-           - 구체적인 데이터나 사실
-           - 신뢰할 수 있는 출처 정보
-
-        2. **두 번째 핵심 발견**
-           - 구체적인 데이터나 사실
-           - 신뢰할 수 있는 출처 정보
-
-        3. **세 번째 핵심 발견**
-           - 구체적인 데이터나 사실
-           - 신뢰할 수 있는 출처 정보
-
-        ## 🧭 심층 분석
-        - 데이터 간 연관성 분석
-        - 패턴과 트렌드 식별
-        - 전문가 관점 종합
-
-        ## 🔮 시사점 및 전망
-        - 현재 상황의 의미
-        - 미래 전망
-        - 주의할 점
-
-        ## ⚠️ 제한사항
-        - 정보의 한계점
-        - 추가 조사 필요 영역
-        - 불확실한 부분
-
-        ## 📚 참고 정보
-        - 주요 출처들
-        - 관련 리소스
-
-        ---
-        *이 보고서는 실시간 웹검색을 통해 수집된 정보를 바탕으로 작성되었습니다.*
-
-        전문적이고 객관적인 보고서를 작성해주세요.
+        최종 결과물만 생성하고, 다른 부가적인 설명은 붙이지 마세요.
         """
 
         if streaming_callback:
-            streaming_callback("📝 종합 보고서 작성 중...\n")
+            streaming_callback("📝 최종 답변 생성 중...\n")
 
-        final_report = await agent._generate_basic_response(report_prompt, streaming_callback)
+        final_answer = await agent._generate_basic_response(report_prompt, streaming_callback)
         
-        return final_report
+        return final_answer
 
-    async def _save_report_to_file(
-        self, agent: Any, report: str, original_message: str,
-        streaming_callback: Optional[Callable[[str], None]] = None
+    async def _check_and_get_filename(self, agent: Any, original_message: str) -> (bool, Optional[str]):
+        """사용자 메시지에서 파일 저장 요청과 파일명을 확인합니다."""
+        import json
+        keywords = ["파일로 저장", "파일명으로", ".md", "저장하고 싶어", "파일로 만들어"]
+        if not any(keyword in original_message for keyword in keywords):
+            return False, None
+
+        prompt = f"""
+        사용자의 요청 메시지를 분석하여 저장할 파일명을 결정해주세요.
+
+        요청 메시지: "{original_message}"
+
+        분석 지침:
+        1. '어제 날짜', '오늘 날짜' 등의 표현이 있으면 실제 날짜로 변환해주세요. (예: 어제 날짜는 {datetime.date.today() - datetime.timedelta(days=1)} 입니다.)
+        2. 확장자가 명시되지 않았으면, 내용에 맞춰 적절한 확장자(예: .md, .txt)를 붙여주세요.
+        3. 파일명을 특정할 수 없으면, 메시지 내용을 기반으로 `research_summary.md`와 같이 의미있는 기본 파일명을 제안해주세요.
+
+        JSON 형식으로 응답해주세요:
+        {{
+            "filename": "계산된_파일명.md"
+        }}
+        """
+        
+        response = await agent._generate_basic_response(prompt, None)
+        
+        try:
+            # Find the JSON block by looking for the first '{' and the last '}'
+            start_idx = response.find('{')
+            end_idx = response.rfind('}') + 1
+            
+            if start_idx != -1 and end_idx != 0:
+                json_str = response[start_idx:end_idx]
+                data = json.loads(json_str)
+                filename = data.get("filename")
+                if filename:
+                    return True, filename
+        except Exception as e:
+            logger.warning(f"파일명 추출 실패: {e}. 기본 파일명을 사용합니다.")
+        
+        # Fallback
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        return True, f"research_report_{timestamp}.md"
+
+    async def _save_content_to_file(
+        self, agent: Any, content: str, filename: str
     ) -> None:
         """
-        리서치 보고서를 파일로 저장
+        주어진 내용을 파일로 저장합니다.
         
         Args:
             agent: LLM 에이전트  
-            report: 생성된 리서치 보고서
-            original_message: 원본 사용자 메시지
-            streaming_callback: 진행 상황 콜백
+            content: 저장할 내용
+            filename: 저장할 파일명
         """
         try:
-            if streaming_callback:
-                streaming_callback("💾 리서치 보고서를 파일로 저장 중...\n")
-            
-            # 파일명 생성 로직
-            import datetime
-            import re
-
-            # 사용자가 명시적으로 파일명을 지정했는지 확인
-            filename_match = re.search(r'(\w+날짜|\d{4}-\d{2}-\d{2}).*\.md', original_message)
-            if filename_match:
-                # 어제 날짜 계산
-                yesterday = datetime.date.today() - datetime.timedelta(days=1)
-                filename = f"{yesterday.strftime('%Y-%m-%d')}.md"
-            else:
-                # 기본 파일명
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"research_report_{timestamp}.md"
-            
-            # MCP write_file 도구 사용
             if hasattr(agent, "mcp_tool_manager") and agent.mcp_tool_manager:
                 tools = await agent.mcp_tool_manager.get_langchain_tools()
                 write_tool = next((tool for tool in tools if tool.name == "write_file"), None)
                 
                 if write_tool:
-                    result = await write_tool.ainvoke({
+                    await write_tool.ainvoke({
                         "path": filename,
-                        "content": report
+                        "content": content
                     })
-                    
-                    if streaming_callback:
-                        streaming_callback(f"✅ 파일 저장 완료: {filename}\n")
-                    
-                    logger.info(f"리서치 보고서 파일 저장 완료: {filename}")
                 else:
                     logger.warning("write_file 도구를 찾을 수 없음")
             else:
                 logger.warning("MCP 도구 관리자가 없어 파일 저장 불가")
                 
         except Exception as e:
-            logger.error(f"파일 저장 실패: {e}")
-            if streaming_callback:
-                streaming_callback(f"❌ 파일 저장 실패: {str(e)}\n")
-
-    async def _fallback_research(
-        self, agent: Any, message: str, streaming_callback: Optional[Callable[[str], None]] = None
-    ) -> str:
-        """
-        MCP 도구 없을 때 기본 리서치
-        
-        웹검색 도구가 없는 경우 기존 지식을 바탕으로
-        기본적인 분석을 제공합니다.
-        
-        Args:
-            agent: LLM 에이전트
-            message: 리서치 주제
-            streaming_callback: 진행 상황 콜백
-            
-        Returns:
-            str: 기본 지식 기반 분석 결과
-        """
-        if streaming_callback:
-            streaming_callback("⚠️ 웹검색 도구가 없어 기본 지식 기반 분석을 제공합니다.\n\n")
-
-        fallback_prompt = f"""
-        다음 주제에 대해 기존 지식을 바탕으로 분석해주세요:
-
-        주제: {message}
-
-        다음 구조로 분석해주세요:
-        1. 기본 개념 설명
-        2. 주요 특징 및 현황
-        3. 관련 동향 (일반적인)
-        4. 고려사항
-        5. 추천 리소스 (검색 키워드)
-
-        실시간 웹검색은 불가하지만 최대한 도움이 될 수 있는 분석을 제공해주세요.
-        """
-
-        return await agent._generate_basic_response(fallback_prompt, streaming_callback)
+            logger.error(f"파일 저장 실패: {filename} - {e}", exc_info=True)
+            raise  # Re-raise the exception to be caught by the main run method
 
     def _format_search_data(self, data: Dict[str, str]) -> str:
         """
@@ -798,3 +751,40 @@ class ResearchWorkflow(BaseWorkflow):
                     facts.append(cleaned_line)
         
         return facts[:5]  # 최대 5개까지만 반환 
+
+    async def _fallback_research(
+        self, agent: Any, message: str, streaming_callback: Optional[Callable[[str], None]] = None
+    ) -> str:
+        """
+        MCP 도구 없을 때 기본 리서치
+        
+        웹검색 도구가 없는 경우 기존 지식을 바탕으로
+        기본적인 분석을 제공합니다.
+        
+        Args:
+            agent: LLM 에이전트
+            message: 리서치 주제
+            streaming_callback: 진행 상황 콜백
+            
+        Returns:
+            str: 기본 지식 기반 분석 결과
+        """
+        if streaming_callback:
+            streaming_callback("⚠️ 웹검색 도구가 없어 기본 지식 기반 분석을 제공합니다.\n\n")
+
+        fallback_prompt = f"""
+        다음 주제에 대해 기존 지식을 바탕으로 분석해주세요:
+
+        주제: {message}
+
+        다음 구조로 분석해주세요:
+        1. 기본 개념 설명
+        2. 주요 특징 및 현황
+        3. 관련 동향 (일반적인)
+        4. 고려사항
+        5. 추천 리소스 (검색 키워드)
+
+        실시간 웹검색은 불가하지만 최대한 도움이 될 수 있는 분석을 제공해주세요.
+        """
+
+        return await agent._generate_basic_response(fallback_prompt, streaming_callback) 
