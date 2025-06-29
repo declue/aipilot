@@ -1,8 +1,8 @@
-﻿import logging
+import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional, Union
 
 
 @dataclass
@@ -20,7 +20,7 @@ class LoggerConfig:
 
 class Logger:
     """Logger class to manage logging configuration and setup."""
-
+    logger: Optional[Union["Logger", logging.Logger]]
     def __init__(self, config: LoggerConfig):
         """Initialize logger with the given configuration.
 
@@ -113,7 +113,7 @@ class Logger:
             return None
 
 
-def setup_logger(logger_name: str, **kwargs) -> Optional[logging.Logger]:
+def setup_logger(logger_name: str, **kwargs: Any) -> Optional[logging.Logger]:
     """Create and configure a logger with the given name and optional settings.
 
     Args:

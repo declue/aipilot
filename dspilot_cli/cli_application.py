@@ -157,6 +157,17 @@ class DSPilotCLI:
         4. QueryProcessor 에 ExecutionManager 주입
         5. 상호작용 모드 설정 (full_auto 여부에 따라)
         """
+        if not self.output_manager:
+            raise CLIError("OutputManager 초기화 실패")
+        if not self.interaction_manager:
+            raise CLIError("InteractionManager 초기화 실패")
+        if not self.system_manager:
+            raise CLIError("SystemManager 초기화 실패")
+        if not self.query_processor:
+            raise CLIError("QueryProcessor 초기화 실패")
+        if not self.mode_handler:
+            raise CLIError("ModeHandler 초기화 실패")
+
         self.output_manager.print_banner()
 
         success, message = await self.system_manager.initialize()
@@ -191,10 +202,16 @@ class DSPilotCLI:
         Args:
             query: 단일 질의. None 이면 대화형 모드로 진입
         """
+        if not self.output_manager:
+            raise CLIError("OutputManager 초기화 실패")
+
         try:
             # 초기화
             if not await self.initialize():
                 return
+
+            if not self.mode_handler:
+                raise CLIError("ModeHandler 초기화 실패")
 
             # 모드에 따라 실행
             if query:
@@ -222,6 +239,8 @@ class DSPilotCLI:
         """QueryProcessor 가 호출하는 콜백
         쿼리 처리 시마다 세션 카운터를 증가시켜 통계 및 로그에 활용합니다.
         """
+        if not self.command_handler:
+            raise CLIError("CommandHandler 초기화 실패")
         # 세션 객체에 카운트 증가
         self.session.increment_query_count()
 

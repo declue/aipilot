@@ -34,11 +34,13 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 import colorama
 
 from dspilot_cli.cli_application import DSPilotCLI
 from dspilot_cli.constants import Defaults, StyleColors
+from dspilot_cli.exceptions import CLIError
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -155,15 +157,19 @@ def setup_logging(debug_mode: bool, quiet_mode: bool) -> None:
             logger.setLevel(logging.WARNING)  # WARNING 이상만 표시
 
 
-async def handle_special_commands(cli: DSPilotCLI, args) -> bool:
+async def handle_special_commands(cli: DSPilotCLI, args : Any) -> bool:
     """특수 명령 처리. 처리된 경우 True 반환"""
     if args.tools:
         await cli.initialize()
+        if not cli.command_handler:
+            raise CLIError("CommandHandler 초기화 실패")
         await cli.command_handler._show_tools()  # pylint: disable=protected-access
         return True
 
     if args.diagnose:
         await cli.initialize()
+        if not cli.command_handler:
+            raise CLIError("CommandHandler 초기화 실패")
         await cli.command_handler._show_status_with_session()  # pylint: disable=protected-access
         return True
 

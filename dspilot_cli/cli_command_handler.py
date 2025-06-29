@@ -91,7 +91,7 @@ class CommandHandler:
         # 세션 정보는 외부에서 주입되며, 객체 자체를 보관한다.
         self._session: Optional[Session] = None
 
-    async def handle_command(self, user_input: str) -> bool:
+    async def handle_command(self, user_input: str) -> Optional[bool]:
         """
         사용자 명령어 처리
 
