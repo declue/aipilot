@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime
 import json
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 __all__ = ["ArgumentProcessor"]
 
@@ -64,17 +64,27 @@ class ArgumentProcessor:
     def _substitute_dollar_step(self, raw: str, arg_key: str, step_results: Dict[int, Any]) -> str:
         """Handle `$step_X` style placeholders."""
         processed_value = raw
-        step_pattern = r"\\$step_(\\d+)(?![a-zA-Z0-9])"
+        step_pattern = r"\$step_(\d+)(?:\.([A-Za-z0-9_\.]+))?"
 
         matches_list = list(re.finditer(step_pattern, processed_value))
         for match in reversed(matches_list):
             step_num = int(match.group(1))
+            path_suffix = match.group(2)  # e.g. 'result.content'
+
             if step_num in step_results:
-                context = "filename" if arg_key == "path" else "content"
-                replacement = self._extract_content_by_context(
-                    step_results[step_num], context)
-                processed_value = processed_value[: match.start(
-                )] + replacement + processed_value[match.end():]
+                if path_suffix:
+                    replacement = self._extract_by_path(step_results[step_num], path_suffix)
+                    if replacement is None:
+                        # fallback to generic extraction
+                        context = "filename" if arg_key == "path" else "content"
+                        replacement = self._extract_content_by_context(step_results[step_num], context)
+                else:
+                    context = "filename" if arg_key == "path" else "content"
+                    replacement = self._extract_content_by_context(step_results[step_num], context)
+
+                processed_value = (
+                    processed_value[: match.start()] + str(replacement) + processed_value[match.end():]
+                )
         return processed_value
 
     def _substitute_angle_step(self, raw: str, arg_key: str, step_results: Dict[int, Any]) -> str:
@@ -218,3 +228,34 @@ class ArgumentProcessor:
             return f"2025-{month}-{day}"
         iso_match = re.search(r"2025-\\d{2}-\\d{2}", text)
         return iso_match.group(0) if iso_match else text
+
+    # ------------------------------------------------------------------
+    # Nested path extraction helper
+    # ------------------------------------------------------------------
+    def _extract_by_path(self, data: Any, path: str) -> Optional[str]:
+        """점(.) 으로 구분된 경로를 따라 딕셔너리/객체에서 값을 추출한다."""
+        try:
+            segments = path.split('.') if path else []
+            current = data
+            for seg in segments:
+                if isinstance(current, (str, bytes)):
+                    # JSON 문자열이면 파싱 시도
+                    try:
+                        current = json.loads(current)
+                    except Exception:
+                        return None
+
+                if isinstance(current, dict):
+                    current = current.get(seg)
+                else:
+                    current = getattr(current, seg, None)
+
+                if current is None:
+                    return None
+
+            # 최종 값이 딕셔너리/리스트면 문자열로 변환
+            if isinstance(current, (dict, list)):
+                return json.dumps(current, ensure_ascii=False)
+            return str(current)
+        except Exception:
+            return None

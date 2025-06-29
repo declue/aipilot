@@ -244,6 +244,11 @@ class QueryProcessor:
                 if hasattr(self.output_manager, 'stream_mode') and self.output_manager.stream_mode:
                     self.output_manager.finish_streaming_output()
 
+                # 디버그 모드: LLM의 응답 원문 로깅 (앞 500자)
+                self.output_manager.log_if_debug(
+                    f"[LLM-RAW-ANSWER] {str(response_data)[:500]}"
+                )
+
                 await self._display_response(response_data)
             return {
                 "has_plan": False,

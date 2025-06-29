@@ -156,7 +156,10 @@ class StepExecutor:  # pylint: disable=too-many-instance-attributes
 
             # 2.4 성공 여부, 재시도 판단 ---------------------------------
             if not needs_retry:
-                step_results[step.step] = result
+                try:
+                    step_results[step.step] = json.loads(result) if isinstance(result, str) else result
+                except Exception:
+                    step_results[step.step] = result
                 self.output_manager.print_step_completed(step.step)
                 return True
 

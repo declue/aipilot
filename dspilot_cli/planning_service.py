@@ -68,6 +68,50 @@ class PlanningService:
         self.mcp_tool_manager = mcp_tool_manager
         self.prompt_manager = prompt_manager.get_default_prompt_manager()
 
+    async def _get_modified_code_from_llm(self, original_code: str, user_message: str) -> str:
+        """
+        LLM을 호출하여 코드를 수정합니다.
+        
+        Args:
+            original_code: 수정할 원본 코드
+            user_message: 사용자의 수정 요청 메시지
+            
+        Returns:
+            수정된 코드 문자열
+        """
+        self.output_manager.log_if_debug("LLM을 통해 코드 수정을 요청합니다...")
+        
+        # 코드 수정을 위한 별도의 프롬프트
+        prompt = f"""다음은 사용자의 요청과 원본 코드입니다. 요청에 맞게 코드를 수정한 후, **다른 설명 없이 수정된 코드 전체만 반환해주세요.**
+
+# 사용자 요청:
+{user_message}
+
+# 원본 코드:
+```python
+{original_code}
+```
+
+# 수정된 코드:"""
+
+        context = [ConversationMessage(role="user", content=prompt)]
+        response = await self.llm_agent.llm_service.generate_response(context)
+        
+        # 응답에서 코드 블록만 추출
+        modified_code = response.response
+        if "```" in modified_code:
+            parts = modified_code.split("```")
+            if len(parts) > 1:
+                # ```python ... ``` 또는 ``` ... ``` 형식의 코드 블록 추출
+                code_part = parts[1]
+                if code_part.lower().startswith('python\n'):
+                    modified_code = code_part[len('python\n'):]
+                else:
+                    modified_code = code_part
+        
+        self.output_manager.log_if_debug(f"LLM으로부터 수정된 코드 수신:\n{modified_code[:300]}...")
+        return modified_code.strip()
+        
     async def analyze_request_and_plan(self, user_message: str) -> Optional[ExecutionPlan]:
         """
         요청 분석 및 실행 계획 수립
@@ -84,11 +128,21 @@ class PlanningService:
             if not available_tools:
                 return None
 
-            # 도구 목록 생성
-            tools_desc = "\n".join([
-                f"- {tool.name}: {tool.description}"
-                for tool in available_tools
-            ])
+            # 도구 목록 생성 (이름 + 설명 + 파라미터 목록 포함)
+            tool_lines = []
+            for tool in available_tools:
+                param_fields = getattr(tool, "args", None) or getattr(tool, "args_schema", None)
+                param_names: List[str] = []
+                if param_fields:
+                    try:
+                        param_names = list(param_fields.__fields__.keys())  # type: ignore[attr-defined]
+                    except Exception:
+                        param_names = list(param_fields.keys()) if isinstance(param_fields, dict) else []
+
+                params_str = f"({', '.join(param_names)})" if param_names else ""
+                tool_lines.append(f"- {tool.name}{params_str}: {tool.description}")
+
+            tools_desc = "\n".join(tool_lines)
 
             # 계획 수립 프롬프트 (파일에서 로드)
             analysis_prompt = self.prompt_manager.get_formatted_prompt(
@@ -105,10 +159,129 @@ class PlanningService:
                 role="user", content=analysis_prompt)]
             response = await self.llm_agent.llm_service.generate_response(context)
 
+            # 디버그 모드에서는 LLM 응답 원문 일부 로그
+            self.output_manager.log_if_debug(
+                f"[LLM-RAW-PLAN] {response.response[:500].replace('\n', ' ') if isinstance(response.response, str) else str(response)[:500]}"
+            )
+
             # JSON 파싱
             plan_data = self._parse_plan_response(response.response)
             if plan_data and plan_data.get("need_tools", False):
-                execution_plan = self._create_execution_plan(plan_data.get("plan", {}))
+                # LLM 이 목록에 없는 도구를 참조하는 경우 필터링
+                valid_tool_names = {tool.name for tool in available_tools}
+
+                raw_plan = plan_data.get("plan", {})
+                if not raw_plan or not raw_plan.get("steps"):
+                    return None
+                    
+                filtered_steps = [
+                    s for s in raw_plan.get("steps", []) if s.get("tool_name") in valid_tool_names
+                ]
+
+                # 스텝이 모두 제거되면 도구 실행 불필요
+                if not filtered_steps:
+                    return None
+
+                # --------------------------------------------------------------
+                # 후처리: '읽기 -> 쓰기' 패턴을 감지하고, 중간에 LLM을 통해
+                # 코드를 수정하는 로직을 수행합니다.
+                # --------------------------------------------------------------
+                if len(filtered_steps) == 2 and \
+                   filtered_steps[0].get("tool_name") == "read_file" and \
+                   "write" in filtered_steps[1].get("tool_name", ""):
+                    
+                    read_step_args = filtered_steps[0].get("arguments", {})
+                    write_step_args = filtered_steps[1].get("arguments", {})
+                    
+                    read_path = read_step_args.get("path") or read_step_args.get("file_path")
+                    write_path = write_step_args.get("path") or write_step_args.get("file_path")
+
+                    if read_path and read_path == write_path:
+                        self.output_manager.log_if_debug(f"'{read_path}' 파일 수정 패턴 감지. LLM 수정 로직을 실행합니다.")
+                        
+                        # 1. 파일 읽기 (동기적으로 실행)
+                        try:
+                            with open(read_path, 'r', encoding='utf-8') as f:
+                                original_code = f.read()
+                            self.output_manager.log_if_debug("파일 읽기 성공.")
+                        except Exception as e:
+                            self.output_manager.log_if_debug(f"파일 읽기 실패: {e}", "error")
+                            return None # 파일을 읽지 못하면 계획을 진행할 수 없음
+
+                        # 2. LLM을 통해 코드 수정
+                        modified_code = await self._get_modified_code_from_llm(original_code, user_message)
+
+                        if not modified_code or modified_code == original_code:
+                            self.output_manager.log_if_debug("코드 수정이 없거나 실패했습니다.", "warning")
+                            return None
+
+                        # 3. 쓰기 단계의 'content' 인자를 수정된 코드로 교체
+                        # write_file, write_file_with_content 등 content를 받는 키를 찾습니다.
+                        content_key = next((k for k in write_step_args if "content" in k), "content")
+                        filtered_steps[1]["arguments"][content_key] = modified_code
+                        self.output_manager.log_if_debug("실행 계획의 쓰기 단계를 수정된 코드로 업데이트했습니다.")
+
+                # --------------------------------------------------------------
+                # 구조적 검사: 읽기 단계만 있고 쓰기/패치 단계가 없는 경우 보강
+                # --------------------------------------------------------------
+                read_step = next((s for s in filtered_steps if s.get("tool_name") == "read_file"), None)
+                has_write_step = any(
+                    any(k in st.get("arguments", {}) for k in ("content", "diff_content"))
+                    for st in filtered_steps if st is not read_step
+                )
+
+                if read_step and not has_write_step:
+                    # 읽기 스텝의 파일 경로 키 추출
+                    file_arg_key = None
+                    for k in ["path", "file_path"]:
+                        if k in read_step.get("arguments", {}):
+                            file_arg_key = k
+                            break
+
+                    target_file_path = read_step["arguments"].get(file_arg_key) if file_arg_key else None
+
+                    if target_file_path:
+                        # 쓰기 가능한 도구 탐색 (file_path + content/diff_content)
+                        write_tool_name = None
+                        content_key = "content"
+                        for tool in available_tools:
+                            param_fields = getattr(tool, "args", None) or getattr(tool, "args_schema", None)
+                            param_names: List[str] = []
+                            if param_fields:
+                                try:
+                                    param_names = list(param_fields.__fields__.keys())  # type: ignore[attr-defined]
+                                except Exception:
+                                    param_names = list(param_fields.keys()) if isinstance(param_fields, dict) else []
+
+                            if {"file_path", "content"}.issubset(param_names):
+                                write_tool_name = tool.name
+                                content_key = "content"
+                                break
+                            if {"file_path", "diff_content"}.issubset(param_names):
+                                write_tool_name = tool.name
+                                content_key = "diff_content"
+                                break
+
+                        if write_tool_name:
+                            new_step_num = max(s["step"] for s in filtered_steps) + 1
+                            filtered_steps.append(
+                                {
+                                    "step": new_step_num,
+                                    "description": "읽어온 내용을 수정하여 파일에 반영합니다.",
+                                    "tool_name": write_tool_name,
+                                    "arguments": {
+                                        "file_path": target_file_path,
+                                        content_key: f"$step_{read_step['step']}.content"
+                                    },
+                                    "confirm_message": "수정된 코드를 저장할까요?"
+                                }
+                            )
+
+                # 최종 스텝 배열 재정렬 (step 키 기준)
+                filtered_steps.sort(key=lambda s: s.get("step", 0))
+                raw_plan["steps"] = filtered_steps
+
+                execution_plan = self._create_execution_plan(raw_plan)
                 # 실행 단계가 없는 경우는 도구 실행이 불필요한 것과 동일하게 간주하여 None 반환
                 if execution_plan and execution_plan.steps:
                     return execution_plan
