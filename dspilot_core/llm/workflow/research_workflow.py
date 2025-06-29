@@ -243,13 +243,14 @@ result = await workflow.run(agent, research_topic, research_progress)
 - **협업 기능**: 여러 에이전트 간 리서치 결과 공유
 """
 
+import datetime
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from dspilot_core.llm.workflow.base_workflow import BaseWorkflow
 from dspilot_core.util.logger import setup_logger
 
-logger = setup_logger(__name__) or logging.getLogger(__name__)
+logger = setup_logger("dspilot_cli") or logging.getLogger("dspilot_cli")
 
 
 class ResearchWorkflow(BaseWorkflow):
@@ -374,7 +375,7 @@ class ResearchWorkflow(BaseWorkflow):
         - 사용자가 "1건", "하나", "아무거나 1개" 등으로 개수를 명시했다면, 1-2개의 핵심적인 검색어만 생성하세요.
         - 사용자가 "5개", "여러 개" 등으로 여러 개를 요청했다면, 요청한 개수 만큼 검색어를 생성하세요. 여러개라면 10개를 의미합니다.
         - 개수 언급이 없다면 3-4개의 검색어를 생성하세요.
-        - '어제', '최신' 등 시간 관련 표현이 있다면 검색어에 반영하세요.
+        - '어제', '최신' 등 시간 관련 표현이 있다면 검색어에 반영하세요. 단, 시간 표현은 구체적인 날짜로 변환하여 검색하세요. 오늘 날짜는 {datetime.date.today()} 입니다.
         - 일반적인 내용보다는, 주제의 핵심을 파고드는 구체적인 검색어를 우선으로 해주세요.
         - 너무 광범위하거나 주제와 관련 없는 검색어는 피해주세요.
         - 영어 또는 한국어로 된 검색 최적화 키워드를 사용하세요.
@@ -480,8 +481,11 @@ class ResearchWorkflow(BaseWorkflow):
         Returns:
             Dict[str, str]: 초기 데이터 + 추가 검색 결과
         """
+        current_date = datetime.date.today()
+        
         analysis_prompt = f"""
         원래 주제: {original_topic}
+        현재 날짜: {current_date} ({current_date.strftime('%Y년 %m월 %d일')})
         
         초기 검색 결과들을 분석하여 다음을 식별해주세요:
         {self._format_search_data(initial_data)}
@@ -492,6 +496,7 @@ class ResearchWorkflow(BaseWorkflow):
         3. 더 깊이 파야 할 전문 분야
         4. 최신 업데이트가 필요한 부분
 
+        중요: 날짜 관련 판단 시 위에 명시된 현재 날짜로 정확히 참조하세요.
         JSON 형식으로 응답:
         {{
             "need_additional_search": true/false,
@@ -643,7 +648,11 @@ class ResearchWorkflow(BaseWorkflow):
                 
                 if date_tool:
                     date_result = await date_tool.ainvoke({})
-                    current_date_info = date_result.get("result", "")
+                    # MCP 도구 응답이 딕셔너리인 경우와 문자열인 경우 모두 처리
+                    if isinstance(date_result, dict):
+                        current_date_info = date_result.get("result", str(date_result))
+                    else:
+                        current_date_info = str(date_result)
                     logger.info(f"MCP 도구로 현재 날짜 확인: {current_date_info}")
         except Exception as e:
             logger.warning(f"MCP 날짜 도구 사용 실패: {e}")
@@ -656,9 +665,8 @@ class ResearchWorkflow(BaseWorkflow):
 
         분석 지침:
         1. '어제 날짜', '오늘 날짜' 등의 표현이 있으면 실제 날짜로 변환해주세요.
-        2. 현재 날짜 정보가 제공되었다면 이를 활용하여 어제 날짜를 계산해주세요.
-        3. 확장자가 명시되지 않았으면, 내용에 맞춰 적절한 확장자(예: .md, .txt)를 붙여주세요.
-        4. 파일명을 특정할 수 없으면, 메시지 내용을 기반으로 `research_summary.md`와 같이 의미있는 기본 파일명을 제안해주세요.
+        2. 확장자가 명시되지 않았으면, 내용에 맞춰 적절한 확장자(예: .md, .txt)를 붙여주세요.
+        3. 파일명을 특정할 수 없으면, 메시지 내용을 기반으로 `research_summary.md`와 같이 의미있는 기본 파일명을 제안해주세요.
 
         JSON 형식으로 응답해주세요:
         {{
@@ -682,8 +690,13 @@ class ResearchWorkflow(BaseWorkflow):
         except Exception as e:
             logger.warning(f"파일명 추출 실패: {e}. 기본 파일명을 사용합니다.")
         
-        # Fallback
-        import datetime
+        # Fallback - 어제 날짜가 요청된 경우 직접 계산
+        if "어제" in original_message or "yesterday" in original_message.lower():
+            yesterday = datetime.date.today() - datetime.timedelta(days=1)
+            yesterday_str = yesterday.strftime("%Y-%m-%d")
+            return True, f"{yesterday_str}.md"
+        
+        # 일반적인 폴백
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         return True, f"research_report_{timestamp}.md"
 
