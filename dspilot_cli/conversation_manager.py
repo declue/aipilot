@@ -62,7 +62,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import dspilot_core.instructions.prompt_manager as prompt_manager
 from dspilot_cli.constants import ConversationEntry, Defaults, PromptNames
-from dspilot_cli.summary_utils import compress_text  # type: ignore  # pylint: disable=import-error
+
+# type: ignore  # pylint: disable=import-error
+from dspilot_cli.summary_utils import compress_text
 
 # ---------------------------------------------------------------------------
 # 토큰 카운터 초기화 (tiktoken 우선, 없으면 whitespace 기반 fallback)
@@ -83,9 +85,10 @@ except ModuleNotFoundError:  # pragma: no cover – CI에 tiktoken이 없을 때
 
         return len(text.split())
 
+
 class ConversationManager:
     """대화 히스토리 관리를 담당하는 클래스
-    
+
     SOLID 원칙 적용:
     - Single Responsibility: 대화 히스토리 관리만 담당
     - Open/Closed: 새로운 대화 관리 전략 추가 시 기존 코드 수정 없이 확장 가능
@@ -127,7 +130,8 @@ class ConversationManager:
         part = f"{role_prefix}: {entry.content}"
 
         if entry.metadata.get("used_tools"):
-            tools = ", ".join(str(tool) for tool in entry.metadata["used_tools"])
+            tools = ", ".join(str(tool)
+                              for tool in entry.metadata["used_tools"])
             part += f"\n   [사용된 도구: {tools}]"
         return part
 
@@ -192,7 +196,8 @@ class ConversationManager:
             return ""
 
         # 1) 토큰 예산으로 우선 필터링 -----------------------------------
-        selected_lines, _ = self._select_messages_within_budget(self._context_token_budget)
+        selected_lines, _ = self._select_messages_within_budget(
+            self._context_token_budget)
 
         # 2) 추가로 턴 수 제한 적용 (예: 최근 5턴 유지). 토큰보다 강한 제약 아님.
         turns = max_turns or self.max_context_turns
@@ -219,7 +224,8 @@ class ConversationManager:
         pending_context = ""
         if self.pending_actions:
             pending_context = "\n\n[보류 중인 작업들]:\n" + \
-                              "\n".join(f"- {action}" for action in self.pending_actions)
+                              "\n".join(
+                                  f"- {action}" for action in self.pending_actions)
 
         if not context:
             # 컨텍스트 없으면 단순 프롬프트
@@ -260,9 +266,12 @@ class ConversationManager:
                     context=context,
                     pending_context=pending_context,
                     user_input=user_input
-                ) if self.prompt_manager else f"이전 대화 맥락:\n{context}\n\n{pending_context}\n\n현재 사용자 요청: {user_input}"
+                ) or f"이전 대화 맥락:\n{context}\n\n{pending_context}\n\n현재 사용자 요청: {user_input}"
 
-                total_tokens = _count_tokens(enhanced_prompt)
+                # Ensure enhanced_prompt is a string before counting tokens
+                prompt_text = str(
+                    enhanced_prompt) if enhanced_prompt is not None else ""
+                total_tokens = _count_tokens(prompt_text)
 
             # 2) 그래도 초과하면 요약 압축 시도
             if total_tokens > self.max_prompt_tokens and context_lines:
@@ -272,7 +281,7 @@ class ConversationManager:
                     context=compressed_context,
                     pending_context=pending_context,
                     user_input=user_input
-                ) if self.prompt_manager else f"이전 대화 맥락(요약):\n{compressed_context}\n\n{pending_context}\n\n현재 사용자 요청: {user_input}"
+                ) or f"이전 대화 맥락(요약):\n{compressed_context}\n\n{pending_context}\n\n현재 사용자 요청: {user_input}"
 
         return enhanced_prompt
 

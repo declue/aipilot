@@ -50,7 +50,8 @@ def compress_text(text: str, max_lines: int = 50) -> str:
         code_lines.extend(lines[s:e + 1])
 
     # 코드 외 텍스트 추출
-    non_code_lines = [l for i, l in enumerate(lines) if not any(s <= i <= e for s, e in code_ranges)]
+    non_code_lines = [l for i, l in enumerate(
+        lines) if not any(s <= i <= e for s, e in code_ranges)]
     non_code_text = "\n".join(non_code_lines)
 
     sentences = _split_sentences(non_code_text)
@@ -65,4 +66,4 @@ def compress_text(text: str, max_lines: int = 50) -> str:
     if len(merged_lines) > max_lines:
         merged_lines = merged_lines[:max_lines]
 
-    return "\n".join(merged_lines) 
+    return "\n".join(merged_lines)

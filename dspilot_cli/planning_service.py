@@ -246,7 +246,7 @@ class PlanningService:
                         content_key = "content"
                         for tool in available_tools:
                             param_fields = getattr(tool, "args", None) or getattr(tool, "args_schema", None)
-                            param_names: List[str] = []
+                            param_names.clear()
                             if param_fields:
                                 try:
                                     param_names = list(param_fields.__fields__.keys())  # type: ignore[attr-defined]
@@ -310,7 +310,8 @@ class PlanningService:
             end_idx = response_text.rfind("}") + 1
             if start_idx != -1 and end_idx != 0:
                 json_str = response_text[start_idx:end_idx]
-                return json.loads(json_str)
+                result: Dict[str, Any] = json.loads(json_str)
+                return result
         except (json.JSONDecodeError, ValueError):
             pass
         return None

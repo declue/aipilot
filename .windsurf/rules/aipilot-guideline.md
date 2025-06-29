@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # DSPilot CLI 개발 가이드라인
 
 ## 프로젝트 목적

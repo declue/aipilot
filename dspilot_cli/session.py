@@ -1,10 +1,11 @@
-from __future__ import annotations
-
-"""Session 관리 모듈
+"""
+Session 관리 모듈
 
 현재 CLI 애플리케이션에서 세션 정보를 `session_start`, `query_count` 두 필드로만
 직접 관리하고 있었지만, 기능 확장성을 위해 별도의 세션 객체로 추상화한다.
 """
+
+from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field

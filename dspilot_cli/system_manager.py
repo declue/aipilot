@@ -76,7 +76,7 @@ class SystemManager:
 
         # MCP 관련 로그를 필터링하는 커스텀 필터 클래스
         class MCPLogFilter(logging.Filter):
-            def filter(self, record):
+            def filter(self, record : logging.LogRecord) -> bool:
                 # GitHub MCP 서버 관련 로그 차단
                 if "GitHub MCP Server" in record.getMessage():
                     return False
@@ -199,7 +199,7 @@ class SystemManager:
         Returns:
             도구 목록
         """
-        tools = []
+        tools: List[Any] = []
         if self.mcp_tool_manager and hasattr(self.mcp_tool_manager, 'tools'):
             tools = getattr(self.mcp_tool_manager, 'tools', [])
         return tools

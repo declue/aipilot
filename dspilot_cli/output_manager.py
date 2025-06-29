@@ -223,7 +223,7 @@ class OutputManager:
         print(
             f"{StyleColors.WARNING}계속 진행하시겠습니까? (y/n): {StyleColors.RESET_ALL}", end="")
 
-    def print_response(self, response: str, used_tools: List[Any] = None) -> None:
+    def print_response(self, response: str, used_tools: Optional[List[Any]] = None) -> None:
         """AI 응답 출력"""
         if self.quiet_mode:
             # 조용한 모드에서는 응답만 출력

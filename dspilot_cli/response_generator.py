@@ -91,7 +91,8 @@ class ResponseGenerator:
 
         if final_prompt is None:
             self.output_manager.log_if_debug("최종 분석 프롬프트 로드 실패", "error")
-            final_prompt = self._create_fallback_prompt(original_prompt, results_summary)
+            final_prompt = self._create_fallback_prompt(
+                original_prompt, results_summary)
 
         try:
             context = [ConversationMessage(role="user", content=final_prompt)]
@@ -114,7 +115,7 @@ class ResponseGenerator:
             if not streaming_callback:
                 self.output_manager.print_response(
                     response.response,
-                    response_data.get("used_tools", [])
+                    list(response_data.get("used_tools", []))  # Explicitly convert to list
                 )
 
         except Exception as e:
